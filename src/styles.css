@@ -1,40 +1,62 @@
 :root {
   color: var(--color-text-primary);
   background: var(--color-bg);
-  color-scheme: light;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 
-  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
-  --color-bg: #faf9f5;
-  --color-bg-secondary: #f0eee5;
-  --color-surface: #fbfaf7;
-  --color-surface-hover: #f7f4ee;
-  --color-border: #e8e6de;
-  --color-border-strong: #d9d6cb;
-  --color-text-primary: #1f1e1d;
-  --color-text-secondary: #6b6862;
-  --color-text-tertiary: #a19e95;
-  --color-text-on-accent: #ffffff;
-  --color-accent: #c96442;
-  --color-accent-hover: #b85539;
-  --color-accent-active: #a6472f;
-  --color-accent-tint: #f3e4dc;
-  --color-success: #7a8b6f;
-  --color-success-tint: #e9ede4;
-  --color-danger: #b85c4a;
-  --color-danger-tint: #f5e4e0;
-  --color-focus-ring: #c96442;
-  --chart-1: #c96442;
-  --chart-2: #6b8cae;
-  --chart-3: #7a8b6f;
-  --chart-4: #b8935f;
-  --chart-5: #9b7ba8;
-  --chart-6: #a19e95;
+  /* Daymark / Slate family tokens. Gym leads with coral, lime means done. */
+  --canvas: #101311;
+  --canvas-raised: #151916;
+  --surface: #1a1f1b;
+  --surface-2: #202621;
+  --surface-3: #29302a;
+  --surface-hover: #2d352e;
+  --text: #f2f4ed;
+  --text-soft: #c4cac3;
+  --text-muted: #a0a8a0;
+  --line: rgba(230, 239, 227, 0.11);
+  --line-strong: rgba(230, 239, 227, 0.2);
+  --coral: #ff8e64;
+  --coral-ink: #38170c;
+  --green: #b8f35b;
+  --green-ink: #18220b;
+  --violet: #8d7cff;
+  --cyan: #58c9d6;
+  --danger: #ff7777;
+  --content: min(100% - 56px, 1280px);
+
+  --color-bg: var(--canvas);
+  --color-bg-secondary: var(--canvas-raised);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--line);
+  --color-border-strong: var(--line-strong);
+  --color-text-primary: var(--text);
+  --color-text-secondary: var(--text-soft);
+  --color-text-tertiary: var(--text-muted);
+  --color-text-on-accent: var(--coral-ink);
+  --color-accent: var(--coral);
+  --color-accent-hover: color-mix(in srgb, var(--coral) 88%, white);
+  --color-accent-active: color-mix(in srgb, var(--coral) 78%, black);
+  --color-accent-tint: color-mix(in srgb, var(--coral) 12%, transparent);
+  --color-success: var(--green);
+  --color-success-tint: color-mix(in srgb, var(--green) 11%, transparent);
+  --color-danger: var(--danger);
+  --color-danger-tint: color-mix(in srgb, var(--danger) 11%, transparent);
+  --color-focus-ring: var(--coral);
+  --chart-1: var(--coral);
+  --chart-2: var(--cyan);
+  --chart-3: var(--green);
+  --chart-4: #e8bf65;
+  --chart-5: var(--violet);
+  --chart-6: var(--text-muted);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -46,43 +68,44 @@
   --space-8: 40px;
   --space-9: 48px;
   --space-10: 56px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-xl: 24px;
   --radius-full: 999px;
   --shadow-none: none;
-  --shadow-sm: 0 1px 2px rgba(31, 30, 29, 0.04);
-  --shadow-md: 0 4px 16px rgba(31, 30, 29, 0.08);
-  --shadow-lg: 0 8px 32px rgba(31, 30, 29, 0.12);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 18px 44px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.24);
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --duration-slow: 280ms;
 }
 
-:root[data-theme="dark"],
-body[data-theme="dark"] {
-  color-scheme: dark;
-  --color-bg: #23221d;
-  --color-bg-secondary: #2c2b25;
-  --color-surface: #2f2e28;
-  --color-surface-hover: #35342d;
-  --color-border: #3d3b33;
-  --color-border-strong: #4a4840;
-  --color-text-primary: #f2f0e8;
-  --color-text-secondary: #b0ac9f;
-  --color-text-tertiary: #7a776d;
-  --color-text-on-accent: #ffffff;
-  --color-accent: #d97757;
-  --color-accent-hover: #e08767;
-  --color-accent-active: #dc8a6e;
-  --color-accent-tint: #3d2e25;
-  --color-success: #8fa382;
-  --color-success-tint: #2e332a;
-  --color-danger: #c97260;
-  --color-danger-tint: #362724;
-  --color-focus-ring: #d97757;
+:root[data-theme="light"],
+body[data-theme="light"] {
+  color-scheme: light;
+  --canvas: #f2f3ed;
+  --canvas-raised: #eceee6;
+  --surface: #fbfcf7;
+  --surface-2: #f0f2ea;
+  --surface-3: #e1e5da;
+  --surface-hover: #e7eadf;
+  --text: #151a16;
+  --text-soft: #3f4941;
+  --text-muted: #59635a;
+  --line: rgba(23, 34, 25, 0.11);
+  --line-strong: rgba(23, 34, 25, 0.2);
+  --coral: #a83f20;
+  --coral-ink: #ffffff;
+  --green: #426f0b;
+  --green-ink: #f7ffe9;
+  --violet: #6755d5;
+  --cyan: #176876;
+  --danger: #c94444;
+  --shadow-md: 0 18px 44px rgba(31, 45, 33, 0.09);
+  --shadow-lg: 0 24px 70px rgba(31, 45, 33, 0.11);
 }
 
 * {
@@ -95,9 +118,31 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: hidden;
-  background: var(--color-bg);
+  background:
+    radial-gradient(circle at 9% -8%, color-mix(in srgb, var(--violet) 10%, transparent), transparent 34rem),
+    radial-gradient(circle at 94% 16%, color-mix(in srgb, var(--coral) 8%, transparent), transparent 38rem),
+    var(--color-bg);
   color: var(--color-text-primary);
   transition: background-color var(--duration-base) var(--ease-standard), color var(--duration-base) var(--ease-standard);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  content: "";
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, black, transparent 75%);
+}
+
+::selection {
+  color: var(--color-text-on-accent);
+  background: var(--color-accent);
 }
 
 button,
@@ -1219,9 +1264,29 @@ a:focus-visible {
 
 .cardio-slider-head strong {
   font-family: var(--font-mono);
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.cardio-minute-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cardio-minute-input input {
+  width: 76px;
+  min-height: 38px;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .cardio-logger input[type='range'] {
@@ -1744,14 +1809,21 @@ a:focus-visible {
 
 .program-add-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
   gap: var(--space-3);
 }
 
 .program-add-row input,
-.program-workout-row input {
+.program-add-row select,
+.program-workout-row input,
+.program-workout-row select,
+.settings-field select {
   min-height: 40px;
   padding: 0 var(--space-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
 }
 
 .program-workout-list {
@@ -1763,7 +1835,7 @@ a:focus-visible {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr) 40px;
   gap: var(--space-3);
-  align-items: center;
+  align-items: start;
   min-height: 64px;
   padding: var(--space-3);
 }
@@ -1777,157 +1849,530 @@ a:focus-visible {
   height: 36px;
 }
 
+.session-toolbar {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rest-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.rest-control.active {
+  border-color: color-mix(in srgb, var(--cyan) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--cyan) 7%, var(--color-surface));
+}
+
+.rest-readout {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 2px var(--space-2);
+  min-width: 104px;
+}
+
+.rest-readout svg {
+  grid-row: 1 / 3;
+  width: 19px;
+  height: 19px;
+  color: var(--cyan);
+}
+
+.rest-readout span {
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.rest-readout strong {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-presets {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.rest-presets button {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.rest-presets button:hover {
+  color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 50%, var(--color-border));
+}
+
+.target-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 5px;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.target-summary svg {
+  width: 13px;
+  height: 13px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.settings-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-height: 230px;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 8%, transparent), transparent 62%),
+    var(--color-surface);
+}
+
+.settings-panel > p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.settings-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 0.55fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.settings-field > span,
+.prescription-grid label > span {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.data-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.data-import {
+  position: relative;
+  cursor: pointer;
+}
+
+.data-import:focus-within {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.data-import input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.program-workout-content {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.program-name-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: var(--space-2);
+}
+
+.prescription-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(78px, 1fr));
+  gap: var(--space-2);
+}
+
+.prescription-grid label {
+  display: grid;
+  gap: 5px;
+}
+
+.prescription-grid input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- family shell */
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: block;
+  min-height: 100vh;
+  background: transparent;
+}
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 200;
+  padding: 11px 15px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-on-accent);
+  background: var(--color-accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  transform: translateY(-180%);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-columns: minmax(200px, 0.72fr) minmax(0, 1.85fr) minmax(190px, 0.68fr);
+  align-items: center;
+  width: var(--content);
+  min-height: 76px;
+  margin: 0 auto;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-strong);
+  border-left: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(20px) saturate(1.15);
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  min-height: 75px;
+  padding: 10px var(--space-5);
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand-link > span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.brand-link strong,
+.app-footer strong {
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.brand-link small,
+.app-footer small {
+  margin-top: 5px;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.gym-logo {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 12px;
+  color: var(--color-accent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 14%, transparent), transparent 70%),
+    var(--color-surface);
+}
+
+.gym-logo svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.8;
+}
+
+.desktop-nav {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  min-height: 75px;
+  border-left: 1px solid var(--color-border);
+}
+
+.desktop-nav .tab-button {
+  position: relative;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 75px;
+  padding: 0 var(--space-2);
+  border: 0;
+  border-right: 1px solid var(--color-border);
+  border-radius: 0;
+  color: var(--color-text-tertiary);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.desktop-nav .tab-button::after {
+  position: absolute;
+  right: 12px;
+  bottom: -1px;
+  left: 12px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  content: "";
+  background: var(--color-accent);
+  transform: scaleX(0);
+  transition: transform var(--duration-base) var(--ease-standard);
+}
+
+.desktop-nav .tab-button:hover,
+.desktop-nav .tab-button.active {
+  color: var(--color-text-primary);
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 55%, transparent);
+}
+
+.desktop-nav .tab-button.active::after {
+  transform: scaleX(1);
+}
+
+.desktop-nav .tab-button.active {
+  color: var(--color-text-primary);
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-height: 75px;
+  padding: 0 var(--space-4);
+}
+
+.local-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--color-success) 34%, var(--color-border));
+  border-radius: var(--radius-full);
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.local-status svg,
+.theme-toggle svg,
+.settings-shortcut svg {
+  width: 16px;
+  height: 16px;
+}
+
+.theme-toggle,
+.settings-shortcut {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  background: var(--color-surface);
+}
+
+.theme-toggle:hover,
+.settings-shortcut:hover,
+.settings-shortcut.active {
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-accent) 52%, var(--color-border-strong));
+  background: var(--color-surface-hover);
+  transform: translateY(-1px);
+}
+
+.app-main {
+  width: var(--content);
+  min-height: calc(100vh - 152px);
+  margin: 0 auto;
+  padding: 54px 28px 80px;
+  border-right: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
+}
+
+.topline h1,
+.workout-banner h2,
+.today-hero h1,
+.section-title h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  width: var(--content);
+  min-height: 76px;
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-bg) 76%, transparent);
+}
+
+.app-footer > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-footer > div > span {
+  display: grid;
+}
+
+.app-footer p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+}
+
 .bottom-tabs {
   display: none;
 }
 
-.app-shell.mobile-preview {
-  width: min(100%, 430px);
-  max-width: 430px;
-  height: calc(100vh - var(--space-6));
-  height: calc(100dvh - var(--space-6));
-  margin: var(--space-3) auto;
-  grid-template-columns: 1fr;
-  overflow-x: hidden;
-  overflow-y: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  background: var(--color-bg);
-  box-shadow: var(--shadow-lg);
-}
+@media (max-width: 1180px) and (min-width: 981px) {
+  .desktop-nav .tab-button {
+    gap: var(--space-1);
+    padding-inline: var(--space-2);
+    font-size: 10px;
+  }
 
-.app-shell.mobile-preview .app-rail {
-  display: none;
-}
+  .local-status {
+    width: 40px;
+    justify-content: center;
+    padding: 0;
+  }
 
-.app-shell.mobile-preview .app-main {
-  width: 100%;
-  padding: var(--space-4) var(--space-4) 88px;
-}
+  .local-status span {
+    display: none;
+  }
 
-.app-shell.mobile-preview .app-chrome {
-  grid-template-columns: minmax(0, 1fr);
-  align-items: stretch;
-  gap: var(--space-3);
-  min-height: 0;
-  margin-bottom: var(--space-6);
-}
-
-.app-shell.mobile-preview .chrome-status {
-  display: none;
-}
-
-.app-shell.mobile-preview .chrome-controls {
-  justify-content: stretch;
-}
-
-.app-shell.mobile-preview .mode-toggle {
-  flex: 1 1 0;
-}
-
-.app-shell.mobile-preview .exercise-group-body {
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: var(--space-2);
-}
-
-.app-shell.mobile-preview .move-mini-button {
-  width: 40px;
-  height: 40px;
-}
-
-.app-shell.mobile-preview .drag-button {
-  width: 40px;
-}
-
-.app-shell.mobile-preview .set-row,
-.app-shell.mobile-preview .set-row.with-pounds,
-.app-shell.mobile-preview .set-row.can-remove,
-.app-shell.mobile-preview .set-row.with-pounds.can-remove {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.app-shell.mobile-preview .set-index {
-  grid-column: 1 / -1;
-}
-
-.app-shell.mobile-preview .topline,
-.app-shell.mobile-preview .workout-banner {
-  align-items: stretch;
-  flex-direction: column;
-}
-
-.app-shell.mobile-preview .today-dashboard {
-  grid-template-columns: 1fr;
-}
-
-.app-shell.mobile-preview .topline h1 {
-  font-size: 34px;
-}
-
-.app-shell.mobile-preview .workout-banner h2 {
-  font-size: 30px;
-}
-
-.app-shell.mobile-preview .today-strip,
-.app-shell.mobile-preview .notes-grid,
-.app-shell.mobile-preview .program-editor-layout,
-.app-shell.mobile-preview .metrics-grid,
-.app-shell.mobile-preview .logbook-layout,
-.app-shell.mobile-preview .week-grid {
-  grid-template-columns: 1fr;
-}
-
-.app-shell.mobile-preview .calendar-cell {
-  min-height: 72px;
-  padding: var(--space-2);
-}
-
-.app-shell.mobile-preview .program-add-row,
-.app-shell.mobile-preview .program-workout-row {
-  grid-template-columns: 1fr;
-}
-
-.app-shell.mobile-preview .program-workout-row .move-pair {
-  display: flex;
-}
-
-.app-shell.mobile-preview .session-finish-bar {
-  bottom: calc(65px + var(--space-4));
-}
-
-.app-shell.mobile-preview .bottom-tabs {
-  position: sticky;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: var(--space-1);
-  padding: var(--space-2);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.app-shell.mobile-preview .bottom-tabs .tab-button {
-  display: grid;
-  justify-items: center;
-  gap: var(--space-1);
-  min-height: 48px;
-  padding: var(--space-1);
-  border-radius: var(--radius-md);
-  font-size: 12px;
-  text-align: center;
-}
-
-.app-shell.mobile-preview .bottom-tabs .tab-button svg {
-  width: 20px;
-  height: 20px;
+  .header-tools {
+    padding-inline: var(--space-2);
+  }
 }
 
 @media (max-width: 980px) {
+  :root {
+    --content: calc(100% - 24px);
+  }
+
   .app-shell {
     display: block;
+  }
+
+  .app-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .desktop-nav {
+    display: none;
+  }
+
+  .settings-shortcut {
+    display: none;
+  }
+
+  .brand-link {
+    border-right: 1px solid var(--color-border);
+  }
+
+  .app-main {
+    min-height: 0;
+  }
+
+  .app-footer {
+    margin-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   }
 
   .app-rail {
@@ -1935,7 +2380,7 @@ a:focus-visible {
   }
 
   .app-main {
-    padding: var(--space-5) var(--space-4) calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: var(--space-5) var(--space-4) calc(112px + env(safe-area-inset-bottom, 0px));
   }
 
   .app-chrome {
@@ -1959,16 +2404,19 @@ a:focus-visible {
 
   .bottom-tabs {
     position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    right: var(--space-2);
+    bottom: calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    left: var(--space-2);
     z-index: 10;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: var(--space-1);
-    padding: var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--color-border);
-    background: var(--color-surface);
+    gap: 2px;
+    padding: 6px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(18px) saturate(1.15);
   }
 
   .bottom-tabs .tab-button {
@@ -1978,8 +2426,15 @@ a:focus-visible {
     min-height: 50px;
     padding: var(--space-1);
     border-radius: var(--radius-md);
-    font-size: 12px;
+    font-size: 10px;
     text-align: center;
+  }
+
+  .bottom-tabs .tab-button span {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .bottom-tabs .tab-button svg {
@@ -1987,10 +2442,9 @@ a:focus-visible {
     height: 20px;
   }
 
-  /* Tab bar is 67px tall (8px padding + 50px button + 8px padding + 1px border)
-     plus the safe-area inset, so the sticky finish bar must clear all of it. */
+  /* The floating tab bar is 64px tall and sits 8px above the safe area. */
   .session-finish-bar {
-    bottom: calc(var(--space-4) + 67px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
 
   .exercise-group-body {
@@ -2056,6 +2510,37 @@ a:focus-visible {
 }
 
 @media (max-width: 720px) {
+  :root {
+    --content: calc(100% - 16px);
+  }
+
+  .header-tools {
+    padding-inline: var(--space-2);
+  }
+
+  .local-status span {
+    display: none;
+  }
+
+  .local-status {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .app-main {
+    padding-inline: var(--space-3);
+  }
+
+  .app-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-footer p {
+    text-align: left;
+  }
+
   .topline,
   .workout-banner {
     align-items: stretch;
@@ -2080,8 +2565,21 @@ a:focus-visible {
 
   .today-strip,
   .notes-grid,
-  .program-editor-layout {
+  .program-editor-layout,
+  .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .rest-control {
+    width: 100%;
+  }
+
+  .program-name-row {
+    grid-template-columns: minmax(0, 1fr) 132px;
+  }
+
+  .prescription-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .calendar-cell {
@@ -2093,13 +2591,26 @@ a:focus-visible {
     font-size: 11px;
   }
 
-  .program-add-row,
-  .program-workout-row {
+  .program-add-row {
     grid-template-columns: 1fr;
+  }
+
+  .program-workout-row {
+    grid-template-columns: minmax(0, 1fr) 40px;
   }
 
   .program-workout-row .move-pair {
     display: flex;
+    grid-column: 1 / -1;
+  }
+
+  .program-workout-content {
+    grid-column: 1;
+  }
+
+  .program-workout-row > .set-remove-button {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -2128,18 +2639,58 @@ a:focus-visible {
   }
 
   .exercise-group-body {
-    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-columns: 1fr;
     gap: var(--space-2);
+  }
+
+  .group-move-controls {
+    grid-template-columns: 40px auto;
+    align-items: center;
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  .group-move-controls .move-pair {
+    display: flex;
+  }
+
+  .cardio-slider-head,
+  .cardio-minute-input {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cardio-minute-input input {
+    width: 100%;
+    text-align: left;
   }
 
   .metrics-grid {
     grid-template-columns: 1fr;
   }
 
-  .bottom-tabs .tab-button span,
-  .app-shell.mobile-preview .bottom-tabs .tab-button span {
-    display: none;
+  .settings-field,
+  .program-name-row,
+  .prescription-grid {
+    grid-template-columns: 1fr;
   }
+
+  .session-actions > .icon-text-button {
+    flex: 1 1 calc(50% - var(--space-2));
+  }
+
+  .rest-presets {
+    order: 3;
+    width: 100%;
+  }
+
+  .rest-presets button {
+    flex: 1 1 0;
+  }
+
+  .cardio-quick-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
 }
 
 @keyframes complete-pulse {

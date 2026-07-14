@@ -15,10 +15,22 @@ export type DayStatus = 'completed' | 'partial' | 'skipped' | 'future';
 
 export type WeightMode = 'bodyweight' | 'pounds';
 
+export type ExerciseKind = 'strength' | 'cardio' | 'mobility';
+
+export interface ExerciseTarget {
+  sets?: number;
+  repMin?: number;
+  repMax?: number;
+  minutes?: number;
+  restSeconds?: number;
+}
+
 export interface Exercise {
   id: string;
   day: Weekday;
   name: string;
+  kind: ExerciseKind;
+  target: ExerciseTarget;
 }
 
 export interface SupersetPair {
@@ -50,6 +62,22 @@ export interface WorkoutLog {
   supersets: SupersetPair[];
   daySkipped: boolean;
   updatedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  exerciseSnapshot?: Exercise[];
+}
+
+export interface Preferences {
+  weeklySessionGoal: number;
+  defaultRestSeconds: number;
+}
+
+export interface GymBackup {
+  version: 1;
+  exportedAt: string;
+  logs: LogsByDate;
+  program: ProgramByDay;
+  preferences: Preferences;
 }
 
 export type LogsByDate = Record<string, WorkoutLog>;

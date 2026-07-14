@@ -1,4 +1,4 @@
-import type { Exercise, Weekday } from './types';
+import type { Exercise, ExerciseKind, ExerciseTarget, Weekday } from './types';
 
 export const WEEK_DAYS: Weekday[] = [
   'Monday',
@@ -74,11 +74,17 @@ export const DEFAULT_PROGRAM: Record<Weekday, string[]> = {
 };
 
 export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, day) => {
-  program[day] = DEFAULT_PROGRAM[day].map((name, index) => ({
-    id: `${day.toLowerCase()}-${index + 1}`,
-    day,
-    name,
-  }));
+  program[day] = DEFAULT_PROGRAM[day].map((name, index) => {
+    const kind = inferExerciseKind(name);
+
+    return {
+      id: `${day.toLowerCase()}-${index + 1}`,
+      day,
+      name,
+      kind,
+      target: createDefaultExerciseTarget(name, kind),
+    };
+  });
 
   return program;
 }, {} as Record<Weekday, Exercise[]>);
@@ -90,4 +96,38 @@ export function getBasketballMinutes(name: string): number {
 
 export function isStretchExercise(name: string): boolean {
   return /stretch|fold/i.test(name);
+}
+
+export function inferExerciseKind(name: string): ExerciseKind {
+  if (/basketball/i.test(name) || getBasketballMinutes(name) > 0) {
+    return 'cardio';
+  }
+
+  if (isStretchExercise(name)) {
+    return 'mobility';
+  }
+
+  return 'strength';
+}
+
+export function createDefaultExerciseTarget(name: string, kind = inferExerciseKind(name)): ExerciseTarget {
+  if (kind === 'cardio') {
+    return {
+      minutes: getBasketballMinutes(name) || 30,
+    };
+  }
+
+  if (kind === 'mobility') {
+    return {
+      sets: 2,
+      restSeconds: 30,
+    };
+  }
+
+  return {
+    sets: 3,
+    repMin: 8,
+    repMax: 12,
+    restSeconds: 90,
+  };
 }
