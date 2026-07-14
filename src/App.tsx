@@ -6,6 +6,7 @@ import {
   BookOpen,
   CalendarDays,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -108,7 +109,7 @@ const TABS: Array<{ id: TabId; label: string; icon: IconType }> = [
   { id: 'milestones', label: 'Progress', icon: Trophy },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
-const BOTTOM_TABS = TABS;
+const BOTTOM_TABS = TABS.filter((tab) => tab.id !== 'settings');
 
 const STATUS_LABELS: Record<DayStatus, string> = {
   completed: 'Completed',
@@ -837,6 +838,9 @@ function WorkoutPanel({
   const [secondSupersetId, setSecondSupersetId] = useState(exercises[1]?.id ?? '');
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [restTimer, setRestTimer] = useState<RestTimerState>(() => loadRestTimer(dateKey));
   const restSeconds = getRestSeconds(restTimer, clockNow);
@@ -1319,14 +1323,17 @@ function WorkoutPanel({
   };
 
   return (
-    <section className="workout-stage" aria-label={`${formatDateLabel(dateKey)} workout`}>
+    <section
+      className={`workout-stage ${reorderMode ? 'reorder-mode' : ''}`}
+      aria-label={`${formatDateLabel(dateKey)} workout`}
+    >
       <div className="workout-banner">
         <div>
           <p className="eyebrow">{formatDateLabel(dateKey)}</p>
           <h2>{progress.completed}/{progress.total} logged</h2>
           <div className="banner-chips">
             <StatusPill status={status} />
-            <span>
+            <span className="session-chip">
               {sessionFinished
                 ? 'Session finished'
                 : sessionActive
@@ -1335,11 +1342,11 @@ function WorkoutPanel({
                     ? 'Workout logged'
                     : 'Ready to start'}
             </span>
-            {log.startedAt && <span>{formatDuration(sessionDurationSeconds)} elapsed</span>}
-            <span>{log.supersets.length} supersets</span>
-            <span>{supersetExerciseCount} paired</span>
-            <span>{loggedSets} sets</span>
-            <span>{sessionVolume.toLocaleString()} lb</span>
+            {log.startedAt && <span className="elapsed-chip">{formatDuration(sessionDurationSeconds)} elapsed</span>}
+            <span className="desktop-session-chip">{log.supersets.length} supersets</span>
+            <span className="desktop-session-chip">{supersetExerciseCount} paired</span>
+            <span className="sets-chip">{loggedSets} sets</span>
+            <span className="desktop-session-chip">{sessionVolume.toLocaleString()} lb</span>
             {restSeconds > 0 && (
               <span className="rest-chip">
                 Rest {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, '0')}
@@ -1357,7 +1364,7 @@ function WorkoutPanel({
         <div className="session-actions">
           {!log.startedAt && !log.finishedAt && !sessionLogged && (
             <button
-              className="icon-text-button primary"
+              className="icon-text-button primary session-primary-action"
               type="button"
               onClick={startSession}
               disabled={exercises.length === 0}
@@ -1367,13 +1374,13 @@ function WorkoutPanel({
             </button>
           )}
           {sessionActive && (
-            <button className="icon-text-button primary" type="button" onClick={finishSession}>
+            <button className="icon-text-button primary session-primary-action" type="button" onClick={finishSession}>
               <Square aria-hidden="true" />
               <span>Finish session</span>
             </button>
           )}
           {sessionFinished && (
-            <button className="icon-text-button" type="button" onClick={reopenSession}>
+            <button className="icon-text-button session-primary-action" type="button" onClick={reopenSession}>
               <Play aria-hidden="true" />
               <span>Reopen session</span>
             </button>
@@ -1432,6 +1439,87 @@ function WorkoutPanel({
           >
             <Square aria-hidden="true" />
           </button>
+        </div>
+      </div>
+
+      <div className={`mobile-workout-tools ${mobileToolsOpen ? 'open' : ''}`}>
+        <button
+          className="mobile-panel-toggle"
+          type="button"
+          aria-expanded={mobileToolsOpen}
+          onClick={() => setMobileToolsOpen((current) => !current)}
+        >
+          <Settings aria-hidden="true" />
+          <span>Workout tools</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+        <div className="mobile-workout-tools-body">
+          <div className="mobile-tool-actions">
+            <button className="icon-text-button" type="button" onClick={completeAll} disabled={exercises.length === 0}>
+              <Check aria-hidden="true" />
+              <span>Complete all</span>
+            </button>
+            <button className="icon-text-button" type="button" onClick={usePreviousWorkout} disabled={!hasPreviousWorkout}>
+              <RotateCcw aria-hidden="true" />
+              <span>Load last</span>
+            </button>
+            <button
+              className={`icon-text-button ${reorderMode ? 'active' : ''}`}
+              type="button"
+              aria-pressed={reorderMode}
+              onClick={() => setReorderMode((current) => !current)}
+            >
+              <GripVertical aria-hidden="true" />
+              <span>Reorder</span>
+            </button>
+            <button className="icon-text-button" type="button" onClick={skipDay}>
+              <Ban aria-hidden="true" />
+              <span>Skip day</span>
+            </button>
+            <button className="icon-text-button danger" type="button" onClick={onClear}>
+              <X aria-hidden="true" />
+              <span>Clear log</span>
+            </button>
+          </div>
+
+          <div className="mobile-superset-builder">
+            <div className="section-title">
+              <Link2 aria-hidden="true" />
+              <h3>Create superset</h3>
+            </div>
+            <div className="superset-controls">
+              <select
+                value={firstSupersetId}
+                aria-label="First exercise in mobile superset"
+                onChange={(event) => setFirstSupersetId(event.target.value)}
+                disabled={unpairedExercises.length < 2}
+              >
+                {unpairedExercises.map((exercise) => (
+                  <option key={exercise.id} value={exercise.id}>
+                    {exercise.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={secondSupersetId}
+                aria-label="Second exercise in mobile superset"
+                onChange={(event) => setSecondSupersetId(event.target.value)}
+                disabled={unpairedExercises.length < 2}
+              >
+                {unpairedExercises
+                  .filter((exercise) => exercise.id !== firstSupersetId)
+                  .map((exercise) => (
+                    <option key={exercise.id} value={exercise.id}>
+                      {exercise.name}
+                    </option>
+                  ))}
+              </select>
+              <button className="icon-text-button compact" type="button" onClick={addSuperset} disabled={!canAddSuperset}>
+                <Plus aria-hidden="true" />
+                <span>Add pair</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1744,37 +1832,49 @@ function WorkoutPanel({
         })}
       </div>
 
-      <div className="notes-grid">
-        <label>
-          <span>Notes</span>
-          <textarea
-            value={log.notes}
-            onChange={(event) =>
-              onUpdate((current) =>
-                touchLog({
-                  ...current,
-                  notes: event.target.value,
-                  daySkipped: false,
-                }),
-              )
-            }
-          />
-        </label>
-        <label>
-          <span>PR Notes</span>
-          <textarea
-            value={log.prNote}
-            onChange={(event) =>
-              onUpdate((current) =>
-                touchLog({
-                  ...current,
-                  prNote: event.target.value,
-                  daySkipped: false,
-                }),
-              )
-            }
-          />
-        </label>
+      <div className={`session-notes-panel ${notesOpen ? 'open' : ''}`}>
+        <button
+          className="mobile-panel-toggle"
+          type="button"
+          aria-expanded={notesOpen}
+          onClick={() => setNotesOpen((current) => !current)}
+        >
+          <BookOpen aria-hidden="true" />
+          <span>Session notes</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+        <div className="notes-grid">
+          <label>
+            <span>Notes</span>
+            <textarea
+              value={log.notes}
+              onChange={(event) =>
+                onUpdate((current) =>
+                  touchLog({
+                    ...current,
+                    notes: event.target.value,
+                    daySkipped: false,
+                  }),
+                )
+              }
+            />
+          </label>
+          <label>
+            <span>PR Notes</span>
+            <textarea
+              value={log.prNote}
+              onChange={(event) =>
+                onUpdate((current) =>
+                  touchLog({
+                    ...current,
+                    prNote: event.target.value,
+                    daySkipped: false,
+                  }),
+                )
+              }
+            />
+          </label>
+        </div>
       </div>
       <div className="session-finish-bar">
         <div>
@@ -1841,7 +1941,7 @@ function TodayView({
   const maxTrendVolume = Math.max(1, ...stats.weeklyTrend.map((entry) => entry.volume));
 
   return (
-    <div className="view-stack">
+    <div className="view-stack today-view">
       <section className="today-dashboard">
         <div className="today-hero">
           <p className="eyebrow">Today</p>
@@ -1868,6 +1968,19 @@ function TodayView({
           </div>
         </div>
       </section>
+
+      <WorkoutPanel
+        dateKey={todayKey}
+        exercises={exercises}
+        log={log}
+        logs={logs}
+        preferences={preferences}
+        todayKey={todayKey}
+        getExercises={getExercises}
+        onReorder={(exerciseIds) => updateExerciseOrder(todayKey, exerciseIds)}
+        onUpdate={(updater) => updateLog(todayKey, updater)}
+        onClear={() => clearLog(todayKey)}
+      />
 
       <div className="today-strip training-strip">
         <article>
@@ -1906,19 +2019,6 @@ function TodayView({
           ))}
         </div>
       </section>
-
-      <WorkoutPanel
-        dateKey={todayKey}
-        exercises={exercises}
-        log={log}
-        logs={logs}
-        preferences={preferences}
-        todayKey={todayKey}
-        getExercises={getExercises}
-        onReorder={(exerciseIds) => updateExerciseOrder(todayKey, exerciseIds)}
-        onUpdate={(updater) => updateLog(todayKey, updater)}
-        onClear={() => clearLog(todayKey)}
-      />
     </div>
   );
 }
