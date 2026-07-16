@@ -1,0 +1,61 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Replace this placeholder with the Firebase Authentication UID of the
+    // Google account allowed to sync this personal Gym app.
+    function isOwner() {
+      return request.auth != null
+        && request.auth.uid == 'REPLACE_WITH_OWNER_UID';
+    }
+
+    function ownsUserPath(userId) {
+      return isOwner() && request.auth.uid == userId;
+    }
+
+    function validLogDocument(date) {
+      return request.resource.data.schemaVersion == 1
+        && request.resource.data.date == date
+        && request.resource.data.deleted is bool
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAtMs is int
+        && request.resource.data.clientId is string;
+    }
+
+    function validCoreUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let programIsCurrent = !changed.hasAny(['program'])
+        || !resource.data.keys().hasAll(['programUpdatedAtMs'])
+        || request.resource.data.programUpdatedAtMs >= resource.data.programUpdatedAtMs;
+      let preferencesAreCurrent = !changed.hasAny(['preferences'])
+        || !resource.data.keys().hasAll(['preferencesUpdatedAtMs'])
+        || request.resource.data.preferencesUpdatedAtMs >= resource.data.preferencesUpdatedAtMs;
+      return programIsCurrent && preferencesAreCurrent;
+    }
+
+    match /users/{userId}/gym/core {
+      allow read: if ownsUserPath(userId);
+      allow create: if ownsUserPath(userId)
+        && request.resource.data.schemaVersion == 1;
+      allow update: if ownsUserPath(userId)
+        && request.resource.data.schemaVersion == 1
+        && validCoreUpdate();
+      allow delete: if false;
+    }
+
+    match /users/{userId}/logs/{date} {
+      allow read: if ownsUserPath(userId);
+      allow create: if ownsUserPath(userId) && validLogDocument(date);
+      allow update: if ownsUserPath(userId)
+        && validLogDocument(date)
+        && request.resource.data.updatedAtMs >= resource.data.updatedAtMs;
+      // Workout clears are tombstones. Physical deletes could let an old
+      // offline client upload a stale workout again.
+      allow delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

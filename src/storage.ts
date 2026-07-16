@@ -150,15 +150,61 @@ function isValidExerciseDetail(value: unknown): value is ExerciseDetail {
   );
 }
 
-function isValidSuperset(value: unknown): boolean {
-  return (
-    isPlainRecord(value) &&
-    typeof value.id === 'string' &&
-    value.id.trim().length > 0 &&
-    Array.isArray(value.exerciseIds) &&
-    value.exerciseIds.length === 2 &&
-    value.exerciseIds.every((id) => typeof id === 'string' && id.trim().length > 0)
-  );
+function isValidSuperset(value: unknown): value is WorkoutLog['supersets'][number] {
+  if (
+    !isPlainRecord(value) ||
+    typeof value.id !== 'string' ||
+    value.id.trim().length === 0 ||
+    !Array.isArray(value.exerciseIds) ||
+    value.exerciseIds.length !== 2 ||
+    !value.exerciseIds.every((id) => typeof id === 'string' && id.trim().length > 0)
+  ) {
+    return false;
+  }
+
+  return value.exerciseIds[0] !== value.exerciseIds[1];
+}
+
+function normalizeSupersets(
+  value: unknown,
+  exerciseSnapshot?: Exercise[],
+): WorkoutLog['supersets'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const snapshotExerciseIds = exerciseSnapshot === undefined
+    ? undefined
+    : new Set(exerciseSnapshot.map((exercise) => exercise.id));
+  const seenPairIds = new Set<string>();
+  const pairedExerciseIds = new Set<string>();
+
+  return value.filter((pair): pair is WorkoutLog['supersets'][number] => {
+    if (!isValidSuperset(pair) || seenPairIds.has(pair.id)) {
+      return false;
+    }
+
+    const [firstExerciseId, secondExerciseId] = pair.exerciseIds;
+    if (
+      pairedExerciseIds.has(firstExerciseId) ||
+      pairedExerciseIds.has(secondExerciseId) ||
+      (snapshotExerciseIds !== undefined && (
+        !snapshotExerciseIds.has(firstExerciseId) ||
+        !snapshotExerciseIds.has(secondExerciseId)
+      ))
+    ) {
+      return false;
+    }
+
+    seenPairIds.add(pair.id);
+    pairedExerciseIds.add(firstExerciseId);
+    pairedExerciseIds.add(secondExerciseId);
+    return true;
+  });
+}
+
+function hasValidSupersets(value: unknown, exerciseSnapshot?: Exercise[]): value is WorkoutLog['supersets'] {
+  return Array.isArray(value) && normalizeSupersets(value, exerciseSnapshot).length === value.length;
 }
 
 function isValidWorkoutLog(date: string, value: unknown): value is WorkoutLog {
@@ -183,8 +229,12 @@ function isValidWorkoutLog(date: string, value: unknown): value is WorkoutLog {
     Object.values(value.details).every(isValidExerciseDetail) &&
     typeof value.notes === 'string' &&
     typeof value.prNote === 'string' &&
-    Array.isArray(value.supersets) &&
-    value.supersets.every(isValidSuperset) &&
+    hasValidSupersets(
+      value.supersets,
+      snapshotIsValid && Array.isArray(value.exerciseSnapshot)
+        ? value.exerciseSnapshot as Exercise[]
+        : undefined,
+    ) &&
     typeof value.daySkipped === 'boolean' &&
     isValidTimestamp(value.updatedAt) &&
     (value.startedAt === undefined || isValidTimestamp(value.startedAt)) &&
@@ -394,18 +444,7 @@ export function normalizeLog(date: string, log?: Partial<WorkoutLog>): WorkoutLo
     details: normalizeDetails(source.details),
     notes: typeof source.notes === 'string' ? source.notes : '',
     prNote: typeof source.prNote === 'string' ? source.prNote : '',
-    supersets: Array.isArray(source.supersets)
-      ? source.supersets.filter((pair): pair is WorkoutLog['supersets'][number] => {
-          return (
-            isPlainRecord(pair) &&
-            typeof pair.id === 'string' &&
-            Array.isArray(pair.exerciseIds) &&
-            pair.exerciseIds.length === 2 &&
-            typeof pair.exerciseIds[0] === 'string' &&
-            typeof pair.exerciseIds[1] === 'string'
-          );
-        })
-      : [],
+    supersets: normalizeSupersets(source.supersets, exerciseSnapshot),
     daySkipped: Boolean(source.daySkipped),
     updatedAt: normalizeTimestamp(source.updatedAt) ?? new Date().toISOString(),
     ...(startedAt ? { startedAt } : {}),

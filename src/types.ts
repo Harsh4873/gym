@@ -11,7 +11,7 @@ export type TabId = 'today' | 'week' | 'calendar' | 'milestones' | 'logbook' | '
 
 export type ThemeMode = 'dark' | 'light';
 
-export type DayStatus = 'completed' | 'partial' | 'skipped' | 'future';
+export type DayStatus = 'completed' | 'partial' | 'planned' | 'skipped' | 'unlogged' | 'future';
 
 export type WeightMode = 'bodyweight' | 'pounds';
 

@@ -10,8 +10,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
+  CircleAlert,
   ClipboardList,
   Clock3,
+  Cloud,
+  CloudOff,
   Database,
   Download,
   Dumbbell,
@@ -22,11 +25,16 @@ import {
   Headphones,
   Link2,
   ListChecks,
+  LoaderCircle,
+  LogIn,
+  LogOut,
   Medal,
   Moon,
   Pause,
+  Pencil,
   Play,
   Plus,
+  RefreshCw,
   RotateCcw,
   Settings,
   Square,
@@ -61,7 +69,6 @@ import {
 import {
   createEmptyExerciseDetail,
   createEmptyExerciseSet,
-  createEmptyLog,
   loadLogs,
   loadPreferences,
   normalizeLog,
@@ -72,6 +79,7 @@ import {
   saveProgram,
   serializeGymBackup,
 } from './storage';
+import { useGymSync, type GymSyncController, type GymSyncStatus } from './useGymSync';
 import type {
   DayStatus,
   Exercise,
@@ -93,6 +101,13 @@ type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 const THEME_STORAGE_KEY = 'harsh-gym-theme-v1';
 const REST_TIMER_STORAGE_KEY = 'harsh-gym-rest-timer-v1';
 type GetExercisesForDate = (dateKey: string) => Exercise[];
+type RenameExerciseForDate = (
+  dateKey: string,
+  exerciseId: string,
+  name: string,
+  scope: 'date' | 'template',
+) => void;
+type CanRenameTemplateForDate = (dateKey: string, exerciseId: string) => boolean;
 
 interface ExerciseGroup {
   id: string;
@@ -114,8 +129,19 @@ const BOTTOM_TABS = TABS.filter((tab) => tab.id !== 'settings');
 const STATUS_LABELS: Record<DayStatus, string> = {
   completed: 'Completed',
   partial: 'Partial',
+  planned: 'Planned',
   skipped: 'Skipped',
+  unlogged: 'Not logged',
   future: 'Future',
+};
+
+const SYNC_LABELS: Record<GymSyncStatus, string> = {
+  local: 'Local only',
+  connecting: 'Connecting',
+  syncing: 'Syncing',
+  synced: 'Synced',
+  offline: 'Offline',
+  error: 'Sync error',
 };
 
 function getStoredTheme(): ThemeMode {
@@ -236,7 +262,11 @@ function uniqueList(items: string[]): string[] {
 }
 
 function touchLog(log: WorkoutLog): WorkoutLog {
-  return { ...log, updatedAt: new Date().toISOString() };
+  const previousUpdatedAt = Date.parse(log.updatedAt);
+  const updatedAt = new Date(
+    Math.max(Date.now(), Number.isFinite(previousUpdatedAt) ? previousUpdatedAt + 1 : 0),
+  ).toISOString();
+  return { ...log, updatedAt };
 }
 
 function applyExerciseOrder(exercises: Exercise[], orderedIds: string[]): Exercise[] {
@@ -261,13 +291,25 @@ function countCompleted(exercises: Exercise[], log: WorkoutLog): number {
   return log.completed.filter((id) => ids.has(id)).length;
 }
 
-function hasLogActivity(log: WorkoutLog): boolean {
+function hasRecordedExerciseWork(log: WorkoutLog): boolean {
+  return (
+    log.completed.length > 0 ||
+    Object.values(log.details).some((detail) => {
+      const cardioMinutes = Number(detail.cardioMinutes);
+      return Boolean(
+        (Number.isFinite(cardioMinutes) && cardioMinutes > 0) ||
+          detail.sets.some((set) => isSetFilled(set)),
+      );
+    })
+  );
+}
+
+function hasTrainingActivity(log: WorkoutLog): boolean {
   return (
     Boolean(log.startedAt) ||
     Boolean(log.finishedAt) ||
     log.completed.length > 0 ||
     log.skipped.length > 0 ||
-    log.supersets.length > 0 ||
     Boolean(log.notes.trim()) ||
     Boolean(log.prNote.trim()) ||
     Object.values(log.details).some((detail) => {
@@ -281,6 +323,10 @@ function hasLogActivity(log: WorkoutLog): boolean {
       );
     })
   );
+}
+
+function hasPlanActivity(log: WorkoutLog): boolean {
+  return log.exerciseSnapshot !== undefined || log.supersets.length > 0;
 }
 
 function getDayStatus(dateKey: string, log: WorkoutLog, todayKey: string, exercises = getExercisesForDate(dateKey)): DayStatus {
@@ -298,11 +344,38 @@ function getDayStatus(dateKey: string, log: WorkoutLog, todayKey: string, exerci
     return 'completed';
   }
 
-  if (completed > 0 || hasLogActivity(log)) {
+  if (completed > 0 || hasTrainingActivity(log)) {
     return 'partial';
   }
 
-  return dateKey < todayKey ? 'skipped' : 'partial';
+  return hasPlanActivity(log) || (dateKey === todayKey && exercises.length > 0) ? 'planned' : 'unlogged';
+}
+
+function getValidSupersets(exercises: Exercise[], supersets: SupersetPair[]): SupersetPair[] {
+  const exerciseIds = new Set(exercises.map((exercise) => exercise.id));
+  const usedExerciseIds = new Set<string>();
+  const usedPairIds = new Set<string>();
+
+  return supersets.filter((superset) => {
+    const [firstId, secondId] = superset.exerciseIds;
+    const valid =
+      Boolean(superset.id.trim()) &&
+      !usedPairIds.has(superset.id) &&
+      firstId !== secondId &&
+      exerciseIds.has(firstId) &&
+      exerciseIds.has(secondId) &&
+      !usedExerciseIds.has(firstId) &&
+      !usedExerciseIds.has(secondId);
+
+    if (!valid) {
+      return false;
+    }
+
+    usedPairIds.add(superset.id);
+    usedExerciseIds.add(firstId);
+    usedExerciseIds.add(secondId);
+    return true;
+  });
 }
 
 function buildExerciseGroups(exercises: Exercise[], supersets: SupersetPair[]): ExerciseGroup[] {
@@ -358,10 +431,6 @@ function getProgressMeta(exercises: Exercise[], log: WorkoutLog) {
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return { completed, skipped, total, percent };
-}
-
-function getSupersetExerciseCount(log: WorkoutLog): number {
-  return log.supersets.reduce((total, superset) => total + superset.exerciseIds.length, 0);
 }
 
 function normalizeExerciseName(name: string): string {
@@ -536,6 +605,11 @@ function findPreviousExerciseDetail(
 
   for (const previousDate of previousDates) {
     const previousLog = normalizeLog(previousDate, logs[previousDate]);
+    const detailById = previousLog.details[exercise.id];
+    if (detailById && !isExerciseDetailEmpty(detailById)) {
+      return { dateKey: previousDate, detail: detailById };
+    }
+
     const detail = Object.values(previousLog.details).find((candidate) => {
       return exerciseNamesMatch(candidate.exerciseName, exercise.name) && !isExerciseDetailEmpty(candidate);
     });
@@ -558,6 +632,11 @@ function getExercisePreviousBest(
     }
 
     const previousLog = normalizeLog(logDate, logs[logDate]);
+    const detailById = previousLog.details[exercise.id];
+    if (detailById && !isExerciseDetailEmpty(detailById)) {
+      return Math.max(best, ...detailById.sets.map(getSetVolume));
+    }
+
     const matchingDetails = Object.values(previousLog.details).filter((detail) =>
       exerciseNamesMatch(detail.exerciseName, exercise.name),
     );
@@ -571,7 +650,10 @@ function isFinishedSession(log: WorkoutLog, exercises: Exercise[]): boolean {
   }
 
   const progress = getProgressMeta(exercises, log);
-  return Boolean(log.finishedAt) || (progress.total > 0 && progress.completed === progress.total);
+  return (
+    (Boolean(log.finishedAt) && hasRecordedExerciseWork(log)) ||
+    (progress.total > 0 && progress.completed === progress.total)
+  );
 }
 
 function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: GetExercisesForDate) {
@@ -652,6 +734,8 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
       return isFinishedSession(log, getExercises(dateKey));
     }).length;
 
+  prNotes.sort((left, right) => right.dateKey.localeCompare(left.dateKey));
+
   return {
     cardioMinutes,
     completedSessions,
@@ -718,6 +802,34 @@ function StatusPill({ status }: { status: DayStatus }) {
   return <span className={`status-pill ${status}`}>{STATUS_LABELS[status]}</span>;
 }
 
+function SyncStatusIndicator({ sync, compact = false }: { sync: GymSyncController; compact?: boolean }) {
+  const effectiveStatus: GymSyncStatus = sync.configured ? sync.status : 'local';
+  const Icon = effectiveStatus === 'synced'
+    ? Cloud
+    : effectiveStatus === 'connecting' || effectiveStatus === 'syncing'
+      ? LoaderCircle
+      : effectiveStatus === 'offline'
+        ? CloudOff
+        : effectiveStatus === 'error'
+          ? CircleAlert
+          : Database;
+  const label = SYNC_LABELS[effectiveStatus];
+  const accessibleLabel = sync.error ?? (sync.user ? `${label} as ${sync.user.email}` : label);
+
+  return (
+    <span
+      className={`sync-status ${effectiveStatus} ${compact ? 'compact' : ''}`}
+      title={accessibleLabel}
+      aria-label={accessibleLabel}
+      role="status"
+      aria-live="polite"
+    >
+      <Icon className={effectiveStatus === 'connecting' || effectiveStatus === 'syncing' ? 'spin' : ''} aria-hidden="true" />
+      <span>{label}</span>
+    </span>
+  );
+}
+
 function GymLogo() {
   return (
     <span className="gym-logo" aria-hidden="true">
@@ -728,13 +840,13 @@ function GymLogo() {
 
 function AppHeader({
   activeTab,
-  currentProgress,
+  sync,
   theme,
   onNavigate,
   onThemeToggle,
 }: {
   activeTab: TabId;
-  currentProgress: ReturnType<typeof getProgressMeta>;
+  sync: GymSyncController;
   theme: ThemeMode;
   onNavigate: (tab: TabId) => void;
   onThemeToggle: () => void;
@@ -770,10 +882,7 @@ function AppHeader({
       </nav>
 
       <div className="header-tools">
-        <span className="local-status" title={`${currentProgress.percent}% of today's plan complete`}>
-          <Database aria-hidden="true" />
-          <span>Saved locally</span>
-        </span>
+        <SyncStatusIndicator sync={sync} compact />
         <button
           className={`settings-shortcut ${activeTab === 'settings' ? 'active' : ''}`}
           type="button"
@@ -806,7 +915,7 @@ function AppFooter() {
           <small>Train · record · progress</small>
         </span>
       </div>
-      <p>Your private, local-first training ledger. Keep the plan honest and the next session obvious.</p>
+      <p>Local-first by default, securely synced across your devices when you sign in.</p>
     </footer>
   );
 }
@@ -820,6 +929,8 @@ function WorkoutPanel({
   todayKey,
   getExercises,
   onReorder,
+  onRename,
+  canRenameTemplate,
   onUpdate,
   onClear,
 }: {
@@ -831,6 +942,8 @@ function WorkoutPanel({
   todayKey: string;
   getExercises: GetExercisesForDate;
   onReorder: (exerciseIds: string[]) => void;
+  onRename: (exerciseId: string, name: string, scope: 'date' | 'template') => void;
+  canRenameTemplate: (exerciseId: string) => boolean;
   onUpdate: (updater: (log: WorkoutLog) => WorkoutLog) => void;
   onClear: () => void;
 }) {
@@ -839,42 +952,57 @@ function WorkoutPanel({
   const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
   const [dragOverGroupId, setDragOverGroupId] = useState<string | null>(null);
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
+  const [supersetToolsOpen, setSupersetToolsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
+  const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
+  const [exerciseNameDraft, setExerciseNameDraft] = useState('');
   const [clockNow, setClockNow] = useState(() => Date.now());
   const [restTimer, setRestTimer] = useState<RestTimerState>(() => loadRestTimer(dateKey));
   const restSeconds = getRestSeconds(restTimer, clockNow);
   const restRunning = Boolean(restTimer.endsAt && restSeconds > 0);
-  const exerciseOrderSignature = exercises.map((exercise) => exercise.id).join('|');
+  const exerciseSignature = exercises.map((exercise) => `${exercise.id}:${exercise.name}`).join('|');
   const progress = getProgressMeta(exercises, log);
   const status = getDayStatus(dateKey, log, todayKey, exercises);
-  const supersetExerciseCount = getSupersetExerciseCount(log);
+  const activeSupersets = getValidSupersets(exercises, log.supersets);
+  const supersetSignature = activeSupersets
+    .map((superset) => `${superset.id}:${superset.exerciseIds.join('+')}`)
+    .join('|');
+  const supersetExerciseCount = activeSupersets.length * 2;
   const loggedSets = getLogSetCount(log);
   const sessionVolume = getLogVolume(log);
+  const hasSessionWork = hasRecordedExerciseWork(log);
+  const hasSavedLog = hasTrainingActivity(log) || hasPlanActivity(log);
   const sessionActive = Boolean(log.startedAt && !log.finishedAt);
   const sessionFinished = Boolean(log.finishedAt);
   const sessionLogged = !log.startedAt && !log.finishedAt && progress.total > 0 && progress.completed === progress.total;
   const sessionDurationSeconds = getSessionDurationSeconds(log, clockNow);
-  const pairedIds = new Set(log.supersets.flatMap((pair) => pair.exerciseIds));
+  const pairedIds = new Set(activeSupersets.flatMap((pair) => pair.exerciseIds));
   const unpairedExercises = exercises.filter((exercise) => !pairedIds.has(exercise.id));
-  const groups = buildExerciseGroups(exercises, log.supersets);
+  const groups = buildExerciseGroups(exercises, activeSupersets);
   const previousByExerciseId = useMemo(() => {
     return new Map(
       exercises.map((exercise) => [exercise.id, findPreviousExerciseDetail(exercise, dateKey, logs)]),
     );
-  }, [dateKey, exerciseOrderSignature, logs]);
+  }, [dateKey, exerciseSignature, logs]);
   const previousBestByExerciseId = useMemo(() => {
     return new Map(
       exercises.map((exercise) => [exercise.id, getExercisePreviousBest(exercise, dateKey, logs)]),
     );
-  }, [dateKey, exerciseOrderSignature, logs]);
+  }, [dateKey, exerciseSignature, logs]);
   const hasPreviousWorkout = exercises.some((exercise) => Boolean(previousByExerciseId.get(exercise.id)));
 
   useEffect(() => {
     const available = exercises.filter((exercise) => !pairedIds.has(exercise.id));
     setFirstSupersetId(available[0]?.id ?? '');
     setSecondSupersetId(available[1]?.id ?? '');
-  }, [dateKey, exerciseOrderSignature, log.supersets.length]);
+  }, [dateKey, exerciseSignature, supersetSignature]);
+
+  useEffect(() => {
+    setEditingExerciseId(null);
+    setExerciseNameDraft('');
+    setSupersetToolsOpen(false);
+  }, [dateKey, exerciseSignature]);
 
   useEffect(() => {
     setRestTimer(loadRestTimer(dateKey));
@@ -908,6 +1036,22 @@ function WorkoutPanel({
     !pairedIds.has(secondSupersetId);
 
   const getExerciseName = (exerciseId: string) => exercises.find((exercise) => exercise.id === exerciseId)?.name ?? '';
+
+  const beginRenameExercise = (exercise: Exercise) => {
+    setEditingExerciseId(exercise.id);
+    setExerciseNameDraft(exercise.name);
+  };
+
+  const saveExerciseName = (exerciseId: string, scope: 'date' | 'template') => {
+    const nextName = exerciseNameDraft.trim();
+    if (!nextName) {
+      return;
+    }
+
+    onRename(exerciseId, nextName, scope);
+    setEditingExerciseId(null);
+    setExerciseNameDraft('');
+  };
 
   const toggleComplete = (exerciseId: string) => {
     const wasCompleted = log.completed.includes(exerciseId);
@@ -1228,6 +1372,10 @@ function WorkoutPanel({
   };
 
   const finishSession = () => {
+    if (!hasSessionWork) {
+      return;
+    }
+
     const finishedAt = new Date().toISOString();
     onUpdate((current) =>
       touchLog({
@@ -1343,7 +1491,7 @@ function WorkoutPanel({
                     : 'Ready to start'}
             </span>
             {log.startedAt && <span className="elapsed-chip">{formatDuration(sessionDurationSeconds)} elapsed</span>}
-            <span className="desktop-session-chip">{log.supersets.length} supersets</span>
+            <span className="desktop-session-chip">{activeSupersets.length} supersets</span>
             <span className="desktop-session-chip">{supersetExerciseCount} paired</span>
             <span className="sets-chip">{loggedSets} sets</span>
             <span className="desktop-session-chip">{sessionVolume.toLocaleString()} lb</span>
@@ -1374,7 +1522,13 @@ function WorkoutPanel({
             </button>
           )}
           {sessionActive && (
-            <button className="icon-text-button primary session-primary-action" type="button" onClick={finishSession}>
+            <button
+              className="icon-text-button primary session-primary-action"
+              type="button"
+              onClick={finishSession}
+              disabled={!hasSessionWork}
+              title={!hasSessionWork ? 'Log at least one exercise before finishing' : undefined}
+            >
               <Square aria-hidden="true" />
               <span>Finish session</span>
             </button>
@@ -1397,7 +1551,13 @@ function WorkoutPanel({
             <Ban aria-hidden="true" />
             <span>Skip day</span>
           </button>
-          <button className="icon-only-button" type="button" onClick={onClear} aria-label="Clear day">
+          <button
+            className="icon-only-button"
+            type="button"
+            onClick={onClear}
+            aria-label="Clear day"
+            disabled={!hasSavedLog}
+          >
             <X aria-hidden="true" />
           </button>
         </div>
@@ -1476,89 +1636,73 @@ function WorkoutPanel({
               <Ban aria-hidden="true" />
               <span>Skip day</span>
             </button>
-            <button className="icon-text-button danger" type="button" onClick={onClear}>
+            <button className="icon-text-button danger" type="button" onClick={onClear} disabled={!hasSavedLog}>
               <X aria-hidden="true" />
               <span>Clear log</span>
             </button>
           </div>
 
-          <div className="mobile-superset-builder">
-            <div className="section-title">
-              <Link2 aria-hidden="true" />
-              <h3>Create superset</h3>
-            </div>
-            <div className="superset-controls">
-              <select
-                value={firstSupersetId}
-                aria-label="First exercise in mobile superset"
-                onChange={(event) => setFirstSupersetId(event.target.value)}
-                disabled={unpairedExercises.length < 2}
-              >
-                {unpairedExercises.map((exercise) => (
-                  <option key={exercise.id} value={exercise.id}>
-                    {exercise.name}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={secondSupersetId}
-                aria-label="Second exercise in mobile superset"
-                onChange={(event) => setSecondSupersetId(event.target.value)}
-                disabled={unpairedExercises.length < 2}
-              >
-                {unpairedExercises
-                  .filter((exercise) => exercise.id !== firstSupersetId)
-                  .map((exercise) => (
-                    <option key={exercise.id} value={exercise.id}>
-                      {exercise.name}
-                    </option>
-                  ))}
-              </select>
-              <button className="icon-text-button compact" type="button" onClick={addSuperset} disabled={!canAddSuperset}>
-                <Plus aria-hidden="true" />
-                <span>Add pair</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
-      <section className="superset-builder" aria-label="Superset">
-        <div className="section-title">
+      <section className={`superset-builder ${supersetToolsOpen ? 'open' : ''}`} aria-label="Create a superset">
+        <button
+          className="mobile-superset-toggle"
+          type="button"
+          aria-expanded={supersetToolsOpen}
+          onClick={() => setSupersetToolsOpen((current) => !current)}
+        >
           <Link2 aria-hidden="true" />
-          <h3>Superset</h3>
-        </div>
-        <div className="superset-controls">
-          <select
-            value={firstSupersetId}
-            aria-label="First exercise in superset"
-            onChange={(event) => setFirstSupersetId(event.target.value)}
-            disabled={unpairedExercises.length < 2}
-          >
-            {unpairedExercises.map((exercise) => (
-              <option key={exercise.id} value={exercise.id}>
-                {exercise.name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={secondSupersetId}
-            aria-label="Second exercise in superset"
-            onChange={(event) => setSecondSupersetId(event.target.value)}
-            disabled={unpairedExercises.length < 2}
-          >
-            {unpairedExercises
-              .filter((exercise) => exercise.id !== firstSupersetId)
-              .map((exercise) => (
+          <span>Supersets · {activeSupersets.length} {activeSupersets.length === 1 ? 'pair' : 'pairs'}</span>
+          <ChevronDown aria-hidden="true" />
+        </button>
+        <div className="superset-builder-body">
+          <div className="superset-builder-heading">
+            <div className="section-title">
+              <Link2 aria-hidden="true" />
+              <h3>Supersets</h3>
+            </div>
+            <span>{activeSupersets.length} paired</span>
+          </div>
+          <p>Pair two exercises for this workout. The pair stays attached to this date.</p>
+          <div className="superset-controls">
+            <select
+              value={firstSupersetId}
+              aria-label="First exercise in superset"
+              onChange={(event) => {
+                const nextFirstId = event.target.value;
+                setFirstSupersetId(nextFirstId);
+                if (secondSupersetId === nextFirstId) {
+                  setSecondSupersetId(unpairedExercises.find((exercise) => exercise.id !== nextFirstId)?.id ?? '');
+                }
+              }}
+              disabled={unpairedExercises.length < 2}
+            >
+              {unpairedExercises.map((exercise) => (
                 <option key={exercise.id} value={exercise.id}>
                   {exercise.name}
                 </option>
               ))}
-          </select>
-          <button className="icon-text-button compact" type="button" onClick={addSuperset} disabled={!canAddSuperset}>
-            <Plus aria-hidden="true" />
-            <span>Add</span>
-          </button>
+            </select>
+            <select
+              value={secondSupersetId}
+              aria-label="Second exercise in superset"
+              onChange={(event) => setSecondSupersetId(event.target.value)}
+              disabled={unpairedExercises.length < 2}
+            >
+              {unpairedExercises
+                .filter((exercise) => exercise.id !== firstSupersetId)
+                .map((exercise) => (
+                  <option key={exercise.id} value={exercise.id}>
+                    {exercise.name}
+                  </option>
+                ))}
+            </select>
+            <button className="icon-text-button compact" type="button" onClick={addSuperset} disabled={!canAddSuperset}>
+              <Plus aria-hidden="true" />
+              <span>Add pair</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1677,17 +1821,80 @@ function WorkoutPanel({
                           {completed ? <Check aria-hidden="true" /> : <Circle aria-hidden="true" />}
                         </button>
                         <div className="exercise-copy">
-                          <div className="exercise-title-row">
-                            <div>
-                              <strong>{exercise.name}</strong>
-                              <span className="target-summary">
-                                <Gauge aria-hidden="true" />
-                                {getExerciseTargetSummary(exercise)}
-                              </span>
-                              {lastSummary && <small>Last time: {lastSummary}</small>}
+                          {editingExerciseId === exercise.id ? (
+                            <div className="exercise-name-editor">
+                              <label>
+                                <span>Exercise name</span>
+                                <input
+                                  value={exerciseNameDraft}
+                                  autoFocus
+                                  maxLength={80}
+                                  onChange={(event) => setExerciseNameDraft(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Escape') {
+                                      setEditingExerciseId(null);
+                                      setExerciseNameDraft('');
+                                    }
+                                  }}
+                                />
+                              </label>
+                              <div className="exercise-name-actions">
+                                <button
+                                  className="icon-text-button primary compact"
+                                  type="button"
+                                  disabled={!exerciseNameDraft.trim()}
+                                  onClick={() => saveExerciseName(exercise.id, 'date')}
+                                >
+                                  <Check aria-hidden="true" />
+                                  <span>This day</span>
+                                </button>
+                                {canRenameTemplate(exercise.id) && (
+                                  <button
+                                    className="icon-text-button compact"
+                                    type="button"
+                                    disabled={!exerciseNameDraft.trim()}
+                                    onClick={() => saveExerciseName(exercise.id, 'template')}
+                                  >
+                                    <CalendarDays aria-hidden="true" />
+                                    <span>This + future {getWeekday(parseDateKey(dateKey))}s</span>
+                                  </button>
+                                )}
+                                <button
+                                  className="icon-only-button small"
+                                  type="button"
+                                  aria-label="Cancel rename"
+                                  onClick={() => {
+                                    setEditingExerciseId(null);
+                                    setExerciseNameDraft('');
+                                  }}
+                                >
+                                  <X aria-hidden="true" />
+                                </button>
+                              </div>
                             </div>
-                            {hasLocalPr && <span className="pr-chip" title="Best single-set load × reps">Set PR</span>}
-                          </div>
+                          ) : (
+                            <div className="exercise-title-row">
+                              <div>
+                                <span className="exercise-name-line">
+                                  <strong>{exercise.name}</strong>
+                                  <button
+                                    className="rename-exercise-button"
+                                    type="button"
+                                    aria-label={`Rename ${exercise.name}`}
+                                    onClick={() => beginRenameExercise(exercise)}
+                                  >
+                                    <Pencil aria-hidden="true" />
+                                  </button>
+                                </span>
+                                <span className="target-summary">
+                                  <Gauge aria-hidden="true" />
+                                  {getExerciseTargetSummary(exercise)}
+                                </span>
+                                {lastSummary && <small>Last time: {lastSummary}</small>}
+                              </div>
+                              {hasLocalPr && <span className="pr-chip" title="Best single-set load × reps">Set PR</span>}
+                            </div>
+                          )}
                           {canUseLastSets && (
                             <button className="last-sets-button" type="button" onClick={() => useLastSets(exercise.id)}>
                               <RotateCcw aria-hidden="true" />
@@ -1896,7 +2103,13 @@ function WorkoutPanel({
           </button>
         )}
         {sessionActive && (
-          <button className="icon-text-button primary" type="button" onClick={finishSession}>
+          <button
+            className="icon-text-button primary"
+            type="button"
+            onClick={finishSession}
+            disabled={!hasSessionWork}
+            title={!hasSessionWork ? 'Log at least one exercise before finishing' : undefined}
+          >
             <Square aria-hidden="true" />
             <span>Finish</span>
           </button>
@@ -1918,6 +2131,8 @@ function TodayView({
   todayKey,
   getExercises,
   updateExerciseOrder,
+  renameExercise,
+  canRenameTemplate,
   updateLog,
   clearLog,
 }: {
@@ -1926,12 +2141,15 @@ function TodayView({
   todayKey: string;
   getExercises: GetExercisesForDate;
   updateExerciseOrder: (dateKey: string, exerciseIds: string[]) => void;
+  renameExercise: RenameExerciseForDate;
+  canRenameTemplate: CanRenameTemplateForDate;
   updateLog: (dateKey: string, updater: (log: WorkoutLog) => WorkoutLog) => void;
   clearLog: (dateKey: string) => void;
 }) {
   const log = normalizeLog(todayKey, logs[todayKey]);
   const exercises = getExercises(todayKey);
   const progress = getProgressMeta(exercises, log);
+  const status = getDayStatus(todayKey, log, todayKey, exercises);
   const remaining = Math.max(progress.total - progress.completed - progress.skipped, 0);
   const stats = buildTrainingStats(logs, todayKey, getExercises);
   const nextExercise = exercises.find((exercise) => !log.completed.includes(exercise.id) && !log.skipped.includes(exercise.id));
@@ -1939,6 +2157,13 @@ function TodayView({
   const sessionVolume = getLogVolume(log);
   const todayCardioMinutes = getCardioMinutes(exercises, log);
   const maxTrendVolume = Math.max(1, ...stats.weeklyTrend.map((entry) => entry.volume));
+  const todayMessage = log.daySkipped
+    ? 'Recovery day marked as skipped.'
+    : nextExercise
+      ? `Up next: ${nextExercise.name}`
+      : progress.total > 0 && progress.completed === progress.total
+        ? 'Workout wrapped. Nice work.'
+        : 'No exercises remaining. Review skipped items when you are ready.';
 
   return (
     <div className="view-stack today-view">
@@ -1946,12 +2171,13 @@ function TodayView({
         <div className="today-hero">
           <p className="eyebrow">Today</p>
           <h1>{formatDateLabel(todayKey)}</h1>
-          <p>{nextExercise ? `Up next: ${nextExercise.name}` : 'Workout is wrapped. Nice work.'}</p>
+          <p>{todayMessage}</p>
           <div className="hero-actions">
             <a className="icon-text-button spotify-inline" href="https://open.spotify.com/" target="_blank" rel="noreferrer">
               <Headphones aria-hidden="true" />
               <span>Spotify</span>
             </a>
+            <StatusPill status={status} />
             <span>{remaining} left</span>
           </div>
         </div>
@@ -1978,6 +2204,8 @@ function TodayView({
         todayKey={todayKey}
         getExercises={getExercises}
         onReorder={(exerciseIds) => updateExerciseOrder(todayKey, exerciseIds)}
+        onRename={(exerciseId, name, scope) => renameExercise(todayKey, exerciseId, name, scope)}
+        canRenameTemplate={(exerciseId) => canRenameTemplate(todayKey, exerciseId)}
         onUpdate={(updater) => updateLog(todayKey, updater)}
         onClear={() => clearLog(todayKey)}
       />
@@ -2282,8 +2510,6 @@ function MilestonesView({
         {stats.prNotes.length > 0 ? (
           <div className="pr-list">
             {stats.prNotes
-              .slice()
-              .reverse()
               .slice(0, 8)
               .map((entry) => (
                 <article key={`${entry.dateKey}-${entry.note}`} className="pr-entry">
@@ -2308,6 +2534,8 @@ function LogbookView({
   getExercises,
   setSelectedDate,
   updateExerciseOrder,
+  renameExercise,
+  canRenameTemplate,
   updateLog,
   clearLog,
 }: {
@@ -2318,11 +2546,13 @@ function LogbookView({
   getExercises: GetExercisesForDate;
   setSelectedDate: (dateKey: string) => void;
   updateExerciseOrder: (dateKey: string, exerciseIds: string[]) => void;
+  renameExercise: RenameExerciseForDate;
+  canRenameTemplate: CanRenameTemplateForDate;
   updateLog: (dateKey: string, updater: (log: WorkoutLog) => WorkoutLog) => void;
   clearLog: (dateKey: string) => void;
 }) {
   const recentEntries = Object.values(logs)
-    .filter(hasLogActivity)
+    .filter((log) => hasTrainingActivity(log) || hasPlanActivity(log))
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 10);
 
@@ -2348,7 +2578,11 @@ function LogbookView({
               type="date"
               value={selectedDate}
               aria-label="Workout log date"
-              onChange={(event) => setSelectedDate(event.target.value)}
+              onChange={(event) => {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(event.target.value)) {
+                  setSelectedDate(event.target.value);
+                }
+              }}
             />
             <button
               className="icon-only-button"
@@ -2370,6 +2604,8 @@ function LogbookView({
           todayKey={todayKey}
           getExercises={getExercises}
           onReorder={(exerciseIds) => updateExerciseOrder(selectedDate, exerciseIds)}
+          onRename={(exerciseId, name, scope) => renameExercise(selectedDate, exerciseId, name, scope)}
+          canRenameTemplate={(exerciseId) => canRenameTemplate(selectedDate, exerciseId)}
           onUpdate={(updater) => updateLog(selectedDate, updater)}
           onClear={() => clearLog(selectedDate)}
         />
@@ -2407,35 +2643,38 @@ function LogbookView({
 function SettingsView({
   program,
   setProgram,
+  onRenameTemplate,
   preferences,
   setPreferences,
+  sync,
   onExport,
   onImport,
 }: {
   program: ProgramByDay;
   setProgram: Dispatch<SetStateAction<ProgramByDay>>;
+  onRenameTemplate: (day: Weekday, exerciseId: string, name: string) => void;
   preferences: Preferences;
   setPreferences: Dispatch<SetStateAction<Preferences>>;
+  sync: GymSyncController;
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
 }) {
   const [selectedProgramDay, setSelectedProgramDay] = useState<Weekday>(() => getWeekday(new Date()));
   const [newWorkoutName, setNewWorkoutName] = useState('');
   const [newWorkoutKind, setNewWorkoutKind] = useState<ExerciseKind>('strength');
+  const [programNameDrafts, setProgramNameDrafts] = useState<Record<string, string>>({});
   const dayWorkouts = program[selectedProgramDay];
+  const cloudImportBlocked = Boolean(sync.user && sync.status !== 'synced');
 
-  const updateWorkoutName = (exerciseId: string, name: string) => {
-    setProgram((current) => ({
-      ...current,
-      [selectedProgramDay]: current[selectedProgramDay].map((exercise) =>
-        exercise.id === exerciseId ? { ...exercise, name } : exercise,
-      ),
-    }));
-  };
-
-  const normalizeWorkoutName = (exerciseId: string, name: string) => {
-    const trimmedName = name.trim();
-    updateWorkoutName(exerciseId, trimmedName || 'Untitled Workout');
+  const commitWorkoutName = (exerciseId: string, name: string) => {
+    const key = `${selectedProgramDay}:${exerciseId}`;
+    const nextName = name.trim() || 'Untitled Workout';
+    setProgramNameDrafts((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    onRenameTemplate(selectedProgramDay, exerciseId, nextName);
   };
 
   const updateWorkoutKind = (exerciseId: string, kind: ExerciseKind) => {
@@ -2587,23 +2826,76 @@ function SettingsView({
           </label>
         </section>
 
+        <section className="settings-panel sync-panel">
+          <div className="section-title">
+            <Cloud aria-hidden="true" />
+            <h3>Firebase sync</h3>
+          </div>
+          {!sync.configured ? (
+            <p>
+              This build is safely using local storage. Add the Firebase repository variables to turn on private cross-device sync.
+            </p>
+          ) : sync.user ? (
+            <>
+              <div className="sync-account">
+                <div>
+                  <strong>{sync.user.displayName}</strong>
+                  <span>{sync.user.email}</span>
+                </div>
+                <SyncStatusIndicator sync={sync} />
+              </div>
+              {sync.lastSyncedAt && (
+                <small className="last-sync">Last synced {new Date(sync.lastSyncedAt).toLocaleString()}</small>
+              )}
+            </>
+          ) : (
+            <p>Sign in with Google to keep workouts, weekly templates, supersets, and settings in sync across devices.</p>
+          )}
+          {sync.error && <p className="sync-error" role="alert">{sync.error}</p>}
+          <div className="data-actions">
+            {sync.configured && !sync.user && (
+              <button className="icon-text-button primary" type="button" onClick={() => void sync.signIn()}>
+                <LogIn aria-hidden="true" />
+                <span>Sign in to sync</span>
+              </button>
+            )}
+            {sync.user && (sync.status === 'error' || sync.status === 'offline') && (
+              <button className="icon-text-button" type="button" onClick={sync.retry}>
+                <RefreshCw aria-hidden="true" />
+                <span>Retry</span>
+              </button>
+            )}
+            {sync.user && (
+              <button className="icon-text-button" type="button" onClick={() => void sync.signOut()}>
+                <LogOut aria-hidden="true" />
+                <span>Sign out</span>
+              </button>
+            )}
+          </div>
+        </section>
+
         <section className="settings-panel data-panel">
           <div className="section-title">
             <Database aria-hidden="true" />
-            <h3>Local data</h3>
+            <h3>Backups</h3>
           </div>
-          <p>Gym stays on this device. Export a complete backup before clearing browser data or changing devices.</p>
+          <p>Local storage remains the instant offline copy. Export a complete backup any time for an extra portable safety net.</p>
           <div className="data-actions">
             <button className="icon-text-button primary" type="button" onClick={onExport}>
               <Download aria-hidden="true" />
               <span>Export backup</span>
             </button>
-            <label className="icon-text-button data-import">
+            <label
+              className={`icon-text-button data-import ${cloudImportBlocked ? 'disabled' : ''}`}
+              aria-disabled={cloudImportBlocked}
+              title={cloudImportBlocked ? 'Wait until Firebase has finished syncing before importing.' : undefined}
+            >
               <Upload aria-hidden="true" />
               <span>Import backup</span>
               <input
                 type="file"
                 accept="application/json,.json"
+                disabled={cloudImportBlocked}
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) {
@@ -2648,10 +2940,13 @@ function SettingsView({
           <div className="program-editor-head">
             <div className="section-title">
               <ListChecks aria-hidden="true" />
-              <h3>{selectedProgramDay} Workouts</h3>
+              <h3>{selectedProgramDay} template</h3>
             </div>
             <span>{dayWorkouts.length} saved</span>
           </div>
+          <p className="program-editor-help">
+            Template changes apply to upcoming {selectedProgramDay}s. Use the pencil beside an exercise in Today or Logbook for a one-day rename.
+          </p>
 
           <form
             className="program-add-row"
@@ -2708,10 +3003,18 @@ function SettingsView({
                   <div className="program-workout-content">
                     <div className="program-name-row">
                       <input
-                        value={exercise.name}
+                        value={programNameDrafts[`${selectedProgramDay}:${exercise.id}`] ?? exercise.name}
                         aria-label={`Rename ${exercise.name}`}
-                        onChange={(event) => updateWorkoutName(exercise.id, event.target.value)}
-                        onBlur={(event) => normalizeWorkoutName(exercise.id, event.target.value)}
+                        onChange={(event) => {
+                          const key = `${selectedProgramDay}:${exercise.id}`;
+                          setProgramNameDrafts((current) => ({ ...current, [key]: event.target.value }));
+                        }}
+                        onBlur={(event) => commitWorkoutName(exercise.id, event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.currentTarget.blur();
+                          }
+                        }}
                       />
                       <select
                         value={exercise.kind}
@@ -2812,28 +3115,8 @@ export default function App() {
   const [program, setProgram] = useState<ProgramByDay>(() => loadProgram());
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences());
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
+  const sync = useGymSync({ logs, setLogs, program, setProgram, preferences, setPreferences });
   const previousActiveTab = useRef(activeTab);
-
-  useEffect(() => {
-    setLogs((current) => {
-      let changed = false;
-      const next = { ...current };
-
-      Object.entries(current).forEach(([dateKey, log]) => {
-        if (log.exerciseSnapshot !== undefined) {
-          return;
-        }
-
-        changed = true;
-        next[dateKey] = {
-          ...log,
-          exerciseSnapshot: cloneExercises(getProgramExercisesForDate(dateKey, program)),
-        };
-      });
-
-      return changed ? next : current;
-    });
-  }, [program]);
 
   useEffect(() => {
     const refreshToday = () => setTodayKey(toDateKey(new Date()));
@@ -2905,19 +3188,143 @@ export default function App() {
     });
   };
 
-  const clearLog = (dateKey: string) => {
-    if (logs[dateKey] && hasLogActivity(normalizeLog(dateKey, logs[dateKey]))) {
-      const confirmed = window.confirm(`Clear the workout log for ${formatDateLabel(dateKey)}? This cannot be undone.`);
-      if (!confirmed) {
-        return;
-      }
+  const renameTemplateExercise = (
+    weekday: Weekday,
+    exerciseId: string,
+    name: string,
+    selectedWorkoutDate?: string,
+  ) => {
+    const nextName = name.trim();
+    if (!nextName) {
+      return;
     }
+
+    const templateExercise = program[weekday].find((exercise) => exercise.id === exerciseId);
+    if (!templateExercise) {
+      return;
+    }
+
+    const previousTemplateName = templateExercise.name;
+    if (nextName === previousTemplateName) {
+      return;
+    }
+
+    setProgram((current) => ({
+      ...current,
+      [weekday]: current[weekday].map((exercise) =>
+        exercise.id === exerciseId ? { ...exercise, name: nextName } : exercise,
+      ),
+    }));
 
     setLogs((current) => {
       const next = { ...current };
-      delete next[dateKey];
+      const propagationStart = selectedWorkoutDate && selectedWorkoutDate > todayKey
+        ? selectedWorkoutDate
+        : todayKey;
+      const datesToUpdate = new Set(
+        Object.keys(current).filter((loggedDate) => {
+          return loggedDate >= propagationStart && getWeekday(parseDateKey(loggedDate)) === weekday;
+        }),
+      );
+      if (selectedWorkoutDate) {
+        datesToUpdate.add(selectedWorkoutDate);
+      }
+
+      datesToUpdate.forEach((loggedDate) => {
+        const currentLog = normalizeLog(loggedDate, current[loggedDate]);
+        const snapshot = currentLog.exerciseSnapshot
+          ?? cloneExercises(getProgramExercisesForDate(loggedDate, program));
+        const snapshotExercise = snapshot.find((exercise) => exercise.id === exerciseId);
+        const selectedDateShouldUpdate = loggedDate === selectedWorkoutDate;
+        if (
+          !snapshotExercise ||
+          (!selectedDateShouldUpdate && snapshotExercise.name !== previousTemplateName)
+        ) {
+          return;
+        }
+
+        const detail = currentLog.details[exerciseId];
+        next[loggedDate] = touchLog({
+          ...currentLog,
+          exerciseSnapshot: snapshot.map((exercise) =>
+            exercise.id === exerciseId ? { ...exercise, name: nextName } : exercise,
+          ),
+          details: detail
+            ? {
+                ...currentLog.details,
+                [exerciseId]: {
+                  ...detail,
+                  exerciseName:
+                    selectedDateShouldUpdate || detail.exerciseName === previousTemplateName
+                      ? nextName
+                      : detail.exerciseName,
+                },
+              }
+            : currentLog.details,
+        });
+      });
+
       return next;
     });
+  };
+
+  const canRenameTemplateForDate: CanRenameTemplateForDate = (dateKey, exerciseId) => {
+    const weekday = getWeekday(parseDateKey(dateKey));
+    return program[weekday].some((exercise) => exercise.id === exerciseId);
+  };
+
+  const renameExerciseForDate: RenameExerciseForDate = (dateKey, exerciseId, name, scope) => {
+    const nextName = name.trim();
+    if (!nextName) {
+      return;
+    }
+
+    const weekday = getWeekday(parseDateKey(dateKey));
+    if (scope === 'template') {
+      renameTemplateExercise(weekday, exerciseId, nextName, dateKey);
+      return;
+    }
+
+    setLogs((current) => {
+      const currentLog = normalizeLog(dateKey, current[dateKey]);
+      const snapshot = currentLog.exerciseSnapshot
+        ?? cloneExercises(getProgramExercisesForDate(dateKey, program));
+      if (!snapshot.some((exercise) => exercise.id === exerciseId)) {
+        return current;
+      }
+
+      const detail = currentLog.details[exerciseId];
+      return {
+        ...current,
+        [dateKey]: touchLog({
+          ...currentLog,
+          exerciseSnapshot: snapshot.map((exercise) =>
+            exercise.id === exerciseId ? { ...exercise, name: nextName } : exercise,
+          ),
+          details: detail
+            ? {
+                ...currentLog.details,
+                [exerciseId]: { ...detail, exerciseName: nextName },
+              }
+            : currentLog.details,
+        }),
+      };
+    });
+  };
+
+  const clearLog = (dateKey: string) => {
+    if (!logs[dateKey]) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Clear the workout log and any one-day plan changes for ${formatDateLabel(dateKey)}? This cannot be undone.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    sync.markLogDeleted(dateKey);
   };
 
   const openLogbook = (dateKey: string) => {
@@ -2931,20 +3338,8 @@ export default function App() {
   };
 
   const updateExerciseOrder = (dateKey: string, exerciseIds: string[]) => {
-    if (dateKey >= todayKey) {
-      const day = getWeekday(parseDateKey(dateKey));
-      setProgram((current) => ({
-        ...current,
-        [day]: applyExerciseOrder(current[day], exerciseIds),
-      }));
-    }
-
     setLogs((current) => {
       const currentLog = current[dateKey];
-      if (!currentLog && dateKey >= todayKey) {
-        return current;
-      }
-
       const normalized = normalizeLog(dateKey, currentLog);
       const snapshot = currentLog?.exerciseSnapshot
         ?? cloneExercises(getProgramExercisesForDate(dateKey, program));
@@ -2972,6 +3367,11 @@ export default function App() {
   };
 
   const importBackup = async (file: File) => {
+    if (sync.user && sync.status !== 'synced') {
+      window.alert('Wait for Firebase to finish syncing before importing a backup.');
+      return;
+    }
+
     const backup = parseGymBackup(await file.text());
     if (!backup) {
       window.alert('That file is not a valid Gym backup. Nothing was changed.');
@@ -2985,14 +3385,19 @@ export default function App() {
       return;
     }
 
-    setLogs(backup.logs);
+    Object.keys(logs).forEach((dateKey) => {
+      if (!backup.logs[dateKey]) {
+        sync.markLogDeleted(dateKey);
+      }
+    });
+    const importedAt = sync.prepareImportedLogs(Object.keys(backup.logs));
+    const importedLogs = Object.fromEntries(
+      Object.entries(backup.logs).map(([dateKey, log]) => [dateKey, { ...log, updatedAt: importedAt }]),
+    );
+    setLogs(importedLogs);
     setProgram(backup.program);
     setPreferences(backup.preferences);
   };
-
-  const currentLog = normalizeLog(todayKey, logs[todayKey] ?? createEmptyLog(todayKey));
-  const currentExercises = getExercises(todayKey);
-  const currentProgress = getProgressMeta(currentExercises, currentLog);
 
   return (
     <div className="app-shell">
@@ -3009,13 +3414,17 @@ export default function App() {
 
       <AppHeader
         activeTab={activeTab}
-        currentProgress={currentProgress}
+        sync={sync}
         theme={theme}
         onNavigate={navigate}
         onThemeToggle={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
       />
 
-      <main id="main-content" className="app-main" tabIndex={-1}>
+      <main
+        id="main-content"
+        className={`app-main ${activeTab === 'today' || activeTab === 'logbook' ? 'has-workout' : ''}`}
+        tabIndex={-1}
+      >
         {activeTab === 'today' && (
           <TodayView
             logs={logs}
@@ -3023,6 +3432,8 @@ export default function App() {
             todayKey={todayKey}
             getExercises={getExercises}
             updateExerciseOrder={updateExerciseOrder}
+            renameExercise={renameExerciseForDate}
+            canRenameTemplate={canRenameTemplateForDate}
             updateLog={updateLog}
             clearLog={clearLog}
           />
@@ -3064,6 +3475,8 @@ export default function App() {
             getExercises={getExercises}
             setSelectedDate={setSelectedDate}
             updateExerciseOrder={updateExerciseOrder}
+            renameExercise={renameExerciseForDate}
+            canRenameTemplate={canRenameTemplateForDate}
             updateLog={updateLog}
             clearLog={clearLog}
           />
@@ -3072,8 +3485,10 @@ export default function App() {
           <SettingsView
             program={program}
             setProgram={setProgram}
+            onRenameTemplate={renameTemplateExercise}
             preferences={preferences}
             setPreferences={setPreferences}
+            sync={sync}
             onExport={exportBackup}
             onImport={importBackup}
           />
