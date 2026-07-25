@@ -62,7 +62,7 @@ import {
 } from './dateUtils';
 import {
   createDefaultExerciseTarget,
-  getBasketballMinutes,
+  getCourtSportMinutes,
   inferExerciseKind,
   WEEK_DAYS,
 } from './program';
@@ -467,7 +467,7 @@ function getExerciseKind(exercise: Exercise): ExerciseKind {
 }
 
 function getCardioTarget(exercise: Exercise): number {
-  return exercise.target.minutes ?? (getBasketballMinutes(exercise.name) || 30);
+  return exercise.target.minutes ?? (getCourtSportMinutes(exercise.name) || 30);
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -2159,11 +2159,13 @@ function TodayView({
   const maxTrendVolume = Math.max(1, ...stats.weeklyTrend.map((entry) => entry.volume));
   const todayMessage = log.daySkipped
     ? 'Recovery day marked as skipped.'
-    : nextExercise
-      ? `Up next: ${nextExercise.name}`
-      : progress.total > 0 && progress.completed === progress.total
-        ? 'Workout wrapped. Nice work.'
-        : 'No exercises remaining. Review skipped items when you are ready.';
+    : exercises.length === 0
+      ? 'Rest day. Nothing scheduled.'
+      : nextExercise
+        ? `Up next: ${nextExercise.name}`
+        : progress.total > 0 && progress.completed === progress.total
+          ? 'Workout wrapped. Nice work.'
+          : 'No exercises remaining. Review skipped items when you are ready.';
 
   return (
     <div className="view-stack today-view">

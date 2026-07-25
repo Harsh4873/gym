@@ -1,4 +1,10 @@
-import { createDefaultExerciseTarget, inferExerciseKind, PROGRAM, WEEK_DAYS } from './program';
+import {
+  createDefaultExerciseTarget,
+  inferExerciseKind,
+  LEGACY_DEFAULT_EXERCISE_NAMES,
+  PROGRAM,
+  WEEK_DAYS,
+} from './program';
 import type {
   Exercise,
   ExerciseDetail,
@@ -20,7 +26,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 3;
+const PROGRAM_SCHEMA_VERSION = 4;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -565,13 +571,70 @@ function applyStoredOrder(program: ProgramByDay, order: ExerciseOrderByDay): Pro
   }, {} as ProgramByDay);
 }
 
+/**
+ * Fold a newer default program into a stored one without losing personal edits.
+ *
+ * Exercise ids are stable per slot, so an id that appears in both sides is the
+ * same movement and the stored copy wins — that keeps hand-tuned sets, reps, and
+ * rest. Ids only the default knows about are new movements and get added at
+ * their default position. Ids only the stored program knows about are either
+ * movements the new default retired (they were in the previous default, so drop
+ * them) or ones added by hand in the app (keep them, at the end of the day).
+ *
+ * Logged sets live in the workout logs keyed by exercise id and are never
+ * touched here, so history and "use last time" survive the merge intact.
+ */
+function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay {
+  const defaultProgram = getDefaultProgram();
+
+  return WEEK_DAYS.reduce((program, day) => {
+    const storedById = new Map(storedProgram[day].map((exercise) => [exercise.id, exercise]));
+    const defaultIds = new Set(defaultProgram[day].map((exercise) => exercise.id));
+
+    const merged = defaultProgram[day].map((defaultExercise) => {
+      const stored = storedById.get(defaultExercise.id);
+      if (!stored) {
+        return defaultExercise;
+      }
+
+      // A slot still carrying its previous default name was never renamed by
+      // hand, so it follows the new default; anything else is a personal rename.
+      const legacyName = LEGACY_DEFAULT_EXERCISE_NAMES.get(stored.id);
+      const wasRenamedByHand = legacyName !== undefined && legacyName !== stored.name;
+      const name = wasRenamedByHand ? stored.name : defaultExercise.name;
+
+      return {
+        ...stored,
+        name,
+        kind: inferExerciseKind(name),
+        target: { ...stored.target },
+      };
+    });
+
+    const customExercises = storedProgram[day].filter((exercise) => {
+      return !defaultIds.has(exercise.id) && !LEGACY_DEFAULT_EXERCISE_NAMES.has(exercise.id);
+    });
+
+    program[day] = [...merged, ...customExercises.map((exercise) => ({ ...exercise, target: { ...exercise.target } }))];
+    return program;
+  }, {} as ProgramByDay);
+}
+
 export function loadProgram(): ProgramByDay {
   try {
     const rawProgram = window.localStorage.getItem(PROGRAM_STORAGE_KEY);
     if (rawProgram) {
       const parsed = JSON.parse(rawProgram) as unknown;
       if (isPlainRecord(parsed)) {
-        return normalizeProgram(isPlainRecord(parsed.program) ? parsed.program : parsed);
+        const storedProgram = normalizeProgram(isPlainRecord(parsed.program) ? parsed.program : parsed);
+        const storedVersion = typeof parsed.version === 'number' ? parsed.version : 0;
+        if (storedVersion >= PROGRAM_SCHEMA_VERSION) {
+          return storedProgram;
+        }
+
+        const migratedProgram = reconcileProgramWithDefaults(storedProgram);
+        saveProgram(migratedProgram);
+        return migratedProgram;
       }
     }
 
