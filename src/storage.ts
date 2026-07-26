@@ -1,7 +1,7 @@
 import {
   createDefaultExerciseTarget,
   inferExerciseKind,
-  LEGACY_DEFAULT_EXERCISE_NAMES,
+  SHIPPED_DEFAULT_EXERCISE_NAMES,
   PROGRAM,
   WEEK_DAYS,
 } from './program';
@@ -26,7 +26,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 4;
+const PROGRAM_SCHEMA_VERSION = 5;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -599,7 +599,7 @@ function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay
 
       // A slot still carrying its previous default name was never renamed by
       // hand, so it follows the new default; anything else is a personal rename.
-      const legacyName = LEGACY_DEFAULT_EXERCISE_NAMES.get(stored.id);
+      const legacyName = SHIPPED_DEFAULT_EXERCISE_NAMES.get(stored.id);
       const wasRenamedByHand = legacyName !== undefined && legacyName !== stored.name;
       const name = wasRenamedByHand ? stored.name : defaultExercise.name;
 
@@ -612,7 +612,7 @@ function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay
     });
 
     const customExercises = storedProgram[day].filter((exercise) => {
-      return !defaultIds.has(exercise.id) && !LEGACY_DEFAULT_EXERCISE_NAMES.has(exercise.id);
+      return !defaultIds.has(exercise.id) && !SHIPPED_DEFAULT_EXERCISE_NAMES.has(exercise.id);
     });
 
     program[day] = [...merged, ...customExercises.map((exercise) => ({ ...exercise, target: { ...exercise.target } }))];

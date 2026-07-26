@@ -78,113 +78,89 @@ interface ProgramEntry {
 
 const CALF_TARGET: ExerciseTarget = { sets: 2, repMin: 15, repMax: 20, restSeconds: 60 };
 const LOWER_BODY_TARGET: ExerciseTarget = { sets: 2, repMin: 10, repMax: 12, restSeconds: 90 };
-const CORE_TARGET: ExerciseTarget = { sets: 3, repMin: 10, repMax: 12, restSeconds: 45 };
 
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
-  // Basketball day. Calf and tibialis work sits before the court session so the
-  // lower leg is primed rather than pre-fatigued.
+  // Basketball day. The lower-body stretch block doubles as the rest between
+  // pressing sets, so the session still fits the hour.
   Monday: [
     { slot: 1, name: 'Flat Bench Press' },
     { slot: 2, name: 'Wall Calf Stretch' },
-    { slot: 14, name: 'Bent-Knee Calf Stretch' },
-    { slot: 3, name: 'Standing Hamstring Stretch with Heel Elevated' },
     { slot: 4, name: 'Incline Dumbbell Press' },
-    { slot: 5, name: 'Standing Quad Stretch' },
-    { slot: 6, name: 'Standing Hip Flexor Stretch' },
+    { slot: 3, name: 'Standing Hamstring Stretch with Heel Elevated' },
     { slot: 8, name: 'Cable Flyes' },
-    { slot: 7, name: 'Standing Figure 4 Glute Stretch' },
+    { slot: 5, name: 'Standing Quad Stretch' },
     { slot: 12, name: 'Seated Calf Raise', target: CALF_TARGET },
-    { slot: 13, name: 'Tibialis Raise', target: { sets: 2, repMin: 20, repMax: 25, restSeconds: 45 } },
+    { slot: 6, name: 'Standing Hip Flexor Stretch' },
     { slot: 9, name: 'Forward Fold' },
-    { slot: 10, name: 'Tibialis Stretch' },
     { slot: 11, name: 'Basketball 60 Minutes' },
   ],
-  // Badminton day. Hip thrusts and dead bugs load the hinge and brace the spine
-  // without the deep-stretch eccentrics that leave legs sore for the next court day.
+  // Badminton day. Abs run between curl sets.
   Tuesday: [
     { slot: 1, name: 'Incline Bicep Curls' },
     { slot: 2, name: 'Ab Machine' },
     { slot: 3, name: 'Face Away Cable Curls' },
-    { slot: 4, name: 'Back Extensions' },
-    { slot: 5, name: 'EZ Bar Curls + Concentration Curls' },
     { slot: 6, name: 'Leg Raises' },
-    { slot: 9, name: 'Dead Bug', target: { sets: 3, repMin: 8, repMax: 10, restSeconds: 45 } },
-    { slot: 10, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
+    { slot: 5, name: 'EZ Bar Curls + Concentration Curls' },
+    { slot: 11, name: 'Ab Rolls' },
     { slot: 8, name: 'Badminton 60 Minutes' },
   ],
-  // No court sport — the recovery day carries the only quad-loading movement.
+  // No court sport, so this is where the light leg work goes — soreness has a
+  // clear day either side of it.
   Wednesday: [
     { slot: 1, name: 'Dumbbell Shoulder Press' },
-    { slot: 2, name: 'Wall Calf Stretch' },
     { slot: 3, name: 'Lateral Raises' },
-    { slot: 4, name: 'Standing Hamstring Stretch with Heel Elevated' },
     { slot: 13, name: 'Rear Delt Fly', target: { sets: 3, repMin: 15, repMax: 20, restSeconds: 60 } },
-    { slot: 5, name: 'Standing Quad Stretch' },
-    { slot: 9, name: 'Face Pulls' },
-    { slot: 7, name: 'Standing Hip Flexor Stretch' },
     { slot: 14, name: 'Leg Press', target: LOWER_BODY_TARGET },
-    { slot: 8, name: 'Standing Figure 4 Glute Stretch' },
+    { slot: 17, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
     { slot: 15, name: 'Standing Calf Raise', target: { sets: 2, repMin: 12, repMax: 15, restSeconds: 60 } },
-    { slot: 16, name: 'Open-Book T-Spine Stretch' },
-    { slot: 10, name: 'Forward Fold' },
-    { slot: 11, name: 'Tibialis Stretch' },
   ],
-  // Badminton day.
+  // Badminton day. Abs run between triceps sets.
   Thursday: [
     { slot: 1, name: 'Tricep Superset' },
     { slot: 2, name: 'Cable Triceps Pushdown' },
-    { slot: 3, name: 'Overhead Triceps Extension' },
-    { slot: 4, name: 'Dips' },
     { slot: 5, name: 'Ab Machine' },
-    { slot: 6, name: 'Back Extensions' },
+    { slot: 3, name: 'Overhead Triceps Extension' },
     { slot: 7, name: 'Leg Raises' },
-    { slot: 9, name: 'Pallof Press', target: CORE_TARGET },
+    { slot: 4, name: 'Dips' },
     { slot: 10, name: 'Badminton 60 Minutes' },
   ],
-  // Basketball day.
+  // Basketball day. Upper-body stretch block fills the rest between pulls.
   Friday: [
-    { slot: 1, name: 'Low Row' },
     { slot: 2, name: 'Lat Pulldowns' },
     { slot: 3, name: 'Shoulder Stretch' },
-    { slot: 4, name: 'Single Arm Lat Row' },
+    { slot: 1, name: 'Low Row' },
     { slot: 5, name: 'Lat Stretch' },
-    { slot: 6, name: 'Single Arm Lat Pull' },
+    { slot: 4, name: 'Single Arm Lat Row' },
     { slot: 7, name: 'Trap Stretch' },
-    { slot: 11, name: 'Seated Calf Raise', target: CALF_TARGET },
-    { slot: 8, name: 'Forward Fold' },
-    { slot: 9, name: 'Standing Hamstring Stretch with Heel Elevated' },
+    { slot: 6, name: 'Single Arm Lat Pull' },
     { slot: 10, name: 'Basketball 60 Minutes' },
   ],
   // Deliberately empty — Saturday is off.
   Saturday: [],
-  // Core plus the full mobility block that used to sit on Saturday.
+  // Short recovery session.
   Sunday: [
+    { slot: 17, name: 'Full Body Stretch' },
     { slot: 1, name: 'Back Extension' },
     { slot: 2, name: 'Abs Circuit' },
-    { slot: 4, name: 'Ab Machine' },
-    { slot: 5, name: 'Leg Raises' },
     { slot: 6, name: 'Ab Rolls' },
-    { slot: 7, name: 'Pallof Press', target: CORE_TARGET },
-    { slot: 8, name: 'Wall Calf Stretch' },
-    { slot: 9, name: 'Bent-Knee Calf Stretch' },
-    { slot: 10, name: 'Standing Hamstring Stretch with Heel Elevated' },
-    { slot: 11, name: 'Standing Hip Flexor Stretch' },
-    { slot: 12, name: 'Standing Figure 4 Glute Stretch' },
-    { slot: 13, name: '90/90 Hip Stretch' },
-    { slot: 14, name: 'Knee-to-Wall Ankle Mobility' },
-    { slot: 15, name: 'Open-Book T-Spine Stretch' },
-    { slot: 16, name: 'Forward Fold' },
   ],
 };
 
 /**
- * The program schema v3 default, kept verbatim so the v4 migration can tell the
- * three cases apart: an id still in DEFAULT_PROGRAM is the same movement, an id
- * only here was retired on purpose, and an id in neither was added by hand in
- * the app. The stored name is compared against this too, so a slot renamed in
- * the default picks up its new name while a rename made in the app is kept.
+ * Every id the default program has ever shipped, so a migration can tell three
+ * cases apart: an id still in DEFAULT_PROGRAM is the same movement, an id only
+ * here was retired on purpose, and an id in neither was added by hand in the
+ * app and must be kept. The stored name is compared against this too, so a slot
+ * renamed in the default picks up its new name while a rename made in the app
+ * is kept.
+ *
+ * This record is cumulative. Retiring a movement means removing it from
+ * DEFAULT_PROGRAM and leaving its entry here — dropping it from both would
+ * strand the exercise on devices that already store it, because the migration
+ * would read it as hand-added. Entries are grouped by the schema version that
+ * introduced them.
  */
-const LEGACY_DEFAULT_PROGRAM: Record<Weekday, string[]> = {
+const SHIPPED_DEFAULT_PROGRAM_V3: Record<Weekday, string[]> = {
   Monday: [
     'Flat Bench Press',
     'Wall Calf Stretch',
@@ -247,12 +223,55 @@ const LEGACY_DEFAULT_PROGRAM: Record<Weekday, string[]> = {
   Sunday: ['Back Extension', 'Abs Circuit', 'Incline Sit-Ups', 'Ab Machine', 'Leg Raises', 'Ab Rolls'],
 };
 
-export const LEGACY_DEFAULT_EXERCISE_NAMES: ReadonlyMap<string, string> = new Map(
-  WEEK_DAYS.flatMap((day) =>
-    LEGACY_DEFAULT_PROGRAM[day].map(
+/** Slots v4 introduced, keyed by the exact slot number each was given. */
+const SHIPPED_DEFAULT_PROGRAM_V4: Record<Weekday, Record<number, string>> = {
+  Monday: {
+    12: 'Seated Calf Raise',
+    13: 'Tibialis Raise',
+    14: 'Bent-Knee Calf Stretch',
+  },
+  Tuesday: {
+    8: 'Badminton 60 Minutes',
+    9: 'Dead Bug',
+    10: 'Hip Thrust',
+  },
+  Wednesday: {
+    13: 'Rear Delt Fly',
+    14: 'Leg Press',
+    15: 'Standing Calf Raise',
+    16: 'Open-Book T-Spine Stretch',
+  },
+  Thursday: {
+    9: 'Pallof Press',
+    10: 'Badminton 60 Minutes',
+  },
+  Friday: {
+    11: 'Seated Calf Raise',
+  },
+  Saturday: {},
+  Sunday: {
+    7: 'Pallof Press',
+    8: 'Wall Calf Stretch',
+    9: 'Bent-Knee Calf Stretch',
+    10: 'Standing Hamstring Stretch with Heel Elevated',
+    11: 'Standing Hip Flexor Stretch',
+    12: 'Standing Figure 4 Glute Stretch',
+    13: '90/90 Hip Stretch',
+    14: 'Knee-to-Wall Ankle Mobility',
+    15: 'Open-Book T-Spine Stretch',
+    16: 'Forward Fold',
+  },
+};
+
+export const SHIPPED_DEFAULT_EXERCISE_NAMES: ReadonlyMap<string, string> = new Map(
+  WEEK_DAYS.flatMap((day) => [
+    ...SHIPPED_DEFAULT_PROGRAM_V3[day].map(
       (name, index) => [buildExerciseId(day, index + 1), name] as const,
     ),
-  ),
+    ...Object.entries(SHIPPED_DEFAULT_PROGRAM_V4[day]).map(
+      ([slot, name]) => [buildExerciseId(day, Number(slot)), name] as const,
+    ),
+  ]),
 );
 
 export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, day) => {
