@@ -26,7 +26,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 5;
+const PROGRAM_SCHEMA_VERSION = 6;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -575,15 +575,29 @@ function applyStoredOrder(program: ProgramByDay, order: ExerciseOrderByDay): Pro
  * Fold a newer default program into a stored one without losing personal edits.
  *
  * Exercise ids are stable per slot, so an id that appears in both sides is the
- * same movement and the stored copy wins — that keeps hand-tuned sets, reps, and
- * rest. Ids only the default knows about are new movements and get added at
- * their default position. Ids only the stored program knows about are either
- * movements the new default retired (they were in the previous default, so drop
- * them) or ones added by hand in the app (keep them, at the end of the day).
+ * same movement. Ids only the default knows about are new movements and get
+ * added at their default position. Ids only the stored program knows about are
+ * either movements the new default retired (they were in a previous default, so
+ * drop them) or ones added by hand in the app (keep them, at the end of the day).
+ *
+ * Name and target follow the same rule for a movement present in both: if the
+ * stored value still matches what was shipped, it was never touched and follows
+ * the new default; if it differs, it is a personal edit and wins. That lets the
+ * default change rep ranges — a light day and a heavy day can share a movement —
+ * without overwriting a weight or rest the owner set themselves.
  *
  * Logged sets live in the workout logs keyed by exercise id and are never
  * touched here, so history and "use last time" survive the merge intact.
  */
+function sameTarget(left: ExerciseTarget, right: ExerciseTarget): boolean {
+  return (
+    left.sets === right.sets &&
+    left.repMin === right.repMin &&
+    left.repMax === right.repMax &&
+    left.minutes === right.minutes &&
+    left.restSeconds === right.restSeconds
+  );
+}
 function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay {
   const defaultProgram = getDefaultProgram();
 
@@ -599,15 +613,26 @@ function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay
 
       // A slot still carrying its previous default name was never renamed by
       // hand, so it follows the new default; anything else is a personal rename.
-      const legacyName = SHIPPED_DEFAULT_EXERCISE_NAMES.get(stored.id);
-      const wasRenamedByHand = legacyName !== undefined && legacyName !== stored.name;
+      const shippedName = SHIPPED_DEFAULT_EXERCISE_NAMES.get(stored.id);
+      const wasRenamedByHand = shippedName !== undefined && shippedName !== stored.name;
       const name = wasRenamedByHand ? stored.name : defaultExercise.name;
+      // A default may set a kind its name would not imply, so only re-infer when
+      // the name came from the owner rather than from the default.
+      const kind = wasRenamedByHand ? inferExerciseKind(name) : defaultExercise.kind;
+
+      // A stored target still equal to the generic one for its kind was never
+      // edited in the app, so it follows the new default. A movement the default
+      // shipped with an explicit target reads as hand-tuned and keeps its stored
+      // value — the comparison errs toward preserving what is on the device,
+      // which is the safe direction.
+      const wasTunedByHand = !sameTarget(stored.target, createDefaultExerciseTarget(stored.name, stored.kind));
+      const target = wasTunedByHand ? stored.target : defaultExercise.target;
 
       return {
         ...stored,
         name,
-        kind: inferExerciseKind(name),
-        target: { ...stored.target },
+        kind,
+        target: { ...target },
       };
     });
 
