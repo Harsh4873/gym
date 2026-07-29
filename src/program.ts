@@ -22,7 +22,7 @@ export function getCourtSportMinutes(name: string): number {
 }
 
 export function isStretchExercise(name: string): boolean {
-  return /stretch|fold|mobility/i.test(name);
+  return /stretch|fold|mobility|pose|cat-cow|warm-?up/i.test(name);
 }
 
 export function inferExerciseKind(name: string): ExerciseKind {
@@ -73,76 +73,106 @@ function buildExerciseId(day: Weekday, slot: number): string {
 interface ProgramEntry {
   slot: number;
   name: string;
+  /** Only for entries whose name does not classify them, like a timed routine. */
+  kind?: ExerciseKind;
   target?: ExerciseTarget;
 }
 
 const CALF_TARGET: ExerciseTarget = { sets: 2, repMin: 15, repMax: 20, restSeconds: 60 };
 const LOWER_BODY_TARGET: ExerciseTarget = { sets: 2, repMin: 10, repMax: 12, restSeconds: 90 };
+/** Monday and Tuesday: lighter loads, more reps, short rest. */
+const HYPERTROPHY_TARGET: ExerciseTarget = { sets: 3, repMin: 10, repMax: 15, restSeconds: 60 };
+/** Wednesday to Friday: the same muscles worked heavy, with full rest. */
+const STRENGTH_TARGET: ExerciseTarget = { sets: 4, repMin: 6, repMax: 10, restSeconds: 120 };
 
+/**
+ * Each pushing group is trained twice — once for hypertrophy early in the week,
+ * once heavy later — so several movements appear on two days under different
+ * slots. That is intentional: they share a name, so logged sets cross-resolve
+ * between the two days through the name fallback.
+ *
+ * A hip flexor stretch sits on every training day. Court sport shortens the
+ * psoas, which attaches to the lumbar vertebrae and drags the lower back into
+ * extension, and tight hip flexors damp the glutes that should be doing the
+ * hip extension instead.
+ */
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
-  // Basketball day. The lower-body stretch block doubles as the rest between
-  // pressing sets, so the session still fits the hour.
+  // Chest and triceps for volume, then basketball.
   Monday: [
-    { slot: 1, name: 'Flat Bench Press' },
-    { slot: 2, name: 'Wall Calf Stretch' },
-    { slot: 4, name: 'Incline Dumbbell Press' },
-    { slot: 3, name: 'Standing Hamstring Stretch with Heel Elevated' },
-    { slot: 8, name: 'Cable Flyes' },
-    { slot: 5, name: 'Standing Quad Stretch' },
-    { slot: 12, name: 'Seated Calf Raise', target: CALF_TARGET },
+    { slot: 15, name: 'Machine Chest Press', target: HYPERTROPHY_TARGET },
+    { slot: 4, name: 'Incline Dumbbell Press', target: HYPERTROPHY_TARGET },
+    { slot: 8, name: 'Cable Flyes', target: HYPERTROPHY_TARGET },
+    { slot: 16, name: 'Cable Triceps Pushdown', target: HYPERTROPHY_TARGET },
+    { slot: 17, name: 'Overhead Triceps Extension', target: HYPERTROPHY_TARGET },
+    { slot: 18, name: 'Dynamic Warm-Up' },
     { slot: 6, name: 'Standing Hip Flexor Stretch' },
-    { slot: 9, name: 'Forward Fold' },
+    { slot: 7, name: 'Standing Figure 4 Glute Stretch' },
     { slot: 11, name: 'Basketball 60 Minutes' },
   ],
-  // Badminton day. Abs run between curl sets.
+  // Biceps and shoulders for volume, abs between curl sets, then badminton.
   Tuesday: [
-    { slot: 1, name: 'Incline Bicep Curls' },
+    { slot: 1, name: 'Incline Bicep Curls', target: HYPERTROPHY_TARGET },
     { slot: 2, name: 'Ab Machine' },
-    { slot: 3, name: 'Face Away Cable Curls' },
-    { slot: 6, name: 'Leg Raises' },
-    { slot: 5, name: 'EZ Bar Curls + Concentration Curls' },
+    { slot: 12, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
+    { slot: 3, name: 'Face Away Cable Curls', target: HYPERTROPHY_TARGET },
     { slot: 11, name: 'Ab Rolls' },
+    { slot: 13, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
+    { slot: 14, name: 'Rear Delt Fly', target: HYPERTROPHY_TARGET },
+    { slot: 15, name: 'Dynamic Warm-Up' },
+    { slot: 16, name: 'Standing Hip Flexor Stretch' },
     { slot: 8, name: 'Badminton 60 Minutes' },
   ],
-  // No court sport, so this is where the light leg work goes — soreness has a
-  // clear day either side of it.
+  // The same push muscles as Monday, heavy. Dumbbells and machines only.
   Wednesday: [
-    { slot: 1, name: 'Dumbbell Shoulder Press' },
-    { slot: 3, name: 'Lateral Raises' },
-    { slot: 13, name: 'Rear Delt Fly', target: { sets: 3, repMin: 15, repMax: 20, restSeconds: 60 } },
-    { slot: 14, name: 'Leg Press', target: LOWER_BODY_TARGET },
-    { slot: 17, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
-    { slot: 15, name: 'Standing Calf Raise', target: { sets: 2, repMin: 12, repMax: 15, restSeconds: 60 } },
+    { slot: 18, name: 'Dumbbell Bench Press', target: STRENGTH_TARGET },
+    { slot: 19, name: 'Incline Dumbbell Press', target: STRENGTH_TARGET },
+    { slot: 20, name: 'Dips', target: STRENGTH_TARGET },
+    { slot: 21, name: 'Tricep Superset', target: STRENGTH_TARGET },
+    { slot: 22, name: 'Shoulder Stretch' },
+    { slot: 7, name: 'Standing Hip Flexor Stretch' },
+    { slot: 8, name: 'Standing Figure 4 Glute Stretch' },
+    { slot: 12, name: 'Basketball 60 Minutes' },
   ],
-  // Badminton day. Abs run between triceps sets.
+  // The same pull and press muscles as Tuesday, heavy.
   Thursday: [
-    { slot: 1, name: 'Tricep Superset' },
-    { slot: 2, name: 'Cable Triceps Pushdown' },
+    { slot: 11, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
+    { slot: 12, name: 'Face Pulls', target: STRENGTH_TARGET },
     { slot: 5, name: 'Ab Machine' },
-    { slot: 3, name: 'Overhead Triceps Extension' },
+    { slot: 13, name: 'EZ Bar Curls + Concentration Curls', target: STRENGTH_TARGET },
     { slot: 7, name: 'Leg Raises' },
-    { slot: 4, name: 'Dips' },
+    { slot: 14, name: 'Preacher Curl', target: STRENGTH_TARGET },
+    { slot: 15, name: 'Standing Hip Flexor Stretch' },
     { slot: 10, name: 'Badminton 60 Minutes' },
   ],
-  // Basketball day. Upper-body stretch block fills the rest between pulls.
+  // The only leg day, and the only day with no court sport before or after it.
   Friday: [
-    { slot: 2, name: 'Lat Pulldowns' },
-    { slot: 3, name: 'Shoulder Stretch' },
-    { slot: 1, name: 'Low Row' },
-    { slot: 5, name: 'Lat Stretch' },
-    { slot: 4, name: 'Single Arm Lat Row' },
-    { slot: 7, name: 'Trap Stretch' },
-    { slot: 6, name: 'Single Arm Lat Pull' },
-    { slot: 10, name: 'Basketball 60 Minutes' },
+    { slot: 2, name: 'Lat Pulldowns', target: STRENGTH_TARGET },
+    { slot: 1, name: 'Low Row', target: STRENGTH_TARGET },
+    { slot: 4, name: 'Single Arm Lat Row', target: STRENGTH_TARGET },
+    { slot: 12, name: 'Leg Press', target: STRENGTH_TARGET },
+    { slot: 13, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
+    { slot: 14, name: 'Standing Calf Raise', target: CALF_TARGET },
+    { slot: 15, name: 'Back Extension', target: { sets: 3, repMin: 12, repMax: 15, restSeconds: 60 } },
+    { slot: 16, name: 'Ab Machine' },
+    { slot: 9, name: 'Standing Hamstring Stretch with Heel Elevated' },
+    { slot: 17, name: 'Standing Hip Flexor Stretch' },
   ],
-  // Deliberately empty — Saturday is off.
-  Saturday: [],
-  // Short recovery session.
+  // Abs and push-ups. The ab workout is a ten minute follow-along video.
+  Saturday: [
+    { slot: 2, name: 'Abs Circuit' },
+    { slot: 3, name: 'Push-Ups', target: { sets: 5, repMin: 20, repMax: 20, restSeconds: 60 } },
+    // A follow-along video, so it logs as one timed round rather than sets of reps.
+    { slot: 4, name: '10 Min Ab Workout', kind: 'mobility', target: { sets: 1, restSeconds: 0 } },
+  ],
+  // Stretch only, with the lumbar decompression work at the end.
   Sunday: [
     { slot: 17, name: 'Full Body Stretch' },
-    { slot: 1, name: 'Back Extension' },
-    { slot: 2, name: 'Abs Circuit' },
-    { slot: 6, name: 'Ab Rolls' },
+    { slot: 8, name: 'Wall Calf Stretch' },
+    { slot: 10, name: 'Standing Hamstring Stretch with Heel Elevated' },
+    { slot: 11, name: 'Standing Hip Flexor Stretch' },
+    { slot: 12, name: 'Standing Figure 4 Glute Stretch' },
+    { slot: 18, name: 'Cat-Cow' },
+    { slot: 19, name: "Child's Pose" },
   ],
 };
 
@@ -263,20 +293,44 @@ const SHIPPED_DEFAULT_PROGRAM_V4: Record<Weekday, Record<number, string>> = {
   },
 };
 
+/** Slots v5 introduced. */
+const SHIPPED_DEFAULT_PROGRAM_V5: Record<Weekday, Record<number, string>> = {
+  Monday: {},
+  Tuesday: {
+    11: 'Ab Rolls',
+  },
+  Wednesday: {
+    17: 'Hip Thrust',
+  },
+  Thursday: {},
+  Friday: {},
+  Saturday: {},
+  Sunday: {
+    17: 'Full Body Stretch',
+  },
+};
+
+const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
+  SHIPPED_DEFAULT_PROGRAM_V4,
+  SHIPPED_DEFAULT_PROGRAM_V5,
+];
+
 export const SHIPPED_DEFAULT_EXERCISE_NAMES: ReadonlyMap<string, string> = new Map(
   WEEK_DAYS.flatMap((day) => [
     ...SHIPPED_DEFAULT_PROGRAM_V3[day].map(
       (name, index) => [buildExerciseId(day, index + 1), name] as const,
     ),
-    ...Object.entries(SHIPPED_DEFAULT_PROGRAM_V4[day]).map(
-      ([slot, name]) => [buildExerciseId(day, Number(slot)), name] as const,
+    ...SHIPPED_SLOT_GROUPS.flatMap((group) =>
+      Object.entries(group[day]).map(
+        ([slot, name]) => [buildExerciseId(day, Number(slot)), name] as const,
+      ),
     ),
   ]),
 );
 
 export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, day) => {
   program[day] = DEFAULT_PROGRAM[day].map((entry) => {
-    const kind = inferExerciseKind(entry.name);
+    const kind = entry.kind ?? inferExerciseKind(entry.name);
 
     return {
       id: buildExerciseId(day, entry.slot),
