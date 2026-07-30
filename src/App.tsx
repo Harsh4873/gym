@@ -23,6 +23,7 @@ import {
   Gauge,
   GripVertical,
   Headphones,
+  Image as ImageIcon,
   Link2,
   ListChecks,
   LoaderCircle,
@@ -36,6 +37,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  Search,
   Settings,
   Square,
   Sun,
@@ -60,6 +62,20 @@ import {
   startOfWeek,
   toDateKey,
 } from './dateUtils';
+import {
+  FREE_EXERCISE_DB_PROJECT_URL,
+  getCustomExerciseGuides,
+  getExerciseGuideFamily,
+  getGuideMetaLabel,
+  loadFreeExerciseLibrary,
+  matchesExerciseGuide,
+  normalizeExerciseName as normalizeLibraryExerciseName,
+  resolvePersonalExerciseGuide,
+  toExerciseGuide,
+  type ExerciseGuide,
+  type ExerciseGuideFamily,
+  type FreeExerciseRecord,
+} from './exerciseLibrary';
 import {
   createDefaultExerciseTarget,
   getCourtSportMinutes,
@@ -121,6 +137,7 @@ const TABS: Array<{ id: TabId; label: string; icon: IconType }> = [
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'week', label: 'Week', icon: ListChecks },
   { id: 'milestones', label: 'Progress', icon: Trophy },
+  { id: 'search', label: 'Search', icon: Search },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 const BOTTOM_TABS = TABS.filter((tab) => tab.id !== 'settings');
@@ -2584,6 +2601,521 @@ function LogbookView({
   );
 }
 
+interface SavedExerciseLibraryEntry {
+  name: string;
+  family: ExerciseGuideFamily;
+}
+
+function getFamilyForExerciseKind(kind: ExerciseKind): ExerciseGuideFamily {
+  if (kind === 'cardio') {
+    return 'cardio';
+  }
+
+  return kind === 'mobility' ? 'mobility' : 'strength';
+}
+
+function buildSavedExerciseLibraryEntries(
+  program: ProgramByDay,
+  logs: LogsByDate,
+): SavedExerciseLibraryEntry[] {
+  const entries: SavedExerciseLibraryEntry[] = [];
+  const seen = new Set<string>();
+
+  const addEntry = (name: string | undefined, family?: ExerciseGuideFamily) => {
+    const trimmedName = name?.trim();
+    if (!trimmedName) {
+      return;
+    }
+
+    const normalizedName = normalizeLibraryExerciseName(trimmedName);
+    if (!normalizedName || seen.has(normalizedName)) {
+      return;
+    }
+
+    seen.add(normalizedName);
+    entries.push({
+      name: trimmedName,
+      family: family ?? getExerciseGuideFamily('', trimmedName),
+    });
+  };
+
+  WEEK_DAYS.forEach((day) => {
+    program[day].forEach((exercise) => {
+      addEntry(exercise.name, getFamilyForExerciseKind(exercise.kind));
+    });
+  });
+
+  Object.values(logs)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .forEach((log) => {
+      log.exerciseSnapshot?.forEach((exercise) => {
+        addEntry(exercise.name, getFamilyForExerciseKind(exercise.kind));
+      });
+      Object.values(log.details).forEach((detail) => addEntry(detail.exerciseName));
+    });
+
+  return entries;
+}
+
+function getGuideFamilyLabel(family: ExerciseGuideFamily): string {
+  if (family === 'mobility') {
+    return 'Mobility';
+  }
+
+  return family === 'cardio' ? 'Cardio' : 'Strength';
+}
+
+function ExerciseGuideArtwork({
+  guide,
+  detail = false,
+  imageIndex = 0,
+}: {
+  guide: ExerciseGuide;
+  detail?: boolean;
+  imageIndex?: number;
+}) {
+  const source = guide.images[imageIndex];
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [source]);
+
+  if (source && !failed) {
+    return (
+      <img
+        className={guide.source === 'custom' ? 'custom-guide-image' : ''}
+        src={source}
+        alt={`${guide.name}${guide.images.length > 1 ? `, ${imageIndex === 0 ? 'start' : 'finish'} position` : ' movement sequence'}`}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  const FallbackIcon = guide.family === 'strength'
+    ? Dumbbell
+    : guide.family === 'cardio'
+      ? Activity
+      : ImageIcon;
+
+  return (
+    <div className={`exercise-art-fallback ${detail ? 'detail' : ''}`} aria-label="Dedicated visual guide coming soon">
+      <FallbackIcon aria-hidden="true" />
+      <span>Visual guide coming soon</span>
+    </div>
+  );
+}
+
+function ExerciseGuideCard({
+  guide,
+  saved,
+  onOpen,
+}: {
+  guide: ExerciseGuide;
+  saved: boolean;
+  onOpen: () => void;
+}) {
+  const sourceLabel = saved ? 'Your log' : guide.source === 'custom' ? 'Gym guide' : 'Open library';
+
+  return (
+    <button className="exercise-library-card" type="button" onClick={onOpen}>
+      <span className={`exercise-card-art ${guide.source}`}>
+        <ExerciseGuideArtwork guide={guide} />
+        <span className="exercise-source-chip">{sourceLabel}</span>
+      </span>
+      <span className="exercise-card-copy">
+        <span className="exercise-card-kicker">
+          {getGuideFamilyLabel(guide.family)}
+          {guide.equipment ? ` · ${guide.equipment}` : ''}
+        </span>
+        <strong>{guide.name}</strong>
+        <small>{getGuideMetaLabel(guide)}</small>
+        <span className="exercise-card-link">
+          View guide
+          <ChevronRight aria-hidden="true" />
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function ExerciseGuideDialog({
+  guide,
+  saved,
+  onClose,
+}: {
+  guide: ExerciseGuide;
+  saved: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [onClose]);
+
+  const sourceLabel = saved
+    ? 'Saved in your Gym'
+    : guide.source === 'custom'
+      ? 'Gym mobility guide'
+      : 'Free Exercise DB';
+
+  return (
+    <div
+      className="exercise-guide-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        className="exercise-guide-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="exercise-guide-title"
+      >
+        <header className="exercise-guide-head">
+          <div>
+            <span>{sourceLabel}</span>
+            <h2 id="exercise-guide-title">{guide.name}</h2>
+            {guide.libraryName && <p>Visual reference: {guide.libraryName}</p>}
+          </div>
+          <button className="icon-only-button" type="button" aria-label="Close exercise guide" onClick={onClose}>
+            <X aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className={`exercise-guide-images ${guide.images.length === 1 ? 'single' : ''}`}>
+          {(guide.images.length > 0 ? guide.images.slice(0, 2) : ['']).map((_, index) => (
+            <figure key={`${guide.id}-image-${index}`}>
+              <ExerciseGuideArtwork guide={guide} detail imageIndex={index} />
+              <figcaption>
+                {guide.images.length === 1 ? 'Movement sequence' : index === 0 ? 'Start' : 'Finish'}
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+
+        <div className="exercise-guide-content">
+          <div className="exercise-guide-meta">
+            <span>{getGuideFamilyLabel(guide.family)}</span>
+            {guide.level && <span>{guide.level}</span>}
+            {guide.equipment && <span>{guide.equipment}</span>}
+          </div>
+
+          {(guide.primaryMuscles.length > 0 || guide.secondaryMuscles.length > 0) && (
+            <section className="exercise-guide-section">
+              <h3>Muscles</h3>
+              <div className="exercise-muscle-list">
+                {guide.primaryMuscles.map((muscle) => (
+                  <span key={`primary-${muscle}`} className="primary">
+                    {muscle}
+                  </span>
+                ))}
+                {guide.secondaryMuscles.map((muscle) => (
+                  <span key={`secondary-${muscle}`}>{muscle}</span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="exercise-guide-section">
+            <h3>How to do it</h3>
+            {guide.instructions.length > 0 ? (
+              <ol className="exercise-instruction-list">
+                {guide.instructions.map((instruction, index) => (
+                  <li key={`${guide.id}-instruction-${index}`}>{instruction}</li>
+                ))}
+              </ol>
+            ) : (
+              <div className="exercise-guide-pending">
+                <ImageIcon aria-hidden="true" />
+                <p>
+                  This workout is saved from your log, but it does not have a dedicated form guide yet.
+                  It stays searchable while we expand the visual library.
+                </p>
+              </div>
+            )}
+          </section>
+
+          {guide.source === 'library' && (
+            <a
+              className="exercise-library-credit"
+              href={FREE_EXERCISE_DB_PROJECT_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Public-domain instructions and imagery from Free Exercise DB
+              <ExternalLink aria-hidden="true" />
+            </a>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function SearchView({
+  program,
+  logs,
+}: {
+  program: ProgramByDay;
+  logs: LogsByDate;
+}) {
+  const [query, setQuery] = useState('');
+  const [family, setFamily] = useState<'all' | ExerciseGuideFamily>('all');
+  const [library, setLibrary] = useState<FreeExerciseRecord[]>([]);
+  const [libraryStatus, setLibraryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [libraryError, setLibraryError] = useState('');
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [selectedGuide, setSelectedGuide] = useState<{ guide: ExerciseGuide; saved: boolean } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLibraryStatus('loading');
+    setLibraryError('');
+
+    loadFreeExerciseLibrary()
+      .then((records) => {
+        if (!cancelled) {
+          setLibrary(records);
+          setLibraryStatus('ready');
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setLibraryStatus('error');
+          setLibraryError(error instanceof Error ? error.message : 'The exercise library could not load.');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadAttempt]);
+
+  const savedEntries = useMemo(
+    () => buildSavedExerciseLibraryEntries(program, logs),
+    [program, logs],
+  );
+  const savedGuides = useMemo(
+    () => savedEntries.map((entry) => resolvePersonalExerciseGuide(entry.name, library, entry.family)),
+    [library, savedEntries],
+  );
+  const savedNames = useMemo(
+    () => new Set(savedGuides.flatMap((guide) => [guide.name, guide.libraryName].filter(Boolean).map((name) => normalizeLibraryExerciseName(name!)))),
+    [savedGuides],
+  );
+
+  const visibleSavedGuides = useMemo(
+    () => savedGuides.filter(
+      (guide) =>
+        (family === 'all' || guide.family === family) &&
+        matchesExerciseGuide(guide, query),
+    ),
+    [family, query, savedGuides],
+  );
+
+  const discoveryGuides = useMemo(() => {
+    const customGuides = getCustomExerciseGuides().filter(
+      (guide) => !savedNames.has(normalizeLibraryExerciseName(guide.name)),
+    );
+    const libraryGuides = query.trim()
+      ? library
+          .map((record) => toExerciseGuide(record))
+          .filter((guide) => !savedNames.has(normalizeLibraryExerciseName(guide.name)))
+      : [];
+
+    const seen = new Set<string>();
+    return [...customGuides, ...libraryGuides]
+      .filter((guide) => {
+        const guideName = normalizeLibraryExerciseName(guide.name);
+        if (
+          seen.has(guideName) ||
+          (family !== 'all' && guide.family !== family) ||
+          !matchesExerciseGuide(guide, query)
+        ) {
+          return false;
+        }
+        seen.add(guideName);
+        return true;
+      })
+      .slice(0, query.trim() ? 24 : 4);
+  }, [family, library, query, savedNames]);
+
+  const hasResults = visibleSavedGuides.length > 0 || discoveryGuides.length > 0;
+  const filterOptions: Array<{ id: 'all' | ExerciseGuideFamily; label: string }> = [
+    { id: 'all', label: 'All' },
+    { id: 'strength', label: 'Strength' },
+    { id: 'mobility', label: 'Mobility' },
+    { id: 'cardio', label: 'Cardio' },
+  ];
+
+  return (
+    <div className="view-stack exercise-search-view">
+      <section className="exercise-search-hero">
+        <div>
+          <p className="eyebrow">Exercise library</p>
+          <h1>See the movement before you do it.</h1>
+          <p>
+            Your program and workout history come first. Search the open library when you want to
+            explore something that is not in your log yet.
+          </p>
+        </div>
+        <div className="exercise-search-stat">
+          <strong>{savedGuides.length}</strong>
+          <span>from your Gym</span>
+        </div>
+      </section>
+
+      <section className="exercise-search-controls" aria-label="Exercise search controls">
+        <label className="exercise-search-input">
+          <Search aria-hidden="true" />
+          <span className="sr-only">Search exercises, muscles, or equipment</span>
+          <input
+            type="search"
+            value={query}
+            placeholder="Search Cat-Cow, chest, dumbbells…"
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          {query && (
+            <button type="button" aria-label="Clear exercise search" onClick={() => setQuery('')}>
+              <X aria-hidden="true" />
+            </button>
+          )}
+        </label>
+
+        <div className="exercise-family-filters" aria-label="Filter exercise type">
+          {filterOptions.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              className={family === option.id ? 'active' : ''}
+              aria-pressed={family === option.id}
+              onClick={() => setFamily(option.id)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <div className={`exercise-library-status ${libraryStatus}`} role="status" aria-live="polite">
+          {libraryStatus === 'loading' && (
+            <>
+              <LoaderCircle className="spin" aria-hidden="true" />
+              Loading open exercise library…
+            </>
+          )}
+          {libraryStatus === 'ready' && (
+            <>
+              <Check aria-hidden="true" />
+              {library.length.toLocaleString()} open-library exercises ready
+            </>
+          )}
+          {libraryStatus === 'error' && (
+            <>
+              <CloudOff aria-hidden="true" />
+              <span>Your saved exercises still work. {libraryError}</span>
+              <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
+                Retry
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+
+      {visibleSavedGuides.length > 0 && (
+        <section className="exercise-result-section">
+          <div className="exercise-result-heading">
+            <div>
+              <p className="eyebrow">Your Gym</p>
+              <h2>Your exercises</h2>
+            </div>
+            <span>{visibleSavedGuides.length} shown</span>
+          </div>
+          <div className="exercise-library-grid">
+            {visibleSavedGuides.map((guide) => (
+              <ExerciseGuideCard
+                key={`saved-${guide.id}`}
+                guide={guide}
+                saved
+                onOpen={() => setSelectedGuide({ guide, saved: true })}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {discoveryGuides.length > 0 && (
+        <section className="exercise-result-section">
+          <div className="exercise-result-heading">
+            <div>
+              <p className="eyebrow">{query.trim() ? 'Discover' : 'Mobility essential'}</p>
+              <h2>{query.trim() ? 'More from the library' : 'Learn Bird Dog'}</h2>
+            </div>
+            <span>{discoveryGuides.length} shown</span>
+          </div>
+          <div className="exercise-library-grid">
+            {discoveryGuides.map((guide) => (
+              <ExerciseGuideCard
+                key={`discovery-${guide.id}`}
+                guide={guide}
+                saved={false}
+                onOpen={() => setSelectedGuide({ guide, saved: false })}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!hasResults && (
+        <section className="exercise-search-empty">
+          <Search aria-hidden="true" />
+          <h2>No exercise found</h2>
+          <p>Try a movement name, muscle group, or equipment type.</p>
+          <button
+            className="icon-text-button"
+            type="button"
+            onClick={() => {
+              setQuery('');
+              setFamily('all');
+            }}
+          >
+            Clear filters
+          </button>
+        </section>
+      )}
+
+      <p className="exercise-library-footnote">
+        Open-library movement data is public domain. Custom Cat-Cow and Bird Dog guides are stored
+        directly in Gym, so those visuals do not depend on a third-party service.
+      </p>
+
+      {selectedGuide && (
+        <ExerciseGuideDialog
+          guide={selectedGuide.guide}
+          saved={selectedGuide.saved}
+          onClose={() => setSelectedGuide(null)}
+        />
+      )}
+    </div>
+  );
+}
+
 function SettingsView({
   program,
   setProgram,
@@ -3412,6 +3944,7 @@ export default function App() {
             clearLog={clearLog}
           />
         )}
+        {activeTab === 'search' && <SearchView program={program} logs={logs} />}
         {activeTab === 'settings' && (
           <SettingsView
             program={program}
