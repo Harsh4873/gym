@@ -106,7 +106,11 @@ export async function signInToFirebaseWithGoogle(): Promise<UserCredential> {
   }
 
   const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
+  const loginHint = import.meta.env.VITE_FIREBASE_LOGIN_HINT?.trim();
+  provider.setCustomParameters({
+    ...(loginHint ? { login_hint: loginHint } : {}),
+    prompt: 'select_account',
+  });
   return signInWithPopup(services.auth, provider);
 }
 

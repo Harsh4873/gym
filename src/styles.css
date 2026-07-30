@@ -1209,6 +1209,39 @@ a:focus-visible {
   height: 15px;
 }
 
+.exercise-collapse-button {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.exercise-collapse-button:hover {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  background: var(--color-accent-tint);
+}
+
+.exercise-collapse-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.exercise-row.collapsed .exercise-copy {
+  align-self: center;
+}
+
 .exercise-name-editor {
   display: grid;
   gap: var(--space-2);
@@ -2633,7 +2666,7 @@ a:focus-visible {
     left: 12px;
     z-index: 90;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 3px;
     min-height: 61px;
     padding: 5px;
@@ -2737,6 +2770,11 @@ a:focus-visible {
     height: 44px;
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .exercise-collapse-button {
+    min-height: 44px;
+    padding-inline: 8px;
   }
 
   body:has(.workout-stage :is(input, textarea, select):focus) .session-finish-bar,

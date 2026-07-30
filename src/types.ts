@@ -7,7 +7,7 @@ export type Weekday =
   | 'Saturday'
   | 'Sunday';
 
-export type TabId = 'today' | 'week' | 'calendar' | 'milestones' | 'logbook' | 'settings';
+export type TabId = 'week' | 'calendar' | 'milestones' | 'logbook' | 'settings';
 
 export type ThemeMode = 'dark' | 'light';
 

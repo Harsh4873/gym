@@ -24,6 +24,7 @@ The rules are owner-only because this is a personal app on a public origin. Neve
 Copy `.env.example` to `.env.local` and fill in the six fields from the Firebase Web app configuration:
 
 ```text
+VITE_FIREBASE_LOGIN_HINT
 VITE_FIREBASE_API_KEY
 VITE_FIREBASE_AUTH_DOMAIN
 VITE_FIREBASE_PROJECT_ID
