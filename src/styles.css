@@ -2769,6 +2769,78 @@ a:focus-visible {
   height: 16px;
 }
 
+.exercise-day-filter {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.exercise-filter-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.exercise-filter-label svg {
+  width: 15px;
+  height: 15px;
+}
+
+.exercise-day-options {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.exercise-day-options button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 6px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+}
+
+.exercise-day-options button:hover {
+  color: var(--color-text-primary);
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.exercise-day-options button.today:not(.active) {
+  border-color: color-mix(in srgb, var(--color-success) 34%, var(--color-border));
+}
+
+.exercise-day-options button.active {
+  color: var(--color-text-on-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+
+.exercise-day-options button > span {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.exercise-day-options button > small {
+  color: inherit;
+  font-size: 9px;
+  opacity: 0.72;
+}
+
 .exercise-family-filters {
   display: flex;
   flex-wrap: wrap;
@@ -2866,6 +2938,38 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.exercise-search-workout-heading {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 24%, var(--color-border));
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--color-accent-tint), transparent 76%);
+}
+
+.exercise-search-workout-heading:first-child {
+  margin-top: 0;
+}
+
+.exercise-search-workout-heading span {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.exercise-search-workout-heading strong {
+  font-family: var(--font-display);
+  font-size: 23px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
 }
 
 .exercise-library-card {
@@ -4466,6 +4570,24 @@ a:focus-visible {
     padding: var(--space-4);
   }
 
+  .exercise-day-options {
+    display: flex;
+    margin-inline: calc(var(--space-4) * -1);
+    padding: 2px var(--space-4) 6px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .exercise-day-options::-webkit-scrollbar {
+    display: none;
+  }
+
+  .exercise-day-options button {
+    flex: 0 0 72px;
+    scroll-snap-align: start;
+  }
+
   .exercise-library-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4485,6 +4607,15 @@ a:focus-visible {
 
   .exercise-card-copy {
     min-height: 230px;
+  }
+
+  .exercise-search-workout-heading {
+    margin-top: var(--space-2);
+    padding: 12px 14px;
+  }
+
+  .exercise-search-workout-heading strong {
+    font-size: 20px;
   }
 
   .exercise-guide-backdrop {

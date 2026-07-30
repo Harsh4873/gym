@@ -2670,6 +2670,9 @@ function LogbookView({
 interface SavedExerciseLibraryEntry {
   name: string;
   family: ExerciseGuideFamily;
+  order?: number;
+  workoutBlock?: 1 | 2;
+  workoutLabel?: string;
 }
 
 function getFamilyForExerciseKind(kind: ExerciseKind): ExerciseGuideFamily {
@@ -2687,7 +2690,13 @@ function buildSavedExerciseLibraryEntries(
   const entries: SavedExerciseLibraryEntry[] = [];
   const seen = new Set<string>();
 
-  const addEntry = (name: string | undefined, family?: ExerciseGuideFamily) => {
+  const addEntry = (
+    name: string | undefined,
+    family?: ExerciseGuideFamily,
+    order?: number,
+    workoutBlock?: 1 | 2,
+    workoutLabel?: string,
+  ) => {
     const trimmedName = name?.trim();
     if (!trimmedName) {
       return;
@@ -2702,12 +2711,21 @@ function buildSavedExerciseLibraryEntries(
     entries.push({
       name: trimmedName,
       family: family ?? getExerciseGuideFamily('', trimmedName),
+      ...(order ? { order } : {}),
+      ...(workoutBlock ? { workoutBlock } : {}),
+      ...(workoutLabel ? { workoutLabel } : {}),
     });
   };
 
   WEEK_DAYS.forEach((day) => {
-    program[day].forEach((exercise) => {
-      addEntry(exercise.name, getFamilyForExerciseKind(exercise.kind));
+    program[day].forEach((exercise, index) => {
+      addEntry(
+        exercise.name,
+        getFamilyForExerciseKind(exercise.kind),
+        index + 1,
+        exercise.workoutBlock,
+        exercise.workoutLabel,
+      );
     });
   });
 
@@ -2777,13 +2795,16 @@ function ExerciseGuideArtwork({
 function ExerciseGuideCard({
   guide,
   saved,
+  sourceLabel: sourceLabelOverride,
   onOpen,
 }: {
   guide: ExerciseGuide;
   saved: boolean;
+  sourceLabel?: string;
   onOpen: () => void;
 }) {
-  const sourceLabel = saved ? 'Your log' : guide.source === 'custom' ? 'Gym guide' : 'Open library';
+  const sourceLabel = sourceLabelOverride
+    ?? (saved ? 'Your log' : guide.source === 'custom' ? 'Gym guide' : 'Open library');
 
   return (
     <button className="exercise-library-card" type="button" onClick={onOpen}>
@@ -2938,12 +2959,15 @@ function ExerciseGuideDialog({
 function SearchView({
   program,
   logs,
+  todayKey,
 }: {
   program: ProgramByDay;
   logs: LogsByDate;
+  todayKey: string;
 }) {
   const [query, setQuery] = useState('');
   const [family, setFamily] = useState<'all' | ExerciseGuideFamily>('all');
+  const [selectedDay, setSelectedDay] = useState<'all' | Weekday>('all');
   const [library, setLibrary] = useState<FreeExerciseRecord[]>([]);
   const [libraryStatus, setLibraryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [libraryError, setLibraryError] = useState('');
@@ -2974,29 +2998,53 @@ function SearchView({
     };
   }, [loadAttempt]);
 
-  const savedEntries = useMemo(
+  const allSavedEntries = useMemo(
     () => buildSavedExerciseLibraryEntries(program, logs),
     [program, logs],
   );
-  const savedGuides = useMemo(
-    () => savedEntries.map((entry) => resolvePersonalExerciseGuide(entry.name, library, entry.family)),
+  const savedEntries = useMemo(() => {
+    if (selectedDay === 'all') {
+      return allSavedEntries;
+    }
+
+    return program[selectedDay].map((exercise, index) => ({
+      name: exercise.name,
+      family: getFamilyForExerciseKind(exercise.kind),
+      order: index + 1,
+      workoutBlock: exercise.workoutBlock,
+      workoutLabel: exercise.workoutLabel,
+    }));
+  }, [allSavedEntries, program, selectedDay]);
+  const savedGuideResults = useMemo(
+    () => savedEntries.map((entry) => ({
+      entry,
+      guide: resolvePersonalExerciseGuide(entry.name, library, entry.family),
+    })),
     [library, savedEntries],
   );
   const savedNames = useMemo(
-    () => new Set(savedGuides.flatMap((guide) => [guide.name, guide.libraryName].filter(Boolean).map((name) => normalizeLibraryExerciseName(name!)))),
-    [savedGuides],
+    () => new Set(savedGuideResults.flatMap(({ guide }) => (
+      [guide.name, guide.libraryName]
+        .filter(Boolean)
+        .map((name) => normalizeLibraryExerciseName(name!))
+    ))),
+    [savedGuideResults],
   );
 
-  const visibleSavedGuides = useMemo(
-    () => savedGuides.filter(
-      (guide) =>
+  const visibleSavedGuideResults = useMemo(
+    () => savedGuideResults.filter(
+      ({ guide }) =>
         (family === 'all' || guide.family === family) &&
         matchesExerciseGuide(guide, query),
     ),
-    [family, query, savedGuides],
+    [family, query, savedGuideResults],
   );
 
   const discoveryGuides = useMemo(() => {
+    if (selectedDay !== 'all') {
+      return [];
+    }
+
     const customGuides = getCustomExerciseGuides().filter(
       (guide) => !savedNames.has(normalizeLibraryExerciseName(guide.name)),
     );
@@ -3021,9 +3069,10 @@ function SearchView({
         return true;
       })
       .slice(0, query.trim() ? 24 : 4);
-  }, [family, library, query, savedNames]);
+  }, [family, library, query, savedNames, selectedDay]);
 
-  const hasResults = visibleSavedGuides.length > 0 || discoveryGuides.length > 0;
+  const hasResults = visibleSavedGuideResults.length > 0 || discoveryGuides.length > 0;
+  const todayWeekday = getWeekday(parseDateKey(todayKey));
   const filterOptions: Array<{ id: 'all' | ExerciseGuideFamily; label: string }> = [
     { id: 'all', label: 'All' },
     { id: 'strength', label: 'Strength' },
@@ -3043,8 +3092,8 @@ function SearchView({
           </p>
         </div>
         <div className="exercise-search-stat">
-          <strong>{savedGuides.length}</strong>
-          <span>from your Gym</span>
+          <strong>{savedGuideResults.length}</strong>
+          <span>{selectedDay === 'all' ? 'from your Gym' : `on ${selectedDay}`}</span>
         </div>
       </section>
 
@@ -3064,6 +3113,37 @@ function SearchView({
             </button>
           )}
         </label>
+
+        <div className="exercise-day-filter">
+          <div className="exercise-filter-label">
+            <CalendarDays aria-hidden="true" />
+            <span>Workout day</span>
+          </div>
+          <div className="exercise-day-options" role="group" aria-label="Filter exercises by workout day">
+            <button
+              type="button"
+              className={selectedDay === 'all' ? 'active' : ''}
+              aria-pressed={selectedDay === 'all'}
+              onClick={() => setSelectedDay('all')}
+            >
+              <span>All</span>
+              <small>Library</small>
+            </button>
+            {WEEK_DAYS.map((day) => (
+              <button
+                key={day}
+                type="button"
+                className={`${selectedDay === day ? 'active' : ''} ${todayWeekday === day ? 'today' : ''}`}
+                aria-label={`${day}${todayWeekday === day ? ', today' : ''}`}
+                aria-pressed={selectedDay === day}
+                onClick={() => setSelectedDay(day)}
+              >
+                <span>{day.slice(0, 3)}</span>
+                <small>{todayWeekday === day ? 'Today' : program[day].length}</small>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="exercise-family-filters" aria-label="Filter exercise type">
           {filterOptions.map((option) => (
@@ -3104,24 +3184,39 @@ function SearchView({
         </div>
       </section>
 
-      {visibleSavedGuides.length > 0 && (
+      {visibleSavedGuideResults.length > 0 && (
         <section className="exercise-result-section">
           <div className="exercise-result-heading">
             <div>
-              <p className="eyebrow">Your Gym</p>
-              <h2>Your exercises</h2>
+              <p className="eyebrow">{selectedDay === 'all' ? 'Your Gym' : selectedDay}</p>
+              <h2>{selectedDay === 'all' ? 'Your exercises' : `${selectedDay} workouts`}</h2>
             </div>
-            <span>{visibleSavedGuides.length} shown</span>
+            <span>{visibleSavedGuideResults.length} shown</span>
           </div>
           <div className="exercise-library-grid">
-            {visibleSavedGuides.map((guide) => (
-              <ExerciseGuideCard
-                key={`saved-${guide.id}`}
-                guide={guide}
-                saved
-                onOpen={() => setSelectedGuide({ guide, saved: true })}
-              />
-            ))}
+            {visibleSavedGuideResults.map(({ guide, entry }, index) => {
+              const previousEntry = visibleSavedGuideResults[index - 1]?.entry;
+              const startsWorkoutBlock = selectedDay !== 'all' && Boolean(entry.workoutLabel) && (
+                index === 0 || entry.workoutBlock !== previousEntry?.workoutBlock
+              );
+
+              return (
+                <Fragment key={`saved-${guide.id}`}>
+                  {startsWorkoutBlock && (
+                    <div className="exercise-search-workout-heading">
+                      <span>{entry.workoutBlock === 2 ? 'Then' : 'Start here'}</span>
+                      <strong>{entry.workoutLabel}</strong>
+                    </div>
+                  )}
+                  <ExerciseGuideCard
+                    guide={guide}
+                    saved
+                    sourceLabel={selectedDay === 'all' ? undefined : `${selectedDay.slice(0, 3)} · ${entry.order}`}
+                    onOpen={() => setSelectedGuide({ guide, saved: true })}
+                  />
+                </Fragment>
+              );
+            })}
           </div>
         </section>
       )}
@@ -3159,6 +3254,7 @@ function SearchView({
             onClick={() => {
               setQuery('');
               setFamily('all');
+              setSelectedDay('all');
             }}
           >
             Clear filters
@@ -4010,7 +4106,7 @@ export default function App() {
             clearLog={clearLog}
           />
         )}
-        {activeTab === 'search' && <SearchView program={program} logs={logs} />}
+        {activeTab === 'search' && <SearchView program={program} logs={logs} todayKey={todayKey} />}
         {activeTab === 'settings' && (
           <SettingsView
             program={program}
