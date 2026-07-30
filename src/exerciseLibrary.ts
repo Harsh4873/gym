@@ -76,8 +76,13 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
   },
 ];
 
+const CUSTOM_GUIDE_ALIASES: Record<string, string> = {
+  'bird dogs': 'custom:bird-dog',
+};
+
 const LIBRARY_ALIASES: Record<string, string> = {
   '10 min ab workout': '3_4_Sit-Up',
+  '10 minute ab workout': '3_4_Sit-Up',
   'ab machine': 'Ab_Crunch_Machine',
   'ab rolls': 'Ab_Roller',
   'abs circuit': 'Air_Bike',
@@ -92,6 +97,7 @@ const LIBRARY_ALIASES: Record<string, string> = {
   dips: 'Dips_-_Triceps_Version',
   'dumbbell bench press': 'Dumbbell_Bench_Press',
   'dumbbell shoulder press': 'Dumbbell_Shoulder_Press',
+  'doorway chest stretch': 'Dynamic_Chest_Stretch',
   'dynamic warm up': 'Worlds_Greatest_Stretch',
   'ez bar curls concentration curls': 'EZ-Bar_Curl',
   'face away cable curls': 'High_Cable_Curls',
@@ -106,6 +112,7 @@ const LIBRARY_ALIASES: Record<string, string> = {
   'incline bicep curls': 'Alternate_Incline_Dumbbell_Curl',
   'incline dumbbell press': 'Incline_Dumbbell_Press',
   'lat pulldowns': 'Wide-Grip_Lat_Pulldown',
+  'lat pulldown': 'Wide-Grip_Lat_Pulldown',
   'lat stretch': 'Overhead_Lat',
   'lateral raises': 'Side_Lateral_Raise',
   'leg press': 'Leg_Press',
@@ -118,14 +125,22 @@ const LIBRARY_ALIASES: Record<string, string> = {
   'preacher curl': 'Preacher_Curl',
   'push ups': 'Pushups',
   'rear delt fly': 'Cable_Rear_Delt_Fly',
+  'cross body shoulder stretch': 'Shoulder_Stretch',
   'seated calf raise': 'Seated_Calf_Raise',
   'shoulder stretch': 'Shoulder_Stretch',
   'single arm lat row': 'Kneeling_Single-Arm_High_Pulley_Row',
   'skull crushers': 'EZ-Bar_Skullcrusher',
+  skullcrushers: 'EZ-Bar_Skullcrusher',
   'standing calf raise': 'Standing_Calf_Raises',
   'standing figure 4 glute stretch': 'IT_Band_and_Glute_Stretch',
   'standing hamstring stretch with heel elevated': 'Standing_Hamstring_and_Calf_Stretch',
   'standing hip flexor stretch': 'Intermediate_Hip_Flexor_and_Quad_Stretch',
+  'hip flexor stretch': 'Kneeling_Hip_Flexor',
+  'half kneeling hip flexor stretch': 'Kneeling_Hip_Flexor',
+  'figure 4 glute stretch': 'IT_Band_and_Glute_Stretch',
+  'lateral band walks': 'Monster_Walk',
+  'leg curl': 'Seated_Leg_Curl',
+  'bulgarian split squat': 'Split_Squat_with_Dumbbells',
   'standing quad stretch': 'Quad_Stretch',
   'tibialis stretch': 'Posterior_Tibialis_Stretch',
   'trap stretch': 'Upper_Back_Stretch',
@@ -207,9 +222,10 @@ export function resolvePersonalExerciseGuide(
   family?: ExerciseGuideFamily,
 ): ExerciseGuide {
   const normalizedName = normalizeExerciseName(name);
-  const customGuide = CUSTOM_GUIDES.find(
-    (guide) => normalizeExerciseName(guide.name) === normalizedName,
-  );
+  const customGuideId = CUSTOM_GUIDE_ALIASES[normalizedName];
+  const customGuide = CUSTOM_GUIDES.find((guide) => (
+    guide.id === customGuideId || normalizeExerciseName(guide.name) === normalizedName
+  ));
   if (customGuide) {
     return { ...customGuide, name, images: [...customGuide.images] };
   }

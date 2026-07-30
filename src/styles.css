@@ -994,6 +994,47 @@ a:focus-visible {
   gap: var(--space-4);
 }
 
+.workout-block-heading {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 26%, var(--color-border));
+  border-left: 4px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--color-accent-tint), transparent 72%);
+}
+
+.workout-block-heading:first-child {
+  margin-top: 0;
+}
+
+.workout-block-heading span {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workout-block-heading strong {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.workout-block-heading.completed-block {
+  border-color: color-mix(in srgb, var(--color-success) 28%, var(--color-border));
+  border-left-color: var(--color-success);
+  background: linear-gradient(90deg, var(--color-success-tint), transparent 72%);
+}
+
+.workout-block-heading.completed-block span {
+  color: var(--color-success);
+}
+
 .exercise-group {
   position: relative;
   padding: var(--space-3);
@@ -3986,6 +4027,15 @@ a:focus-visible {
 
   .exercise-stack {
     gap: 8px;
+  }
+
+  .workout-block-heading {
+    margin-top: 14px;
+    padding: 12px 14px;
+  }
+
+  .workout-block-heading strong {
+    font-size: 20px;
   }
 
   .exercise-group,

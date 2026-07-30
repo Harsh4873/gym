@@ -48,7 +48,7 @@ import {
   X,
 } from 'lucide-react';
 import type { ComponentType, CSSProperties, Dispatch, DragEvent, SetStateAction, SVGProps } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addDays,
   endOfMonth,
@@ -116,6 +116,7 @@ type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
 const THEME_STORAGE_KEY = 'harsh-gym-theme-v1';
 const REST_TIMER_STORAGE_KEY = 'harsh-gym-rest-timer-v1';
+const WEEKLY_PLAN_ROLLOUT_STORAGE_KEY = 'harsh-gym-weekly-plan-v7-rollout';
 type GetExercisesForDate = (dateKey: string) => Exercise[];
 type RenameExerciseForDate = (
   dateKey: string,
@@ -457,6 +458,11 @@ function orderExercisesForLog(exercises: Exercise[], log: WorkoutLog): Exercise[
       return leftFinished - rightFinished;
     }
 
+    const workoutBlockDifference = (left.workoutBlock ?? 1) - (right.workoutBlock ?? 1);
+    if (workoutBlockDifference !== 0) {
+      return workoutBlockDifference;
+    }
+
     return (originalIndexes.get(left.id) ?? 0) - (originalIndexes.get(right.id) ?? 0);
   });
 }
@@ -550,6 +556,35 @@ function getExerciseTargetSummary(exercise: Exercise): string {
 
 function cloneExercises(exercises: Exercise[]): Exercise[] {
   return exercises.map((exercise) => ({ ...exercise, target: { ...exercise.target } }));
+}
+
+function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay): LogsByDate {
+  const loadedLogs = loadLogs();
+
+  try {
+    if (window.localStorage.getItem(WEEKLY_PLAN_ROLLOUT_STORAGE_KEY)) {
+      return loadedLogs;
+    }
+
+    const currentLog = normalizeLog(todayKey, loadedLogs[todayKey]);
+    const todayExercises = cloneExercises(getProgramExercisesForDate(todayKey, program));
+    const validExerciseIds = new Set(todayExercises.map((exercise) => exercise.id));
+    const migratedLog: WorkoutLog = {
+      ...currentLog,
+      completed: currentLog.completed.filter((id) => validExerciseIds.has(id)),
+      skipped: currentLog.skipped.filter((id) => validExerciseIds.has(id)),
+      supersets: getValidSupersets(todayExercises, currentLog.supersets),
+      exerciseSnapshot: todayExercises,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const migratedLogs = { ...loadedLogs, [todayKey]: migratedLog };
+    saveLogs(migratedLogs);
+    window.localStorage.setItem(WEEKLY_PLAN_ROLLOUT_STORAGE_KEY, todayKey);
+    return migratedLogs;
+  } catch {
+    return loadedLogs;
+  }
 }
 
 function formatSetSummary(sets: ExerciseSet[], kind: 'stretch' | 'strength' = 'strength'): string {
@@ -1769,16 +1804,42 @@ function WorkoutPanel({
             group.type === 'superset'
               ? `superset with ${group.exercises.map((exercise) => exercise.name).join(' and ')}`
               : group.exercises[0]?.name ?? 'exercise';
+          const workoutBlock = group.exercises[0]?.workoutBlock ?? 1;
+          const previousWorkoutBlock = groups[groupIndex - 1]?.exercises[0]?.workoutBlock ?? 1;
+          const groupFinished = group.exercises.every((exercise) => (
+            log.completed.includes(exercise.id) || log.skipped.includes(exercise.id)
+          ));
+          const previousGroup = groups[groupIndex - 1];
+          const previousGroupFinished = previousGroup?.exercises.every((exercise) => (
+            log.completed.includes(exercise.id) || log.skipped.includes(exercise.id)
+          )) ?? false;
+          const startsFinishedSection = groupFinished && !previousGroupFinished;
+          const startsWorkoutBlock = !groupFinished && (
+            groupIndex === 0 || previousGroupFinished || workoutBlock !== previousWorkoutBlock
+          );
+          const workoutLabel = group.exercises[0]?.workoutLabel;
 
           return (
-            <article
-              key={group.id}
-              className={`exercise-group ${group.type} ${draggedGroupId === group.id ? 'dragging' : ''} ${
-                dragOverGroupId === group.id ? 'drop-target' : ''
-              }`}
-              onDragOver={(event) => handleDragOver(event, group.id)}
-              onDrop={(event) => handleDrop(event, group.id)}
-            >
+            <Fragment key={group.id}>
+              {startsFinishedSection && (
+                <div className="workout-block-heading completed-block">
+                  <span>Finished items</span>
+                  <strong>Completed</strong>
+                </div>
+              )}
+              {startsWorkoutBlock && workoutLabel && (
+                <div className="workout-block-heading">
+                  <span>{workoutBlock === 1 ? 'Start here' : 'Then'}</span>
+                  <strong>{workoutLabel}</strong>
+                </div>
+              )}
+              <article
+                className={`exercise-group ${group.type} ${draggedGroupId === group.id ? 'dragging' : ''} ${
+                  dragOverGroupId === group.id ? 'drop-target' : ''
+                }`}
+                onDragOver={(event) => handleDragOver(event, group.id)}
+                onDrop={(event) => handleDrop(event, group.id)}
+              >
               {group.type === 'superset' && (
                 <div className="group-header">
                   <span>
@@ -2122,7 +2183,8 @@ function WorkoutPanel({
                   })}
                 </div>
               </div>
-            </article>
+              </article>
+            </Fragment>
           );
         })}
       </div>
@@ -2256,7 +2318,7 @@ function WeekView({
           >
             <ChevronLeft aria-hidden="true" />
           </button>
-          <button className="icon-text-button" type="button" onClick={() => setSelectedDate(todayKey)}>
+          <button className="icon-text-button" type="button" onClick={() => openLogbook(todayKey)}>
             <Target aria-hidden="true" />
             <span>Today</span>
           </button>
@@ -2352,7 +2414,7 @@ function CalendarView({
           >
             <ChevronLeft aria-hidden="true" />
           </button>
-          <button className="icon-text-button" type="button" onClick={() => setSelectedDate(todayKey)}>
+          <button className="icon-text-button" type="button" onClick={() => openLogbook(todayKey)}>
             <Target aria-hidden="true" />
             <span>Today</span>
           </button>
@@ -2552,6 +2614,10 @@ function LogbookView({
               onClick={() => setSelectedDate(toDateKey(addDays(parseDateKey(selectedDate), 1)))}
             >
               <ChevronRight aria-hidden="true" />
+            </button>
+            <button className="icon-text-button compact" type="button" onClick={() => setSelectedDate(todayKey)}>
+              <Target aria-hidden="true" />
+              <span>Today</span>
             </button>
           </div>
         </section>
@@ -3587,8 +3653,8 @@ export default function App() {
   const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
   const [activeTab, setActiveTab] = useState<TabId>(() => getTabFromHash());
   const [selectedDate, setSelectedDate] = useState(todayKey);
-  const [logs, setLogs] = useState<LogsByDate>(() => loadLogs());
   const [program, setProgram] = useState<ProgramByDay>(() => loadProgram());
+  const [logs, setLogs] = useState<LogsByDate>(() => loadLogsWithCurrentPlan(todayKey, program));
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences());
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
   const sync = useGymSync({ logs, setLogs, program, setProgram, preferences, setPreferences });

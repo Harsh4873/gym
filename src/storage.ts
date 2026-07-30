@@ -26,7 +26,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 6;
+const PROGRAM_SCHEMA_VERSION = 7;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -125,6 +125,8 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exerci
     WEEK_DAYS.includes(day as Weekday) &&
     (expectedDay === undefined || day === expectedDay) &&
     (kind === 'strength' || kind === 'cardio' || kind === 'mobility') &&
+    (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
+    (value.workoutLabel === undefined || (typeof value.workoutLabel === 'string' && value.workoutLabel.trim().length > 0)) &&
     isValidExerciseTarget(value.target, kind)
   );
 }
@@ -303,6 +305,12 @@ function normalizeExercise(
   }
 
   const kind = normalizeExerciseKind(value.kind, name);
+  const workoutBlock = value.workoutBlock === 1 || value.workoutBlock === 2
+    ? value.workoutBlock
+    : undefined;
+  const workoutLabel = typeof value.workoutLabel === 'string' && value.workoutLabel.trim()
+    ? value.workoutLabel.trim()
+    : undefined;
 
   return {
     id: typeof value.id === 'string' && value.id.trim() ? value.id : `${day.toLowerCase()}-custom-${fallbackIndex + 1}`,
@@ -310,6 +318,8 @@ function normalizeExercise(
     name,
     kind,
     target: normalizeExerciseTarget(value.target, name, kind),
+    ...(workoutBlock ? { workoutBlock } : {}),
+    ...(workoutLabel ? { workoutLabel } : {}),
   };
 }
 
@@ -561,16 +571,6 @@ export function normalizeProgram(value: unknown): ProgramByDay {
   }, {} as ProgramByDay);
 }
 
-function applyStoredOrder(program: ProgramByDay, order: ExerciseOrderByDay): ProgramByDay {
-  return WEEK_DAYS.reduce((nextProgram, day) => {
-    const byId = new Map(program[day].map((exercise) => [exercise.id, exercise]));
-    const orderedExercises = order[day].map((id) => byId.get(id)).filter(Boolean) as ProgramByDay[Weekday];
-    const orderedIds = new Set(orderedExercises.map((exercise) => exercise.id));
-    nextProgram[day] = [...orderedExercises, ...program[day].filter((exercise) => !orderedIds.has(exercise.id))];
-    return nextProgram;
-  }, {} as ProgramByDay);
-}
-
 /**
  * Fold a newer default program into a stored one without losing personal edits.
  *
@@ -588,6 +588,8 @@ function applyStoredOrder(program: ProgramByDay, order: ExerciseOrderByDay): Pro
  *
  * Logged sets live in the workout logs keyed by exercise id and are never
  * touched here, so history and "use last time" survive the merge intact.
+ * An explicit template reset can opt out of preserving names/custom entries
+ * while still retaining tuned targets for ids that remain in the plan.
  */
 function sameTarget(left: ExerciseTarget, right: ExerciseTarget): boolean {
   return (
@@ -598,7 +600,10 @@ function sameTarget(left: ExerciseTarget, right: ExerciseTarget): boolean {
     left.restSeconds === right.restSeconds
   );
 }
-function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay {
+function reconcileProgramWithDefaults(
+  storedProgram: ProgramByDay,
+  replaceTemplate = false,
+): ProgramByDay {
   const defaultProgram = getDefaultProgram();
 
   return WEEK_DAYS.reduce((program, day) => {
@@ -614,7 +619,7 @@ function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay
       // A slot still carrying its previous default name was never renamed by
       // hand, so it follows the new default; anything else is a personal rename.
       const shippedName = SHIPPED_DEFAULT_EXERCISE_NAMES.get(stored.id);
-      const wasRenamedByHand = shippedName !== undefined && shippedName !== stored.name;
+      const wasRenamedByHand = !replaceTemplate && shippedName !== undefined && shippedName !== stored.name;
       const name = wasRenamedByHand ? stored.name : defaultExercise.name;
       // A default may set a kind its name would not imply, so only re-infer when
       // the name came from the owner rather than from the default.
@@ -633,12 +638,16 @@ function reconcileProgramWithDefaults(storedProgram: ProgramByDay): ProgramByDay
         name,
         kind,
         target: { ...target },
+        workoutBlock: defaultExercise.workoutBlock,
+        workoutLabel: defaultExercise.workoutLabel,
       };
     });
 
-    const customExercises = storedProgram[day].filter((exercise) => {
-      return !defaultIds.has(exercise.id) && !SHIPPED_DEFAULT_EXERCISE_NAMES.has(exercise.id);
-    });
+    const customExercises = replaceTemplate
+      ? []
+      : storedProgram[day].filter((exercise) => {
+          return !defaultIds.has(exercise.id) && !SHIPPED_DEFAULT_EXERCISE_NAMES.has(exercise.id);
+        });
 
     program[day] = [...merged, ...customExercises.map((exercise) => ({ ...exercise, target: { ...exercise.target } }))];
     return program;
@@ -657,13 +666,16 @@ export function loadProgram(): ProgramByDay {
           return storedProgram;
         }
 
-        const migratedProgram = reconcileProgramWithDefaults(storedProgram);
+        // Version 7 is an intentional full weekly-plan reset requested by the
+        // owner. Keep tuned targets for matching ids, but make names, order,
+        // workout blocks, additions, and removals match the new template.
+        const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 7);
         saveProgram(migratedProgram);
         return migratedProgram;
       }
     }
 
-    return applyStoredOrder(getDefaultProgram(), loadExerciseOrder());
+    return getDefaultProgram();
   } catch {
     return getDefaultProgram();
   }

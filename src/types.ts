@@ -31,6 +31,8 @@ export interface Exercise {
   name: string;
   kind: ExerciseKind;
   target: ExerciseTarget;
+  workoutBlock?: 1 | 2;
+  workoutLabel?: string;
 }
 
 export interface SupersetPair {
