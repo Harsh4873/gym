@@ -15,13 +15,12 @@ export type DayStatus = 'completed' | 'partial' | 'planned' | 'skipped' | 'unlog
 
 export type WeightMode = 'bodyweight' | 'pounds';
 
-export type ExerciseKind = 'strength' | 'cardio' | 'mobility';
+export type ExerciseKind = 'strength' | 'mobility';
 
 export interface ExerciseTarget {
   sets?: number;
   repMin?: number;
   repMax?: number;
-  minutes?: number;
   restSeconds?: number;
 }
 
@@ -50,7 +49,6 @@ export interface ExerciseSet {
 export interface ExerciseDetail {
   exerciseName?: string;
   sets: ExerciseSet[];
-  cardioMinutes?: string;
   legacyNote?: string;
 }
 

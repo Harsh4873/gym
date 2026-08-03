@@ -10,15 +10,13 @@ export const WEEK_DAYS: Weekday[] = [
   'Sunday',
 ];
 
-const COURT_SPORT_PATTERN = /^(?:basketball|badminton)\s+(\d+)\s+minutes$/i;
-
-export function isCourtSport(name: string): boolean {
+/**
+ * The app tracks lifting and mobility only. Court sports used to live in the
+ * program as cardio entries; the names are still recognised here so migrations
+ * and log normalisation can strip them from data written by older versions.
+ */
+export function isRetiredCourtSport(name: string): boolean {
   return /basketball|badminton/i.test(name);
-}
-
-export function getCourtSportMinutes(name: string): number {
-  const match = name.match(COURT_SPORT_PATTERN);
-  return match ? Number(match[1]) : 0;
 }
 
 export function isStretchExercise(name: string): boolean {
@@ -26,24 +24,10 @@ export function isStretchExercise(name: string): boolean {
 }
 
 export function inferExerciseKind(name: string): ExerciseKind {
-  if (isCourtSport(name)) {
-    return 'cardio';
-  }
-
-  if (isStretchExercise(name)) {
-    return 'mobility';
-  }
-
-  return 'strength';
+  return isStretchExercise(name) ? 'mobility' : 'strength';
 }
 
 export function createDefaultExerciseTarget(name: string, kind = inferExerciseKind(name)): ExerciseTarget {
-  if (kind === 'cardio') {
-    return {
-      minutes: getCourtSportMinutes(name) || 30,
-    };
-  }
-
   if (kind === 'mobility') {
     return {
       sets: 2,
@@ -97,23 +81,23 @@ function buildWorkoutBlock(
 }
 
 /**
- * The current plan keeps gym work in the requested order, then puts court-sport
- * mobility immediately before basketball or badminton. Tuesday and Thursday
- * are explicitly split into two workout blocks in the Logbook.
+ * Monday to Thursday are two blocks: the gym work, then a stretching session.
+ * Court sports are played but not tracked here. Friday to Sunday are single
+ * sessions.
  */
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Monday: [
     ...buildWorkoutBlock(1, 'Chest and triceps', [
       { slot: 15, name: 'Machine Chest Press', target: HYPERTROPHY_TARGET },
-      { slot: 19, name: 'Standing Biceps Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 20, name: 'Tricep Superset', target: HYPERTROPHY_TARGET },
-      { slot: 21, name: 'Doorway Chest Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 4, name: 'Incline Dumbbell Press', target: HYPERTROPHY_TARGET },
-      { slot: 22, name: 'Cross-Body Shoulder Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 17, name: 'Overhead Triceps Extension', target: HYPERTROPHY_TARGET },
-      { slot: 23, name: 'Lat Stretch', kind: 'mobility', target: MOBILITY_TARGET },
     ]),
-    ...buildWorkoutBlock(2, 'Pre-basketball mobility', [
+    ...buildWorkoutBlock(2, 'Stretching', [
+      { slot: 19, name: 'Standing Biceps Stretch', kind: 'mobility', target: MOBILITY_TARGET },
+      { slot: 21, name: 'Doorway Chest Stretch', kind: 'mobility', target: MOBILITY_TARGET },
+      { slot: 22, name: 'Cross-Body Shoulder Stretch', kind: 'mobility', target: MOBILITY_TARGET },
+      { slot: 23, name: 'Lat Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 24, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 25, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 26, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
@@ -122,7 +106,6 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 29, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 6, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 7, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 11, name: 'Basketball 60 Minutes' },
     ]),
   ],
   Tuesday: [
@@ -135,7 +118,7 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 13, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
       { slot: 14, name: 'Rear Delt Fly', target: HYPERTROPHY_TARGET },
     ]),
-    ...buildWorkoutBlock(2, 'Workout 2 · Mobility and badminton', [
+    ...buildWorkoutBlock(2, 'Workout 2 · Stretching', [
       { slot: 17, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 18, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 19, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
@@ -144,21 +127,20 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 22, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 16, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 23, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 8, name: 'Badminton 60 Minutes' },
     ]),
   ],
   Wednesday: [
     ...buildWorkoutBlock(1, 'Chest and triceps', [
       { slot: 23, name: 'Flat Bench Press', target: STRENGTH_TARGET },
-      { slot: 25, name: 'Standing Biceps Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 19, name: 'Incline Dumbbell Press', target: STRENGTH_TARGET },
-      { slot: 26, name: 'Doorway Chest Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 20, name: 'Dips', target: STRENGTH_TARGET },
-      { slot: 27, name: 'Cross-Body Shoulder Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 24, name: 'Skullcrushers', target: STRENGTH_TARGET },
-      { slot: 28, name: 'Lat Stretch', kind: 'mobility', target: MOBILITY_TARGET },
     ]),
-    ...buildWorkoutBlock(2, 'Pre-basketball mobility', [
+    ...buildWorkoutBlock(2, 'Stretching', [
+      { slot: 25, name: 'Standing Biceps Stretch', kind: 'mobility', target: MOBILITY_TARGET },
+      { slot: 26, name: 'Doorway Chest Stretch', kind: 'mobility', target: MOBILITY_TARGET },
+      { slot: 27, name: 'Cross-Body Shoulder Stretch', kind: 'mobility', target: MOBILITY_TARGET },
+      { slot: 28, name: 'Lat Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 29, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 30, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 31, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
@@ -167,7 +149,6 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 34, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 7, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 8, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 12, name: 'Basketball 60 Minutes' },
     ]),
   ],
   Thursday: [
@@ -179,7 +160,7 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 7, name: 'Leg Raises' },
       { slot: 14, name: 'Preacher Curl', target: STRENGTH_TARGET },
     ]),
-    ...buildWorkoutBlock(2, 'Workout 2 · Mobility and badminton', [
+    ...buildWorkoutBlock(2, 'Workout 2 · Stretching', [
       { slot: 16, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 17, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 18, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
@@ -188,7 +169,6 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 21, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 15, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
       { slot: 22, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 10, name: 'Badminton 60 Minutes' },
     ]),
   ],
   Friday: buildWorkoutBlock(1, 'Legs and back only', [
@@ -421,24 +401,116 @@ const SHIPPED_DEFAULT_PROGRAM_V6: Record<Weekday, Record<number, string>> = {
   },
 };
 
+/**
+ * Slots the v7 weekly-plan reset introduced or renamed. These were missing from
+ * the map when v7 shipped, so v8's retirements are the first to depend on them.
+ * Renamed slots appear here under their v7 names; the flattened map keeps every
+ * name a slot has ever shipped under, so neither the old nor the new default
+ * name reads as a personal rename.
+ */
+const SHIPPED_DEFAULT_PROGRAM_V7: Record<Weekday, Record<number, string>> = {
+  Monday: {
+    6: 'Hip Flexor Stretch',
+    7: 'Figure-4 Glute Stretch',
+    19: 'Standing Biceps Stretch',
+    20: 'Tricep Superset',
+    21: 'Doorway Chest Stretch',
+    22: 'Cross-Body Shoulder Stretch',
+    23: 'Lat Stretch',
+    24: 'Cat-Cow',
+    25: 'Bird Dogs',
+    26: 'Glute Bridges',
+    27: "World's Greatest Stretch",
+    28: 'Reverse Lunges',
+    29: 'Lateral Band Walks',
+  },
+  Tuesday: {
+    3: 'Face-Away Cable Curls',
+    16: 'Hip Flexor Stretch',
+    17: 'Cat-Cow',
+    18: 'Bird Dogs',
+    19: 'Glute Bridges',
+    20: "World's Greatest Stretch",
+    21: 'Reverse Lunges',
+    22: 'Lateral Band Walks',
+    23: 'Figure-4 Glute Stretch',
+  },
+  Wednesday: {
+    7: 'Hip Flexor Stretch',
+    8: 'Figure-4 Glute Stretch',
+    23: 'Flat Bench Press',
+    24: 'Skullcrushers',
+    25: 'Standing Biceps Stretch',
+    26: 'Doorway Chest Stretch',
+    27: 'Cross-Body Shoulder Stretch',
+    28: 'Lat Stretch',
+    29: 'Cat-Cow',
+    30: 'Bird Dogs',
+    31: 'Glute Bridges',
+    32: "World's Greatest Stretch",
+    33: 'Reverse Lunges',
+    34: 'Lateral Band Walks',
+  },
+  Thursday: {
+    15: 'Hip Flexor Stretch',
+    16: 'Cat-Cow',
+    17: 'Bird Dogs',
+    18: 'Glute Bridges',
+    19: "World's Greatest Stretch",
+    20: 'Reverse Lunges',
+    21: 'Lateral Band Walks',
+    22: 'Figure-4 Glute Stretch',
+  },
+  Friday: {
+    2: 'Lat Pulldown',
+    18: 'Hack Squat',
+    19: 'Leg Curl',
+    20: 'Bulgarian Split Squat',
+  },
+  Saturday: {
+    4: '10-Minute Ab Workout',
+  },
+  Sunday: {
+    12: 'Figure-4 Glute Stretch',
+    20: '10-Minute Stretch Video',
+    21: 'Half-Kneeling Hip Flexor Stretch',
+  },
+};
+
 const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V4,
   SHIPPED_DEFAULT_PROGRAM_V5,
   SHIPPED_DEFAULT_PROGRAM_V6,
+  SHIPPED_DEFAULT_PROGRAM_V7,
 ];
 
-export const SHIPPED_DEFAULT_EXERCISE_NAMES: ReadonlyMap<string, string> = new Map(
-  WEEK_DAYS.flatMap((day) => [
-    ...SHIPPED_DEFAULT_PROGRAM_V3[day].map(
-      (name, index) => [buildExerciseId(day, index + 1), name] as const,
-    ),
-    ...SHIPPED_SLOT_GROUPS.flatMap((group) =>
-      Object.entries(group[day]).map(
-        ([slot, name]) => [buildExerciseId(day, Number(slot)), name] as const,
-      ),
-    ),
-  ]),
-);
+/**
+ * Every name each slot has ever shipped under. A stored name found in its
+ * slot's set was written by a default, not by hand, so it may follow the
+ * current default; anything else is a personal rename and wins.
+ */
+export const SHIPPED_DEFAULT_EXERCISE_NAMES: ReadonlyMap<string, ReadonlySet<string>> = (() => {
+  const names = new Map<string, Set<string>>();
+  const record = (id: string, name: string) => {
+    const existing = names.get(id);
+    if (existing) {
+      existing.add(name);
+    } else {
+      names.set(id, new Set([name]));
+    }
+  };
+
+  for (const day of WEEK_DAYS) {
+    SHIPPED_DEFAULT_PROGRAM_V3[day].forEach((name, index) => record(buildExerciseId(day, index + 1), name));
+    for (const group of SHIPPED_SLOT_GROUPS) {
+      for (const [slot, name] of Object.entries(group[day])) {
+        record(buildExerciseId(day, Number(slot)), name);
+      }
+    }
+  }
+
+  return names;
+})();
 
 export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, day) => {
   program[day] = DEFAULT_PROGRAM[day].map((entry) => {

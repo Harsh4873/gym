@@ -1,6 +1,7 @@
 import {
   createDefaultExerciseTarget,
   inferExerciseKind,
+  isRetiredCourtSport,
   SHIPPED_DEFAULT_EXERCISE_NAMES,
   PROGRAM,
   WEEK_DAYS,
@@ -26,7 +27,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 7;
+const PROGRAM_SCHEMA_VERSION = 8;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -88,15 +89,10 @@ function isValidExerciseTarget(value: unknown, kind: ExerciseKind): value is Exe
     optionalIntegerIsValid('sets', 1, 20) &&
     optionalIntegerIsValid('repMin', 1, 1000) &&
     optionalIntegerIsValid('repMax', 1, 1000) &&
-    optionalIntegerIsValid('minutes', 1, 1440) &&
     optionalIntegerIsValid('restSeconds', 0, 1800);
 
   if (!valuesAreValid) {
     return false;
-  }
-
-  if (kind === 'cardio') {
-    return isIntegerInRange(value.minutes, 1, 1440);
   }
 
   if (!isIntegerInRange(value.sets, 1, 20)) {
@@ -124,7 +120,7 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exerci
     typeof day === 'string' &&
     WEEK_DAYS.includes(day as Weekday) &&
     (expectedDay === undefined || day === expectedDay) &&
-    (kind === 'strength' || kind === 'cardio' || kind === 'mobility') &&
+    (kind === 'strength' || kind === 'mobility') &&
     (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
     (value.workoutLabel === undefined || (typeof value.workoutLabel === 'string' && value.workoutLabel.trim().length > 0)) &&
     isValidExerciseTarget(value.target, kind)
@@ -153,7 +149,6 @@ function isValidExerciseDetail(value: unknown): value is ExerciseDetail {
     setsAreValid &&
     new Set(setIds).size === setIds.length &&
     (value.exerciseName === undefined || typeof value.exerciseName === 'string') &&
-    (value.cardioMinutes === undefined || typeof value.cardioMinutes === 'string') &&
     (value.legacyNote === undefined || typeof value.legacyNote === 'string')
   );
 }
@@ -252,7 +247,7 @@ function isValidWorkoutLog(date: string, value: unknown): value is WorkoutLog {
 }
 
 function normalizeExerciseKind(value: unknown, exerciseName: string): ExerciseKind {
-  if (value === 'strength' || value === 'cardio' || value === 'mobility') {
+  if (value === 'strength' || value === 'mobility') {
     return value;
   }
 
@@ -265,19 +260,16 @@ function normalizeExerciseTarget(value: unknown, exerciseName: string, kind: Exe
   const sets = normalizeInteger(source.sets, 1, 20);
   const repMin = normalizeInteger(source.repMin, 1, 1000);
   const repMax = normalizeInteger(source.repMax, 1, 1000);
-  const minutes = normalizeInteger(source.minutes, 1, 1440);
   const restSeconds = normalizeInteger(source.restSeconds, 0, 1800);
   const normalizedSets = sets ?? defaults.sets;
   const normalizedRepMin = repMin ?? defaults.repMin;
   const normalizedRepMax = Math.max(repMax ?? defaults.repMax ?? 0, normalizedRepMin ?? 0) || undefined;
-  const normalizedMinutes = minutes ?? defaults.minutes;
   const normalizedRestSeconds = restSeconds ?? defaults.restSeconds;
 
   return {
     ...(normalizedSets !== undefined ? { sets: normalizedSets } : {}),
     ...(normalizedRepMin !== undefined ? { repMin: normalizedRepMin } : {}),
     ...(normalizedRepMax !== undefined ? { repMax: normalizedRepMax } : {}),
-    ...(normalizedMinutes !== undefined ? { minutes: normalizedMinutes } : {}),
     ...(normalizedRestSeconds !== undefined ? { restSeconds: normalizedRestSeconds } : {}),
   };
 }
@@ -293,6 +285,13 @@ function normalizeExercise(
 
   const name = typeof value.name === 'string' ? value.name.trim() : '';
   if (!name) {
+    return null;
+  }
+
+  // Court sports are no longer tracked. Old programs, snapshots, and synced
+  // copies still carry them (as kind 'cardio' or by name), so they are dropped
+  // here — the one normalization chokepoint every stored exercise flows through.
+  if (value.kind === 'cardio' || isRetiredCourtSport(name)) {
     return null;
   }
 
@@ -355,7 +354,6 @@ export function createEmptyExerciseDetail(): ExerciseDetail {
   return {
     exerciseName: '',
     sets: [createEmptyExerciseSet()],
-    cardioMinutes: '',
   };
 }
 
@@ -392,7 +390,6 @@ function normalizeLegacyDetail(value: Record<string, unknown>): ExerciseDetail {
   return {
     exerciseName: typeof value.exerciseName === 'string' ? value.exerciseName : '',
     sets: [set],
-    cardioMinutes: typeof value.cardioMinutes === 'string' ? value.cardioMinutes : '',
     legacyNote: typeof value.legacyNote === 'string' ? value.legacyNote : undefined,
   };
 }
@@ -418,7 +415,6 @@ export function normalizeExerciseDetail(value: unknown): ExerciseDetail {
   return {
     exerciseName: typeof value.exerciseName === 'string' ? value.exerciseName : '',
     sets: sets.length > 0 ? sets : [createEmptyExerciseSet()],
-    cardioMinutes: typeof value.cardioMinutes === 'string' ? value.cardioMinutes : '',
     legacyNote: typeof value.legacyNote === 'string' ? value.legacyNote : undefined,
   };
 }
@@ -447,17 +443,73 @@ export function createEmptyLog(date: string): WorkoutLog {
   };
 }
 
+/**
+ * Every slot id a default program ever assigned to a court sport. Logged court
+ * sessions are keyed by these ids, so the purge below can find them even when
+ * a log has no snapshot or exercise name to test.
+ */
+const COURT_SPORT_SLOT_IDS: ReadonlySet<string> = new Set([
+  'monday-11',
+  'tuesday-7',
+  'tuesday-8',
+  'wednesday-12',
+  'thursday-8',
+  'thursday-10',
+]);
+
+/**
+ * Ids in this log that belong to retired court-sport entries: the historical
+ * default slots, anything the raw snapshot marks as cardio or names as a court
+ * sport, and any detail that names one or carries legacy logged cardio minutes.
+ * (`cardioMinutes` was only ever written for court sports; empty string was the
+ * seeded blank, so only a non-blank value marks a court entry.)
+ */
+function collectCourtEntryIds(source: Record<string, unknown>): Set<string> {
+  const courtIds = new Set(COURT_SPORT_SLOT_IDS);
+
+  if (Array.isArray(source.exerciseSnapshot)) {
+    for (const entry of source.exerciseSnapshot) {
+      if (
+        isPlainRecord(entry) &&
+        typeof entry.id === 'string' &&
+        (entry.kind === 'cardio' || (typeof entry.name === 'string' && isRetiredCourtSport(entry.name)))
+      ) {
+        courtIds.add(entry.id);
+      }
+    }
+  }
+
+  if (isPlainRecord(source.details)) {
+    for (const [exerciseId, detail] of Object.entries(source.details)) {
+      if (!isPlainRecord(detail)) {
+        continue;
+      }
+      const exerciseName = typeof detail.exerciseName === 'string' ? detail.exerciseName : '';
+      const legacyCardioMinutes = typeof detail.cardioMinutes === 'string' ? detail.cardioMinutes.trim() : '';
+      if (isRetiredCourtSport(exerciseName) || legacyCardioMinutes) {
+        courtIds.add(exerciseId);
+      }
+    }
+  }
+
+  return courtIds;
+}
+
 export function normalizeLog(date: string, log?: Partial<WorkoutLog>): WorkoutLog {
   const source = isPlainRecord(log) ? log : {};
+  const courtIds = collectCourtEntryIds(source);
   const exerciseSnapshot = normalizeExerciseSnapshot(source.exerciseSnapshot);
   const startedAt = normalizeTimestamp(source.startedAt);
   const finishedAt = normalizeTimestamp(source.finishedAt);
+  const details = Object.fromEntries(
+    Object.entries(normalizeDetails(source.details)).filter(([exerciseId]) => !courtIds.has(exerciseId)),
+  );
 
   return {
     date,
-    completed: normalizeStringList(source.completed),
-    skipped: normalizeStringList(source.skipped),
-    details: normalizeDetails(source.details),
+    completed: normalizeStringList(source.completed).filter((id) => !courtIds.has(id)),
+    skipped: normalizeStringList(source.skipped).filter((id) => !courtIds.has(id)),
+    details,
     notes: typeof source.notes === 'string' ? source.notes : '',
     prNote: typeof source.prNote === 'string' ? source.prNote : '',
     supersets: normalizeSupersets(source.supersets, exerciseSnapshot),
@@ -596,7 +648,6 @@ function sameTarget(left: ExerciseTarget, right: ExerciseTarget): boolean {
     left.sets === right.sets &&
     left.repMin === right.repMin &&
     left.repMax === right.repMax &&
-    left.minutes === right.minutes &&
     left.restSeconds === right.restSeconds
   );
 }
@@ -616,10 +667,11 @@ function reconcileProgramWithDefaults(
         return defaultExercise;
       }
 
-      // A slot still carrying its previous default name was never renamed by
-      // hand, so it follows the new default; anything else is a personal rename.
-      const shippedName = SHIPPED_DEFAULT_EXERCISE_NAMES.get(stored.id);
-      const wasRenamedByHand = !replaceTemplate && shippedName !== undefined && shippedName !== stored.name;
+      // A slot still carrying any name a default ever shipped for it was never
+      // renamed by hand, so it follows the new default; anything else is a
+      // personal rename.
+      const shippedNames = SHIPPED_DEFAULT_EXERCISE_NAMES.get(stored.id);
+      const wasRenamedByHand = !replaceTemplate && shippedNames !== undefined && !shippedNames.has(stored.name);
       const name = wasRenamedByHand ? stored.name : defaultExercise.name;
       // A default may set a kind its name would not imply, so only re-infer when
       // the name came from the owner rather than from the default.
@@ -793,6 +845,47 @@ export function serializeGymBackup(
   return JSON.stringify(createGymBackup(logs, program, preferences), null, 2);
 }
 
+function isCourtBackupExercise(value: unknown): boolean {
+  return (
+    isPlainRecord(value) &&
+    (value.kind === 'cardio' || (typeof value.name === 'string' && isRetiredCourtSport(value.name)))
+  );
+}
+
+function scrubBackupLog(value: unknown): unknown {
+  if (!isPlainRecord(value)) {
+    return value;
+  }
+
+  const courtIds = collectCourtEntryIds(value);
+  const scrubbed: Record<string, unknown> = { ...value };
+
+  if (Array.isArray(value.exerciseSnapshot)) {
+    scrubbed.exerciseSnapshot = value.exerciseSnapshot.filter((entry) => !isCourtBackupExercise(entry));
+  }
+  if (isPlainRecord(value.details)) {
+    scrubbed.details = Object.fromEntries(
+      Object.entries(value.details).filter(([exerciseId]) => !courtIds.has(exerciseId)),
+    );
+  }
+  if (Array.isArray(value.completed)) {
+    scrubbed.completed = value.completed.filter((id) => typeof id !== 'string' || !courtIds.has(id));
+  }
+  if (Array.isArray(value.skipped)) {
+    scrubbed.skipped = value.skipped.filter((id) => typeof id !== 'string' || !courtIds.has(id));
+  }
+  if (Array.isArray(value.supersets)) {
+    scrubbed.supersets = value.supersets.filter((pair) => {
+      if (!isPlainRecord(pair) || !Array.isArray(pair.exerciseIds)) {
+        return true;
+      }
+      return !pair.exerciseIds.some((id) => typeof id === 'string' && courtIds.has(id));
+    });
+  }
+
+  return scrubbed;
+}
+
 export function parseGymBackup(payload: unknown): GymBackup | null {
   let parsed = payload;
 
@@ -819,8 +912,21 @@ export function parseGymBackup(payload: unknown): GymBackup | null {
     return null;
   }
 
+  // Backups exported before the court-sport purge carry cardio entries. They
+  // are stripped before validation so an old backup still imports cleanly
+  // instead of being rejected wholesale.
+  const scrubbedProgram = Object.fromEntries(
+    WEEK_DAYS.map((day) => [
+      day,
+      (backupProgram[day] as unknown[]).filter((exercise) => !isCourtBackupExercise(exercise)),
+    ]),
+  );
+  const scrubbedLogs = Object.fromEntries(
+    Object.entries(backupLogs).map(([date, log]) => [date, scrubBackupLog(log)]),
+  );
+
   const programIsValid = WEEK_DAYS.every((day) => {
-    const exercises = backupProgram[day] as unknown[];
+    const exercises = scrubbedProgram[day] as unknown[];
     const ids = new Set<string>();
     return exercises.every((exercise) => {
       if (!isValidExercise(exercise, day) || ids.has(exercise.id)) {
@@ -834,7 +940,7 @@ export function parseGymBackup(payload: unknown): GymBackup | null {
     return null;
   }
 
-  const logsAreValid = Object.entries(backupLogs).every(([date, log]) => {
+  const logsAreValid = Object.entries(scrubbedLogs).every(([date, log]) => {
     return /^\d{4}-\d{2}-\d{2}$/.test(date) && isValidWorkoutLog(date, log);
   });
   if (!logsAreValid) {
@@ -855,8 +961,8 @@ export function parseGymBackup(payload: unknown): GymBackup | null {
   return {
     version: GYM_BACKUP_VERSION,
     exportedAt: parsed.exportedAt,
-    logs: normalizeLogs(backupLogs),
-    program: normalizeProgram(backupProgram),
+    logs: normalizeLogs(scrubbedLogs),
+    program: normalizeProgram(scrubbedProgram),
     preferences: normalizePreferences(backupPreferences),
   };
 }

@@ -42,7 +42,6 @@ import {
   Square,
   Sun,
   Target,
-  Timer,
   Trophy,
   Upload,
   X,
@@ -78,7 +77,6 @@ import {
 } from './exerciseLibrary';
 import {
   createDefaultExerciseTarget,
-  getCourtSportMinutes,
   inferExerciseKind,
   WEEK_DAYS,
 } from './program';
@@ -316,13 +314,7 @@ function countCompleted(exercises: Exercise[], log: WorkoutLog): number {
 function hasRecordedExerciseWork(log: WorkoutLog): boolean {
   return (
     log.completed.length > 0 ||
-    Object.values(log.details).some((detail) => {
-      const cardioMinutes = Number(detail.cardioMinutes);
-      return Boolean(
-        (Number.isFinite(cardioMinutes) && cardioMinutes > 0) ||
-          detail.sets.some((set) => isSetFilled(set)),
-      );
-    })
+    Object.values(log.details).some((detail) => detail.sets.some((set) => isSetFilled(set)))
   );
 }
 
@@ -335,10 +327,8 @@ function hasTrainingActivity(log: WorkoutLog): boolean {
     Boolean(log.notes.trim()) ||
     Boolean(log.prNote.trim()) ||
     Object.values(log.details).some((detail) => {
-      const cardioMinutes = Number(detail.cardioMinutes);
       return Boolean(
-        (Number.isFinite(cardioMinutes) && cardioMinutes > 0) ||
-          detail.legacyNote?.trim() ||
+        detail.legacyNote?.trim() ||
           detail.sets.some((set) => {
             return Boolean(set.reps.trim() || set.pounds.trim());
           }),
@@ -500,17 +490,11 @@ function isExerciseDetailEmpty(detail?: ReturnType<typeof createEmptyExerciseDet
     return true;
   }
 
-  const cardioMinutes = Number(detail.cardioMinutes);
-  const hasCardioMinutes = Number.isFinite(cardioMinutes) && cardioMinutes > 0;
-  return !hasCardioMinutes && !detail.legacyNote?.trim() && detail.sets.every((set) => !isSetFilled(set));
+  return !detail.legacyNote?.trim() && detail.sets.every((set) => !isSetFilled(set));
 }
 
 function getExerciseKind(exercise: Exercise): ExerciseKind {
   return exercise.kind ?? inferExerciseKind(exercise.name);
-}
-
-function getCardioTarget(exercise: Exercise): number {
-  return exercise.target.minutes ?? (getCourtSportMinutes(exercise.name) || 30);
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -538,10 +522,6 @@ function getSessionDurationSeconds(log: WorkoutLog, now = Date.now()): number {
 }
 
 function getExerciseTargetSummary(exercise: Exercise): string {
-  if (getExerciseKind(exercise) === 'cardio') {
-    return `${getCardioTarget(exercise)} min target`;
-  }
-
   const sets = exercise.target.sets ?? 1;
   const rest = exercise.target.restSeconds ?? 0;
   if (getExerciseKind(exercise) === 'mobility') {
@@ -633,15 +613,6 @@ function getLogSetCount(log: WorkoutLog): number {
   return Object.values(log.details).reduce((total, detail) => total + detail.sets.filter(isSetFilled).length, 0);
 }
 
-function getLoggedCardioMinutes(detail?: ReturnType<typeof createEmptyExerciseDetail>): number {
-  if (!detail?.cardioMinutes?.trim()) {
-    return 0;
-  }
-
-  const minutes = Number(detail.cardioMinutes);
-  return Number.isFinite(minutes) && minutes > 0 ? minutes : 0;
-}
-
 function getLogReps(log: WorkoutLog): number {
   return Object.values(log.details).reduce((total, detail) => {
     return total + detail.sets.reduce((setTotal, set) => setTotal + getSetReps(set), 0);
@@ -651,18 +622,6 @@ function getLogReps(log: WorkoutLog): number {
 function getLogVolume(log: WorkoutLog): number {
   return Object.values(log.details).reduce((total, detail) => {
     return total + detail.sets.reduce((setTotal, set) => setTotal + getSetVolume(set), 0);
-  }, 0);
-}
-
-function getCardioMinutes(exercises: Exercise[], log: WorkoutLog): number {
-  return exercises.reduce((total, exercise) => {
-    if (getExerciseKind(exercise) !== 'cardio') {
-      return total;
-    }
-
-    const loggedMinutes = getLoggedCardioMinutes(log.details[exercise.id]);
-    const legacyCompletedMinutes = log.completed.includes(exercise.id) ? getCardioTarget(exercise) : 0;
-    return total + (loggedMinutes || legacyCompletedMinutes);
   }, 0);
 }
 
@@ -732,7 +691,6 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
   const recentDates = buildRecentDates(todayKey, 28).reverse();
   const weekDates = buildRecentDates(todayKey, 7).reverse();
   let completedSessions = 0;
-  let cardioMinutes = 0;
   let stretchDays = 0;
   let totalReps = 0;
   let totalVolume = 0;
@@ -748,7 +706,6 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
       completedSessions += 1;
     }
 
-    cardioMinutes += getCardioMinutes(exercises, log);
     totalReps += reps;
     totalVolume += volume;
 
@@ -770,7 +727,6 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
     if (isFinishedSession(log, exercises)) {
       completedSessions += 1;
     }
-    cardioMinutes += getCardioMinutes(exercises, log);
     totalReps += getLogReps(log);
     totalVolume += getLogVolume(log);
     if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'mobility')) {
@@ -809,7 +765,6 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
   prNotes.sort((left, right) => right.dateKey.localeCompare(left.dateKey));
 
   return {
-    cardioMinutes,
     completedSessions,
     prNotes,
     streak,
@@ -1140,7 +1095,7 @@ function WorkoutPanel({
       wasCompleted ? current.filter((id) => id !== exerciseId) : uniqueList([...current, exerciseId]),
     );
     const exercise = exercises.find((candidate) => candidate.id === exerciseId);
-    if (!wasCompleted && exercise && getExerciseKind(exercise) !== 'cardio') {
+    if (!wasCompleted && exercise) {
       const nextRestSeconds = exercise.target.restSeconds ?? preferences.defaultRestSeconds;
       setRestTimer({
         dateKey,
@@ -1150,29 +1105,14 @@ function WorkoutPanel({
     }
 
     onUpdate((current) => {
-      const isCardio = exercise ? getExerciseKind(exercise) === 'cardio' : false;
       const completed = current.completed.includes(exerciseId)
         ? current.completed.filter((id) => id !== exerciseId)
         : uniqueList([...current.completed, exerciseId]);
-      const currentDetail = current.details[exerciseId] ?? createEmptyExerciseDetail();
-      const nextDetails = isCardio
-        ? {
-            ...current.details,
-            [exerciseId]: {
-              ...currentDetail,
-              exerciseName: exercise?.name ?? currentDetail.exerciseName,
-              cardioMinutes: completed.includes(exerciseId)
-                ? String(getLoggedCardioMinutes(currentDetail) || (exercise ? getCardioTarget(exercise) : 30))
-                : '',
-            },
-          }
-        : current.details;
 
       return touchLog({
         ...current,
         completed,
         skipped: current.skipped.filter((id) => id !== exerciseId),
-        details: nextDetails,
         daySkipped: false,
       });
     });
@@ -1197,46 +1137,10 @@ function WorkoutPanel({
           [exerciseId]: {
             ...currentDetail,
             exerciseName: getExerciseName(exerciseId),
-            cardioMinutes: previous.detail.cardioMinutes,
             sets: previous.detail.sets.map((set) => ({
               ...set,
               id: createSetId(),
             })),
-          },
-        },
-        daySkipped: false,
-      });
-    });
-  };
-
-  const updateCardioMinutes = (exerciseId: string, minutes: string) => {
-    const exercise = exercises.find((candidate) => candidate.id === exerciseId);
-    const target = exercise ? getCardioTarget(exercise) : 30;
-    const numericMinutes = Number(minutes);
-    const normalizedMinutes = Number.isFinite(numericMinutes)
-      ? Math.min(1440, Math.max(0, Math.round(numericMinutes)))
-      : 0;
-    const storedMinutes = normalizedMinutes > 0 ? String(normalizedMinutes) : '';
-    setCollapsedExerciseIds((current) =>
-      normalizedMinutes >= target ? uniqueList([...current, exerciseId]) : current.filter((id) => id !== exerciseId),
-    );
-
-    onUpdate((current) => {
-      const currentDetail = current.details[exerciseId] ?? createEmptyExerciseDetail();
-      const completed = normalizedMinutes >= target
-        ? uniqueList([...current.completed, exerciseId])
-        : current.completed.filter((id) => id !== exerciseId);
-
-      return touchLog({
-        ...current,
-        completed,
-        skipped: current.skipped.filter((id) => id !== exerciseId),
-        details: {
-          ...current.details,
-          [exerciseId]: {
-            ...currentDetail,
-            exerciseName: getExerciseName(exerciseId),
-            cardioMinutes: storedMinutes,
           },
         },
         daySkipped: false,
@@ -1438,7 +1342,7 @@ function WorkoutPanel({
       const details = { ...current.details };
 
       exercises.forEach((exercise) => {
-        if (getExerciseKind(exercise) === 'cardio' || !isExerciseDetailEmpty(details[exercise.id])) {
+        if (!isExerciseDetailEmpty(details[exercise.id])) {
           return;
         }
 
@@ -1901,29 +1805,16 @@ function WorkoutPanel({
                     const collapsed = collapsedExerciseIds.includes(exercise.id);
                     const detail = log.details[exercise.id] ?? createEmptyExerciseDetail();
                     const exerciseKind = getExerciseKind(exercise);
-                    const isCardio = exerciseKind === 'cardio';
                     const isStretch = exerciseKind === 'mobility';
                     const previous = previousByExerciseId.get(exercise.id);
-                    const previousMinutes = getLoggedCardioMinutes(previous?.detail);
-                    const lastSummary = isCardio
-                      ? previousMinutes > 0
-                        ? `${previousMinutes} min`
-                        : ''
-                      : previous
-                        ? formatSetSummary(previous.detail.sets, isStretch ? 'stretch' : 'strength')
-                        : '';
-                    const currentMinutes = getLoggedCardioMinutes(detail);
-                    const currentSummary = isCardio
-                      ? currentMinutes > 0
-                        ? `${currentMinutes} minutes`
-                        : ''
-                      : formatSetSummary(detail.sets, isStretch ? 'stretch' : 'strength');
+                    const lastSummary = previous
+                      ? formatSetSummary(previous.detail.sets, isStretch ? 'stretch' : 'strength')
+                      : '';
+                    const currentSummary = formatSetSummary(detail.sets, isStretch ? 'stretch' : 'strength');
                     const previousBest = previousBestByExerciseId.get(exercise.id) ?? 0;
                     const currentBest = Math.max(0, ...detail.sets.map(getSetVolume));
                     const hasLocalPr = exerciseKind === 'strength' && currentBest > 0 && currentBest > previousBest;
                     const canUseLastSets = Boolean(previous && isExerciseDetailEmpty(detail));
-                    const cardioTarget = getCardioTarget(exercise);
-                    const cardioRangeMax = Math.max(120, cardioTarget, currentMinutes);
 
                     return (
                       <div
@@ -2049,51 +1940,7 @@ function WorkoutPanel({
                                 </button>
                               )}
                               {currentSummary && <div className="current-set-summary">{currentSummary}</div>}
-                              {isCardio ? (
-                                <div className="cardio-logger">
-                                  <div className="cardio-slider-head">
-                                    <span>Minutes</span>
-                                    <label className="cardio-minute-input">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="1440"
-                                        step="1"
-                                        inputMode="numeric"
-                                        value={detail.cardioMinutes}
-                                        aria-label={`Minutes completed for ${exercise.name}`}
-                                        onChange={(event) => updateCardioMinutes(exercise.id, event.target.value)}
-                                      />
-                                      <strong>/ {cardioTarget} target</strong>
-                                    </label>
-                                  </div>
-                                  <input
-                                    type="range"
-                                    min="0"
-                                    max={cardioRangeMax}
-                                    step="5"
-                                    value={detail.cardioMinutes || '0'}
-                                    aria-label={`Minutes completed for ${exercise.name}`}
-                                    onChange={(event) => updateCardioMinutes(exercise.id, event.target.value)}
-                                  />
-                                  <div className="cardio-quick-row">
-                                    {[0, 15, 30, cardioTarget]
-                                      .filter((value, index, list) => list.indexOf(value) === index)
-                                      .map((minutes) => (
-                                        <button
-                                          key={minutes}
-                                          type="button"
-                                          className={currentMinutes === minutes ? 'active' : ''}
-                                          aria-pressed={currentMinutes === minutes}
-                                          onClick={() => updateCardioMinutes(exercise.id, String(minutes))}
-                                        >
-                                          {minutes === 0 ? 'No' : `${minutes} min`}
-                                        </button>
-                                      ))}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="set-stack">
+                              <div className="set-stack">
                                   {detail.sets.map((set, setIndex) => (
                                     <div
                                       key={set.id}
@@ -2164,7 +2011,6 @@ function WorkoutPanel({
                                     <span>{isStretch ? 'Add Round' : 'Add Set'}</span>
                                   </button>
                                 </div>
-                              )}
                               {detail.legacyNote && <small className="legacy-detail">Previous detail: {detail.legacyNote}</small>}
                             </>
                           )}
@@ -2501,7 +2347,6 @@ function MilestonesView({
           accent="var(--violet)"
         />
         <MetricTile icon={Check} label="Completed sessions" value={`${stats.completedSessions}`} accent="var(--green)" />
-        <MetricTile icon={Timer} label="Cardio minutes" value={`${stats.cardioMinutes}`} accent="var(--cyan)" />
         <MetricTile icon={Medal} label="Mobility days" value={`${stats.stretchDays}`} accent="var(--violet)" />
         <MetricTile icon={Activity} label="28 day volume" value={`${stats.totalVolume.toLocaleString()}`} accent="var(--coral)" />
         <MetricTile icon={Target} label="28 day reps" value={`${stats.totalReps}`} accent="var(--text-muted)" />
@@ -2676,10 +2521,6 @@ interface SavedExerciseLibraryEntry {
 }
 
 function getFamilyForExerciseKind(kind: ExerciseKind): ExerciseGuideFamily {
-  if (kind === 'cardio') {
-    return 'cardio';
-  }
-
   return kind === 'mobility' ? 'mobility' : 'strength';
 }
 
@@ -2742,11 +2583,7 @@ function buildSavedExerciseLibraryEntries(
 }
 
 function getGuideFamilyLabel(family: ExerciseGuideFamily): string {
-  if (family === 'mobility') {
-    return 'Mobility';
-  }
-
-  return family === 'cardio' ? 'Cardio' : 'Strength';
+  return family === 'mobility' ? 'Mobility' : 'Strength';
 }
 
 function ExerciseGuideArtwork({
@@ -2778,11 +2615,7 @@ function ExerciseGuideArtwork({
     );
   }
 
-  const FallbackIcon = guide.family === 'strength'
-    ? Dumbbell
-    : guide.family === 'cardio'
-      ? Activity
-      : ImageIcon;
+  const FallbackIcon = guide.family === 'strength' ? Dumbbell : ImageIcon;
 
   return (
     <div className={`exercise-art-fallback ${detail ? 'detail' : ''}`} aria-label="Dedicated visual guide coming soon">
@@ -3077,7 +2910,6 @@ function SearchView({
     { id: 'all', label: 'All' },
     { id: 'strength', label: 'Strength' },
     { id: 'mobility', label: 'Mobility' },
-    { id: 'cardio', label: 'Cardio' },
   ];
 
   return (
@@ -3335,7 +3167,6 @@ function SettingsView({
       sets: [1, 20],
       repMin: [1, 1000],
       repMax: [1, 1000],
-      minutes: [1, 1440],
       restSeconds: [0, 1800],
     };
 
@@ -3605,7 +3436,6 @@ function SettingsView({
               onChange={(event) => setNewWorkoutKind(event.target.value as ExerciseKind)}
             >
               <option value="strength">Strength</option>
-              <option value="cardio">Cardio</option>
               <option value="mobility">Mobility</option>
             </select>
             <button className="icon-text-button compact" type="submit" disabled={!newWorkoutName.trim()}>
@@ -3660,69 +3490,53 @@ function SettingsView({
                         onChange={(event) => updateWorkoutKind(exercise.id, event.target.value as ExerciseKind)}
                       >
                         <option value="strength">Strength</option>
-                        <option value="cardio">Cardio</option>
                         <option value="mobility">Mobility</option>
                       </select>
                     </div>
 
                     <div className="prescription-grid">
-                      {exercise.kind === 'cardio' ? (
-                        <label>
-                          <span>Minutes</span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="1440"
-                            value={exercise.target.minutes ?? ''}
-                            onChange={(event) => updateWorkoutTarget(exercise.id, 'minutes', event.target.value)}
-                          />
-                        </label>
-                      ) : (
+                      <label>
+                        <span>{exercise.kind === 'mobility' ? 'Rounds' : 'Sets'}</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={exercise.target.sets ?? ''}
+                          onChange={(event) => updateWorkoutTarget(exercise.id, 'sets', event.target.value)}
+                        />
+                      </label>
+                      {exercise.kind === 'strength' && (
                         <>
                           <label>
-                            <span>{exercise.kind === 'mobility' ? 'Rounds' : 'Sets'}</span>
+                            <span>Rep min</span>
                             <input
                               type="number"
                               min="1"
-                              max="20"
-                              value={exercise.target.sets ?? ''}
-                              onChange={(event) => updateWorkoutTarget(exercise.id, 'sets', event.target.value)}
+                              value={exercise.target.repMin ?? ''}
+                              onChange={(event) => updateWorkoutTarget(exercise.id, 'repMin', event.target.value)}
                             />
                           </label>
-                          {exercise.kind === 'strength' && (
-                            <>
-                              <label>
-                                <span>Rep min</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={exercise.target.repMin ?? ''}
-                                  onChange={(event) => updateWorkoutTarget(exercise.id, 'repMin', event.target.value)}
-                                />
-                              </label>
-                              <label>
-                                <span>Rep max</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  value={exercise.target.repMax ?? ''}
-                                  onChange={(event) => updateWorkoutTarget(exercise.id, 'repMax', event.target.value)}
-                                />
-                              </label>
-                            </>
-                          )}
                           <label>
-                            <span>Rest sec</span>
+                            <span>Rep max</span>
                             <input
                               type="number"
-                              min="0"
-                              max="1800"
-                              value={exercise.target.restSeconds ?? ''}
-                              onChange={(event) => updateWorkoutTarget(exercise.id, 'restSeconds', event.target.value)}
+                              min="1"
+                              value={exercise.target.repMax ?? ''}
+                              onChange={(event) => updateWorkoutTarget(exercise.id, 'repMax', event.target.value)}
                             />
                           </label>
                         </>
                       )}
+                      <label>
+                        <span>Rest sec</span>
+                        <input
+                          type="number"
+                          min="0"
+                          max="1800"
+                          value={exercise.target.restSeconds ?? ''}
+                          onChange={(event) => updateWorkoutTarget(exercise.id, 'restSeconds', event.target.value)}
+                        />
+                      </label>
                     </div>
                   </div>
                   <button
