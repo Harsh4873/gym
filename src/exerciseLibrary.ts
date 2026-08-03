@@ -1,5 +1,5 @@
 export type ExerciseGuideSource = 'custom' | 'library' | 'saved';
-export type ExerciseGuideFamily = 'strength' | 'mobility' | 'cardio';
+export type ExerciseGuideFamily = 'strength' | 'mobility';
 
 export interface FreeExerciseRecord {
   id: string;
@@ -75,42 +75,6 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
     images: [`${import.meta.env.BASE_URL}exercises/bird-dog.png`],
   },
   {
-    id: 'custom:basketball',
-    name: 'Basketball',
-    source: 'custom',
-    family: 'cardio',
-    category: 'court sport',
-    level: 'intermediate',
-    equipment: 'court',
-    primaryMuscles: ['quadriceps', 'calves', 'glutes'],
-    secondaryMuscles: ['hamstrings', 'abdominals', 'shoulders'],
-    instructions: [
-      'Arrive early enough to warm up: easy movement first, then the pre-court mobility block before the first game.',
-      'Land jumps through the whole foot with knees tracking over the toes, and absorb into the hips rather than the lower back.',
-      'Push off and cut from a bent-knee stance. Stiff-legged landings and lunges are what overload the calves.',
-      'Log the minutes you actually played. If the calves or lower back are complaining, cut the session short rather than coasting on tired legs.',
-    ],
-    images: [`${import.meta.env.BASE_URL}exercises/basketball.png`],
-  },
-  {
-    id: 'custom:badminton',
-    name: 'Badminton',
-    source: 'custom',
-    family: 'cardio',
-    category: 'court sport',
-    level: 'intermediate',
-    equipment: 'court',
-    primaryMuscles: ['calves', 'quadriceps', 'glutes'],
-    secondaryMuscles: ['shoulders', 'abdominals', 'forearms'],
-    instructions: [
-      'Warm up before the first rally: the pre-court mobility block, then a few minutes of easy footwork and clears.',
-      'Split-step before each shot so lunges start from a loaded, balanced stance instead of a flat-footed reach.',
-      'Lunge with the knee tracking over the foot and the trunk braced; let the hips and glutes absorb the deep positions.',
-      'On overheads, rotate through the hips and mid-back rather than arching the lower back to reach the shuttle.',
-    ],
-    images: [`${import.meta.env.BASE_URL}exercises/badminton.png`],
-  },
-  {
     id: 'custom:stretch-video',
     name: '10-Minute Stretch Video',
     source: 'custom',
@@ -150,10 +114,6 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
 
 const CUSTOM_GUIDE_ALIASES: Record<string, string> = {
   'bird dogs': 'custom:bird-dog',
-  'basketball 30 minutes': 'custom:basketball',
-  'basketball 60 minutes': 'custom:basketball',
-  'badminton 30 minutes': 'custom:badminton',
-  'badminton 60 minutes': 'custom:badminton',
   '10 min stretch video': 'custom:stretch-video',
   'open book t spine': 'custom:open-book-t-spine',
 };
@@ -251,10 +211,6 @@ export function getExerciseGuideFamily(category: string, name = ''): ExerciseGui
   const normalizedCategory = normalizeExerciseName(category);
   const normalizedName = normalizeExerciseName(name);
 
-  if (/cardio|basketball|badminton/.test(`${normalizedCategory} ${normalizedName}`)) {
-    return 'cardio';
-  }
-
   if (/stretch|mobility|pose|warm up|cat cow|bird dog|fold/.test(`${normalizedCategory} ${normalizedName}`)) {
     return 'mobility';
   }
@@ -349,10 +305,6 @@ export function matchesExerciseGuide(guide: ExerciseGuide, query: string): boole
 export function getGuideMetaLabel(guide: ExerciseGuide): string {
   if (guide.primaryMuscles.length > 0) {
     return guide.primaryMuscles.map(toTitleCase).join(' · ');
-  }
-
-  if (guide.family === 'cardio') {
-    return 'Court cardio';
   }
 
   return guide.family === 'mobility' ? 'Mobility routine' : 'Saved workout';

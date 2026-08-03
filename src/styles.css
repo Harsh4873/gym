@@ -1435,85 +1435,6 @@ a:focus-visible {
   justify-self: start;
 }
 
-.cardio-logger {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid color-mix(in srgb, var(--chart-2) 22%, var(--color-border));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--chart-2) 8%, transparent);
-}
-
-.cardio-slider-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.cardio-slider-head span {
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.cardio-slider-head strong {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.cardio-minute-input {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.cardio-minute-input input {
-  width: 76px;
-  min-height: 38px;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-  font-family: var(--font-mono);
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.cardio-logger input[type='range'] {
-  width: 100%;
-  accent-color: var(--chart-2);
-}
-
-.cardio-quick-row {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-2);
-}
-
-.cardio-quick-row button {
-  min-height: 34px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  color: var(--color-text-secondary);
-  background: var(--color-surface);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-.cardio-quick-row button:hover,
-.cardio-quick-row button.active {
-  color: var(--color-text-primary);
-  border-color: var(--chart-2);
-  background: color-mix(in srgb, var(--chart-2) 14%, transparent);
-}
-
 .legacy-detail {
   display: block;
   font-size: 13px;
@@ -3609,10 +3530,6 @@ a:focus-visible {
     display: none;
   }
 
-  .cardio-quick-row button {
-    min-height: 44px;
-  }
-
   .last-sets-button {
     min-height: 44px;
   }
@@ -4224,7 +4141,6 @@ a:focus-visible {
   .exercise-copy > .last-sets-button,
   .exercise-copy > .current-set-summary,
   .exercise-copy > .exercise-name-editor,
-  .exercise-copy > .cardio-logger,
   .exercise-copy > .set-stack,
   .exercise-copy > .legacy-detail {
     grid-column: 1 / -1;
@@ -4331,10 +4247,6 @@ a:focus-visible {
   .set-add-button {
     width: 100%;
     min-height: 44px;
-  }
-
-  .cardio-logger {
-    padding: 12px;
   }
 
   .session-finish-bar {
@@ -4655,24 +4567,9 @@ a:focus-visible {
     font-size: 32px;
   }
 
-  .cardio-slider-head,
-  .cardio-minute-input {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .cardio-minute-input input {
-    width: 100%;
-    text-align: left;
-  }
-
   .settings-field,
   .program-name-row {
     grid-template-columns: 1fr;
-  }
-
-  .cardio-quick-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .program-workout-row {
