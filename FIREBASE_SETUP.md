@@ -8,8 +8,7 @@ Gym continues to work from local browser storage when Firebase is unavailable or
 2. Create a Cloud Firestore database in Native mode.
 3. Enable the Google provider in Firebase Authentication and choose a support email.
 4. Add the GitHub Pages hostname (`harsh4873.github.io`, unless the Pages host changes) to Authentication's authorized domains.
-5. Sign in once, find that Google account's Authentication UID, and replace `REPLACE_WITH_OWNER_UID` in `firestore.rules`.
-6. Deploy `firestore.rules` to the same project. `firebase.json` intentionally configures Firestore only; it does not move hosting away from GitHub Pages.
+5. Deploy `firestore.rules` to the same project. `firebase.json` intentionally configures Firestore only; it does not move hosting away from GitHub Pages.
 
 With the Firebase CLI authenticated and pointed at the project, the rules-only deploy is:
 
@@ -17,14 +16,13 @@ With the Firebase CLI authenticated and pointed at the project, the rules-only d
 firebase deploy --only firestore:rules
 ```
 
-The rules are owner-only because this is a personal app on a public origin. Never put a service-account key or Firebase Admin credential in this repository or in Vite variables.
+The rules allow any verified Google account to access only its own `users/{uid}` documents. Never put a service-account key or Firebase Admin credential in this repository or in Vite variables.
 
 ## Local configuration
 
 Copy `.env.example` to `.env.local` and fill in the six fields from the Firebase Web app configuration:
 
 ```text
-VITE_FIREBASE_LOGIN_HINT
 VITE_FIREBASE_API_KEY
 VITE_FIREBASE_AUTH_DOMAIN
 VITE_FIREBASE_PROJECT_ID
