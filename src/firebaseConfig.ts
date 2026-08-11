@@ -18,3 +18,12 @@ const requiredConfigKeys = [
 
 export const missingFirebaseConfigKeys = requiredConfigKeys.filter((key) => !firebaseConfig[key]);
 export const isFirebaseConfigured = missingFirebaseConfigKeys.length === 0;
+
+/**
+ * Some values were baked into this build and some were not. The build was meant
+ * to sync and cannot, so the app must say so instead of quietly falling back to
+ * local-only storage. A build with no Firebase values at all is a deliberate
+ * local-only build and stays quiet.
+ */
+export const isFirebaseMisconfigured = missingFirebaseConfigKeys.length > 0
+  && missingFirebaseConfigKeys.length < requiredConfigKeys.length;

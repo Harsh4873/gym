@@ -839,7 +839,9 @@ function StatusPill({ status }: { status: DayStatus }) {
 }
 
 function SyncStatusIndicator({ sync, compact = false }: { sync: GymSyncController; compact?: boolean }) {
-  const effectiveStatus: GymSyncStatus = sync.configured ? sync.status : 'local';
+  // A build that shipped a partial Firebase configuration must not read as a
+  // deliberate local-only build.
+  const effectiveStatus: GymSyncStatus = sync.configured || sync.misconfigured ? sync.status : 'local';
   const Icon = effectiveStatus === 'synced'
     ? Cloud
     : effectiveStatus === 'connecting' || effectiveStatus === 'syncing'
@@ -3310,9 +3312,13 @@ function SettingsView({
             <h3>Firebase sync</h3>
           </div>
           {!sync.configured ? (
-            <p>
-              This build is safely using local storage. Add the Firebase repository variables to turn on private cross-device sync.
-            </p>
+            // A misconfigured build already reports itself through sync.error
+            // below, so it must not also claim local storage was the intent.
+            sync.misconfigured ? null : (
+              <p>
+                This build is safely using local storage. Add the Firebase repository variables to turn on private cross-device sync.
+              </p>
+            )
           ) : sync.user ? (
             <>
               <div className="sync-account">

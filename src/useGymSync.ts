@@ -1,7 +1,11 @@
 import type { User } from 'firebase/auth';
 import type { Dispatch, SetStateAction } from 'react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { isFirebaseConfigured } from './firebaseConfig';
+import {
+  isFirebaseConfigured,
+  isFirebaseMisconfigured,
+  missingFirebaseConfigKeys,
+} from './firebaseConfig';
 import type {
   CloudGymCore,
   CloudWorkoutDocument,
@@ -46,6 +50,8 @@ interface UseGymSyncOptions {
 
 export interface GymSyncController {
   configured: boolean;
+  /** This build shipped a partial Firebase configuration and cannot sync. */
+  misconfigured: boolean;
   user: GymSyncUser | null;
   status: GymSyncStatus;
   error: string | null;
@@ -148,6 +154,44 @@ function saveSyncMetadata(metadata: SyncMetadata): void {
   }
 }
 
+/**
+ * The shared ruleset grants access only to a verified account that signed in
+ * through Google. Checking here means the user reads why sync stopped instead
+ * of a raw "Missing or insufficient permissions." from Firestore.
+ */
+function isVerifiedGoogleUser(user: User): boolean {
+  return user.emailVerified
+    && user.providerData.some(({ providerId }) => providerId === 'google.com');
+}
+
+function unverifiedGoogleMessage(user: User): string {
+  return user.providerData.some(({ providerId }) => providerId === 'google.com')
+    ? 'Verify this Google account’s email address, then sign in again to sync Gym.'
+    : 'Gym syncs only with a Google account. Sign out, then sign in with Google.';
+}
+
+function misconfiguredBuildMessage(): string {
+  return 'Cross-device sync is off: this build shipped without '
+    + `${missingFirebaseConfigKeys.join(', ')}. Workouts are still saved on this device. `
+    + 'Set the missing repository variables and deploy again to turn sync back on.';
+}
+
+function describeSyncFailure(reason: unknown): string {
+  const code = typeof reason === 'object' && reason && 'code' in reason
+    ? String((reason as { code: unknown }).code)
+    : '';
+  if (code.includes('permission-denied')) {
+    return 'This account cannot reach its private Gym data. Sign out, then sign in again with a verified Google account.';
+  }
+  if (code.includes('unauthenticated')) return 'Your Google session expired. Sign in again to resume syncing.';
+  if (code.includes('unavailable') || code.includes('network-request-failed')) {
+    return 'Gym cannot reach the cloud right now. Workouts stay on this device and sync when the connection returns.';
+  }
+  if (code.includes('popup-closed-by-user')) return 'Sign-in was cancelled. Your workouts are unchanged.';
+  if (code.includes('popup-blocked')) return 'Allow the Google sign-in window, then try again.';
+  return reason instanceof Error ? reason.message : 'Firebase sync failed.';
+}
+
 function publicUser(user: User): GymSyncUser {
   return {
     uid: user.uid,
@@ -165,7 +209,12 @@ function coreTimestamp(value: string | undefined, valueMs: number | undefined): 
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function timestampAfter(...values: Array<number | string | undefined>): string {
+/**
+ * Returns a stamp strictly newer than every reading supplied, so a local change
+ * cannot be permanently outranked by a device whose clock runs fast. Exported
+ * for the merge tests; the behaviour is unchanged.
+ */
+export function timestampAfter(...values: Array<number | string | undefined>): string {
   const newest = values.reduce<number>((current, value) => {
     const parsed = typeof value === 'number' ? value : value ? Date.parse(value) : NaN;
     return Number.isFinite(parsed) ? Math.max(current, parsed + 1) : current;
@@ -195,8 +244,11 @@ export function useGymSync({
   setPreferences,
 }: UseGymSyncOptions): GymSyncController {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [status, setStatus] = useState<GymSyncStatus>(isFirebaseConfigured ? 'connecting' : 'local');
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<GymSyncStatus>(() => {
+    if (isFirebaseMisconfigured) return 'error';
+    return isFirebaseConfigured ? 'connecting' : 'local';
+  });
+  const [error, setError] = useState<string | null>(isFirebaseMisconfigured ? misconfiguredBuildMessage() : null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const [initialMetadata] = useState(() => loadSyncMetadata(program, preferences));
@@ -228,8 +280,7 @@ export function useGymSync({
   }, []);
 
   const reportError = (reason: unknown) => {
-    const message = reason instanceof Error ? reason.message : 'Firebase sync failed.';
-    setError(message);
+    setError(describeSyncFailure(reason));
     setStatus('error');
   };
 
@@ -664,7 +715,14 @@ export function useGymSync({
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
-      setStatus('local');
+      // A partial configuration means this build was meant to sync. Keep the
+      // error visible rather than pretending local-only was the intent.
+      if (isFirebaseMisconfigured) {
+        setStatus('error');
+        setError(misconfiguredBuildMessage());
+      } else {
+        setStatus('local');
+      }
       return undefined;
     }
 
@@ -723,6 +781,10 @@ export function useGymSync({
     ) => {
       setStatus('connecting');
       setError(null);
+      if (!isVerifiedGoogleUser(user)) {
+        reportError(new Error(unverifiedGoogleMessage(user)));
+        return;
+      }
       const linkedAccountUid = metadataRef.current.accountUid;
       if (linkedAccountUid && linkedAccountUid !== user.uid) {
         reportError(new Error('This device is linked to a different Google account. Sign out and use the linked account.'));
@@ -882,6 +944,7 @@ export function useGymSync({
 
   return {
     configured: isFirebaseConfigured,
+    misconfigured: isFirebaseMisconfigured,
     user: firebaseUser ? publicUser(firebaseUser) : null,
     status,
     error,

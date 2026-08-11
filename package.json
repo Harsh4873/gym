@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run --passWithNoTests --exclude tests/firestore.rules.test.ts",
+    "test": "vitest run --exclude tests/firestore.rules.test.ts",
     "test:rules": "npx --yes firebase-tools emulators:exec --project demo-gym --only firestore \"vitest run tests/firestore.rules.test.ts --testTimeout=60000\"",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"

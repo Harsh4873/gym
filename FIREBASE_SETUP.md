@@ -31,11 +31,28 @@ VITE_FIREBASE_MESSAGING_SENDER_ID
 VITE_FIREBASE_APP_ID
 ```
 
-Firebase Web configuration is embedded in the browser bundle and is not a secret. Authentication and `firestore.rules` are the security boundary.
+Firebase Web configuration is embedded in the browser bundle and is not a secret — it is an app identifier, not a credential, and it must be readable in the shipped bundle for sign-in to work at all. Actions *variables* are therefore the right home for it; Actions *secrets* would be masked in logs while still ending up verbatim in the public bundle, buying nothing and making a misconfiguration harder to diagnose. Authentication and `firestore.rules` are the security boundary.
 
 ## GitHub Pages configuration
 
-Create matching GitHub Actions variables in the repository or the `github-pages` environment. The Pages workflow maps them into the Vite build. If they are missing, the build still succeeds and Gym stays local-only.
+Create matching GitHub Actions variables in the repository or the `github-pages` environment. The Pages workflow maps them into the Vite build.
+
+**A production build fails when any of the six values is missing.** Gym bakes its
+Firebase configuration in at build time, so an incomplete build silently ships an
+app that can never sync: the user signs in, sees no error, and gets no sync. The
+build refuses to produce that bundle instead.
+
+- A *partial* configuration always fails. It is never intentional.
+- A *completely absent* configuration fails too, unless the build explicitly asks
+  for a local-only bundle:
+
+  ```sh
+  GYM_ALLOW_LOCAL_ONLY_BUILD=1 npm run build
+  ```
+
+If a bundle somehow ships with a partial configuration anyway, the app reports it
+in the sync panel and the status pill reads "Sync error" rather than quietly
+claiming local-only mode was the intent.
 
 No composite Firestore indexes are required. Optional hardening after sync is working includes App Check and Firebase budget/quota alerts.
 
