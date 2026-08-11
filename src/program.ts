@@ -81,117 +81,24 @@ function buildWorkoutBlock(
 }
 
 /**
- * Monday to Thursday are two blocks: the gym work, then a stretching session.
- * Court sports are played but not tracked here. Friday to Sunday are single
- * sessions.
+ * A new install starts with an empty week. Nobody else's training split is
+ * compiled into the app: your own program is restored from this device, or
+ * from your account once you sign in, and the weekly template editor in
+ * Settings is where you build one.
+ *
+ * SHIPPED_DEFAULT_PROGRAM_V3..V7 below stay populated on purpose — they are
+ * the signature tables `reconcileProgramWithDefaults` uses to recognise
+ * entries that older versions shipped, so devices that already store them are
+ * migrated instead of stranded.
  */
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
-  Monday: [
-    ...buildWorkoutBlock(1, 'Chest and triceps', [
-      { slot: 15, name: 'Machine Chest Press', target: HYPERTROPHY_TARGET },
-      { slot: 20, name: 'Tricep Superset', target: HYPERTROPHY_TARGET },
-      { slot: 4, name: 'Incline Dumbbell Press', target: HYPERTROPHY_TARGET },
-      { slot: 17, name: 'Overhead Triceps Extension', target: HYPERTROPHY_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Stretching', [
-      { slot: 19, name: 'Standing Biceps Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 21, name: 'Doorway Chest Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 22, name: 'Cross-Body Shoulder Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 23, name: 'Lat Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 24, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 25, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 26, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 27, name: "World's Greatest Stretch", kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 28, name: 'Reverse Lunges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 29, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 6, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 7, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    ]),
-  ],
-  Tuesday: [
-    ...buildWorkoutBlock(1, 'Workout 1 · Biceps, shoulders and abs', [
-      { slot: 1, name: 'Incline Bicep Curls', target: HYPERTROPHY_TARGET },
-      { slot: 2, name: 'Ab Machine' },
-      { slot: 12, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
-      { slot: 4, name: 'Back Extensions + Incline Sit-Ups' },
-      { slot: 3, name: 'Face-Away Cable Curls', target: HYPERTROPHY_TARGET },
-      { slot: 13, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
-      { slot: 14, name: 'Rear Delt Fly', target: HYPERTROPHY_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Workout 2 · Stretching', [
-      { slot: 17, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 18, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 19, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 20, name: "World's Greatest Stretch", kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 21, name: 'Reverse Lunges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 22, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 16, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 23, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    ]),
-  ],
-  Wednesday: [
-    ...buildWorkoutBlock(1, 'Chest and triceps', [
-      { slot: 23, name: 'Flat Bench Press', target: STRENGTH_TARGET },
-      { slot: 19, name: 'Incline Dumbbell Press', target: STRENGTH_TARGET },
-      { slot: 20, name: 'Dips', target: STRENGTH_TARGET },
-      { slot: 24, name: 'Skullcrushers', target: STRENGTH_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Stretching', [
-      { slot: 25, name: 'Standing Biceps Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 26, name: 'Doorway Chest Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 27, name: 'Cross-Body Shoulder Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 28, name: 'Lat Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 29, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 30, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 31, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 32, name: "World's Greatest Stretch", kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 33, name: 'Reverse Lunges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 34, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 7, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 8, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    ]),
-  ],
-  Thursday: [
-    ...buildWorkoutBlock(1, 'Workout 1 · Shoulders, arms and abs', [
-      { slot: 11, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
-      { slot: 12, name: 'Face Pulls', target: STRENGTH_TARGET },
-      { slot: 5, name: 'Ab Machine' },
-      { slot: 13, name: 'EZ Bar Curls + Concentration Curls', target: STRENGTH_TARGET },
-      { slot: 7, name: 'Leg Raises' },
-      { slot: 14, name: 'Preacher Curl', target: STRENGTH_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Workout 2 · Stretching', [
-      { slot: 16, name: 'Cat-Cow', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 17, name: 'Bird Dogs', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 18, name: 'Glute Bridges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 19, name: "World's Greatest Stretch", kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 20, name: 'Reverse Lunges', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 21, name: 'Lateral Band Walks', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 15, name: 'Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-      { slot: 22, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    ]),
-  ],
-  Friday: buildWorkoutBlock(1, 'Legs and back only', [
-    { slot: 18, name: 'Hack Squat', target: STRENGTH_TARGET },
-    { slot: 2, name: 'Lat Pulldown', target: STRENGTH_TARGET },
-    { slot: 13, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
-    { slot: 1, name: 'Low Row', target: STRENGTH_TARGET },
-    { slot: 19, name: 'Leg Curl', target: STRENGTH_TARGET },
-    { slot: 20, name: 'Bulgarian Split Squat', target: LOWER_BODY_TARGET },
-    { slot: 11, name: 'Seated Calf Raise', target: CALF_TARGET },
-  ]),
-  Saturday: buildWorkoutBlock(1, 'Push-ups and abs', [
-    { slot: 3, name: 'Push-Ups', target: { sets: 5, repMin: 20, repMax: 20, restSeconds: 60 } },
-    { slot: 4, name: '10-Minute Ab Workout', kind: 'mobility', target: MOBILITY_TARGET },
-  ]),
-  Sunday: buildWorkoutBlock(1, '10-minute stretch and home mobility', [
-    { slot: 20, name: '10-Minute Stretch Video', kind: 'mobility', target: MOBILITY_TARGET },
-    { slot: 21, name: 'Half-Kneeling Hip Flexor Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    { slot: 12, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    { slot: 10, name: 'Standing Hamstring Stretch with Heel Elevated', kind: 'mobility', target: MOBILITY_TARGET },
-    { slot: 8, name: 'Wall Calf Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-    { slot: 15, name: 'Open-Book T-Spine Stretch', kind: 'mobility', target: MOBILITY_TARGET },
-  ]),
+  Monday: [],
+  Tuesday: [],
+  Wednesday: [],
+  Thursday: [],
+  Friday: [],
+  Saturday: [],
+  Sunday: [],
 };
 
 /**
