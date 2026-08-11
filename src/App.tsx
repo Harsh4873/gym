@@ -546,6 +546,15 @@ function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay): LogsB
       return loadedLogs;
     }
 
+    // A device with no stored logs has nothing to migrate. Writing a log for
+    // today anyway would stamp a brand-new install with the current time, and
+    // that freshly stamped empty day can beat the real one in the account on
+    // the next sign-in. Mark the rollout done and leave storage untouched.
+    if (Object.keys(loadedLogs).length === 0) {
+      window.localStorage.setItem(WEEKLY_PLAN_ROLLOUT_STORAGE_KEY, todayKey);
+      return loadedLogs;
+    }
+
     const currentLog = normalizeLog(todayKey, loadedLogs[todayKey]);
     const todayExercises = cloneExercises(getProgramExercisesForDate(todayKey, program));
     const validExerciseIds = new Set(todayExercises.map((exercise) => exercise.id));
