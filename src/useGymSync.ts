@@ -13,6 +13,7 @@ import type {
   GymSyncRepository,
 } from './gymSync';
 import { normalizeLog, normalizePreferences, normalizeProgram } from './storage';
+import { syncAccountProblem, type SyncAccountProblem } from './sync-account';
 import type { LogsByDate, Preferences, ProgramByDay } from './types';
 
 const SYNC_META_STORAGE_KEY = 'harsh-gym-sync-meta-v1';
@@ -159,15 +160,25 @@ function saveSyncMetadata(metadata: SyncMetadata): void {
  * through Google. Checking here means the user reads why sync stopped instead
  * of a raw "Missing or insufficient permissions." from Firestore.
  */
-function isVerifiedGoogleUser(user: User): boolean {
-  return user.emailVerified
-    && user.providerData.some(({ providerId }) => providerId === 'google.com');
+function accountProblemMessage(problem: SyncAccountProblem): string {
+  if (problem === 'missing-email') return 'Use a Google account with an email address to sync Gym.';
+  if (problem === 'unverified-email') return 'Verify this Google account’s email address, then sign in again to sync Gym.';
+  return 'Gym syncs only sessions signed in with Google. Sign out, then sign in with Google.';
 }
 
-function unverifiedGoogleMessage(user: User): string {
-  return user.providerData.some(({ providerId }) => providerId === 'google.com')
-    ? 'Verify this Google account’s email address, then sign in again to sync Gym.'
-    : 'Gym syncs only with a Google account. Sign out, then sign in with Google.';
+async function describeAccountProblem(user: User): Promise<string | null> {
+  let signInProvider: string | null | undefined;
+  try {
+    signInProvider = (await user.getIdTokenResult()).signInProvider ?? null;
+  } catch {
+    signInProvider = undefined;
+  }
+  const problem = syncAccountProblem({
+    email: user.email,
+    emailVerified: user.emailVerified,
+    signInProvider,
+  });
+  return problem ? accountProblemMessage(problem) : null;
 }
 
 function misconfiguredBuildMessage(): string {
@@ -781,8 +792,10 @@ export function useGymSync({
     ) => {
       setStatus('connecting');
       setError(null);
-      if (!isVerifiedGoogleUser(user)) {
-        reportError(new Error(unverifiedGoogleMessage(user)));
+      const accountProblem = await describeAccountProblem(user);
+      if (!isCurrentConnection(revision, generation)) return;
+      if (accountProblem) {
+        reportError(new Error(accountProblem));
         return;
       }
       const linkedAccountUid = metadataRef.current.accountUid;
