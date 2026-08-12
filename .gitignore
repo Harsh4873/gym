@@ -3,4 +3,5 @@ dist
 .DS_Store
 *.local
 coverage
+firestore-debug.log
 AGENTS.md

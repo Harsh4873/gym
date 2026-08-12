@@ -21,10 +21,12 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import { firebaseConfig, isFirebaseConfigured } from './firebaseConfig';
+import { OWNER_VAULT_APP_NAME, adoptSharedAuthSession } from './owner-vault';
 
 export { isFirebaseConfigured, missingFirebaseConfigKeys } from './firebaseConfig';
 
-const FIREBASE_APP_NAME = 'gym';
+const FIREBASE_APP_NAME = OWNER_VAULT_APP_NAME;
+const LEGACY_APP_NAMES = ['gym'] as const;
 
 export interface FirebaseServices {
   app: FirebaseApp;
@@ -35,6 +37,7 @@ export interface FirebaseServices {
 let servicesPromise: Promise<FirebaseServices | null> | undefined;
 
 function getOrCreateApp(): FirebaseApp {
+  adoptSharedAuthSession(firebaseConfig.apiKey, LEGACY_APP_NAMES);
   const existingApp = getApps().find((app) => app.name === FIREBASE_APP_NAME);
   return existingApp ?? initializeApp(firebaseConfig, FIREBASE_APP_NAME);
 }

@@ -12,7 +12,7 @@ Gym is a private, local-first strength-training log published at `harsh.bet/gym/
 
 ## Sync and privacy
 
-Data lives in the browser first for instant startup and offline use. Optional Google sign-in mirrors sessions across devices through the shared Firebase project; the local copy stays the primary read and write path. No analytics.
+Data lives in the browser first for instant startup and offline use. Optional Google sign-in resolves provisioned identities through the shared private owner vault, so either approved account reaches the same sessions while unprovisioned accounts fail closed; the local copy stays the primary read and write path. No analytics.
 
 ## Development
 

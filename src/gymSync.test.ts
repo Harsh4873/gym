@@ -5,7 +5,11 @@ import {
   createWorkoutTombstoneCandidate,
   type CloudWorkoutDocument,
 } from './gymSync';
-import { timestampAfter } from './useGymSync';
+import {
+  resolveOwnerVaultBinding,
+  shouldAdoptRemoteCore,
+  timestampAfter,
+} from './useGymSync';
 import { normalizeLog } from './storage';
 import type { WorkoutLog } from './types';
 
@@ -112,5 +116,31 @@ describe('clock skew defence', () => {
     const fastRemote = logDocument(LATER, 'fast-device');
     const bumped = tombstone(timestampAfter(EARLIER, fastRemote.updatedAtMs), 'slow-device');
     expect(chooseNewestWorkoutDocument(fastRemote, bumped)).toBe(bumped);
+  });
+});
+
+describe('shared owner-vault binding', () => {
+  it('adopts a legacy baseline only for the currently authenticated legacy owner', () => {
+    expect(resolveOwnerVaultBinding('legacy-primary', 'legacy-primary', 'shared-vault')).toBe('adopt-legacy');
+  });
+
+  it('keeps an existing shared-vault baseline and accepts a fresh browser', () => {
+    expect(resolveOwnerVaultBinding('shared-vault', 'legacy-primary', 'shared-vault')).toBe('ready');
+    expect(resolveOwnerVaultBinding(undefined, 'legacy-primary', 'shared-vault')).toBe('ready');
+  });
+
+  it('rejects a browser baseline owned by a different legacy account', () => {
+    expect(resolveOwnerVaultBinding('legacy-secondary', 'legacy-primary', 'shared-vault')).toBe('reject');
+  });
+
+  it('never lets a newly timestamped default replace meaningful vault settings', () => {
+    expect(shouldAdoptRemoteCore(true, true, 100, 10_000)).toBe(true);
+    expect(shouldAdoptRemoteCore(true, false, 100, 10_000)).toBe(true);
+  });
+
+  it('uses timestamps for real edits within the same vault', () => {
+    expect(shouldAdoptRemoteCore(false, true, 10_000, 100)).toBe(true);
+    expect(shouldAdoptRemoteCore(false, true, 100, 10_000)).toBe(false);
+    expect(shouldAdoptRemoteCore(false, false, 10_000, 100)).toBe(false);
   });
 });

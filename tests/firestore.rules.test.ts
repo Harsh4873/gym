@@ -7,7 +7,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import { readFile } from 'node:fs/promises';
 import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
-import { afterAll, afterEach, beforeAll, describe, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 
 const PROJECT_ID = 'demo-gym';
 const OWNER_UID = 'gym-user';
@@ -50,10 +50,21 @@ describe.skipIf(!EMULATOR_ADDRESS)('Gym Firestore security rules', () => {
     });
   });
 
+  beforeEach(async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'owner_vault_members', OWNER_UID), {
+        vaultId: OWNER_UID,
+        schemaVersion: 1,
+        status: 'active',
+        legacyWritesEnabled: false,
+      });
+    });
+  });
+
   afterEach(async () => environment.clearFirestore());
   afterAll(async () => environment.cleanup());
 
-  it('allows any verified Google account to use only its own Gym workspace', async () => {
+  it('allows only a provisioned verified Google account to use its Gym vault', async () => {
     const first = verifiedGoogleContext(environment).firestore();
     const secondUid = 'second-gym-user';
     const second = verifiedGoogleContext(environment, secondUid, {
@@ -62,8 +73,8 @@ describe.skipIf(!EMULATOR_ADDRESS)('Gym Firestore security rules', () => {
 
     await assertSucceeds(setDoc(doc(first, 'users', OWNER_UID, 'gym', 'core'), { schemaVersion: 1 }));
     await assertSucceeds(setDoc(doc(first, 'users', OWNER_UID, 'logs', '2026-08-07'), validLog()));
-    await assertSucceeds(setDoc(doc(second, 'users', secondUid, 'gym', 'core'), { schemaVersion: 1 }));
-    await assertSucceeds(getDoc(doc(second, 'users', secondUid, 'gym', 'core')));
+    await assertFails(setDoc(doc(second, 'users', secondUid, 'gym', 'core'), { schemaVersion: 1 }));
+    await assertFails(getDoc(doc(second, 'users', secondUid, 'gym', 'core')));
     await assertFails(getDoc(doc(second, 'users', OWNER_UID, 'gym', 'core')));
   });
 

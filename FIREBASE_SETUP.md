@@ -16,7 +16,7 @@ With the Firebase CLI authenticated and pointed at the project, the rules-only d
 firebase deploy --only firestore:rules
 ```
 
-The rules allow any verified Google account to access only its own `users/{uid}` documents. Never put a service-account key or Firebase Admin credential in this repository or in Vite variables.
+The rules allow only a provisioned verified-Google identity to resolve the private owner membership and access `users/{vaultId}`. The two approved identities share that vault; unprovisioned accounts fail closed. Never put a service-account key or Firebase Admin credential in this repository or in Vite variables.
 
 ## Local configuration
 

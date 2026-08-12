@@ -14,6 +14,7 @@ import type {
 } from './gymSync';
 import { normalizeLog, normalizePreferences, normalizeProgram } from './storage';
 import { syncAccountProblem, type SyncAccountProblem } from './sync-account';
+import { resolveOwnerVault } from './owner-vault';
 import type { LogsByDate, Preferences, ProgramByDay } from './types';
 
 const SYNC_META_STORAGE_KEY = 'harsh-gym-sync-meta-v1';
@@ -62,6 +63,33 @@ export interface GymSyncController {
   retry: () => void;
   markLogDeleted: (dateKey: string) => void;
   prepareImportedLogs: (dateKeys: string[]) => string;
+}
+
+export type OwnerVaultBinding = 'ready' | 'adopt-legacy' | 'reject';
+
+/**
+ * A pre-vault browser records the Firebase UID that owned its local merge
+ * baseline. It may be relabelled to the shared vault only while that exact
+ * legacy user is the authenticated, provisioned member. This preserves the
+ * owner's existing workouts without silently importing data from an unrelated
+ * account that once used the same browser.
+ */
+export function resolveOwnerVaultBinding(
+  linkedAccountUid: string | undefined,
+  authenticatedUid: string,
+  vaultId: string,
+): OwnerVaultBinding {
+  if (!linkedAccountUid || linkedAccountUid === vaultId) return 'ready';
+  return linkedAccountUid === authenticatedUid ? 'adopt-legacy' : 'reject';
+}
+
+export function shouldAdoptRemoteCore(
+  localIsDefault: boolean,
+  sameVault: boolean,
+  remoteUpdatedAtMs: number,
+  localUpdatedAtMs: number,
+): boolean {
+  return localIsDefault || (sameVault && remoteUpdatedAtMs >= localUpdatedAtMs);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -390,7 +418,12 @@ export function useGymSync({
       if (remoteProgramTime >= localProgramTime) {
         programUpdatedAt = timestampAfter(metadata.programUpdatedAt, remoteProgramTime);
       }
-    } else if (remoteProgram && (sameAccount ? remoteProgramTime >= localProgramTime : localProgramIsDefault)) {
+    } else if (remoteProgram && shouldAdoptRemoteCore(
+      localProgramIsDefault,
+      sameAccount,
+      remoteProgramTime,
+      localProgramTime,
+    )) {
       nextProgram = remoteProgram;
       programUpdatedAt = normalizeTimestamp(state.core?.programUpdatedAt);
     }
@@ -421,8 +454,13 @@ export function useGymSync({
         preferencesUpdatedAt = timestampAfter(metadata.preferencesUpdatedAt, remotePreferencesTime);
       }
     } else if (
-      remotePreferences &&
-      (sameAccount ? remotePreferencesTime >= localPreferencesTime : localPreferencesAreDefault)
+      remotePreferences
+      && shouldAdoptRemoteCore(
+        localPreferencesAreDefault,
+        sameAccount,
+        remotePreferencesTime,
+        localPreferencesTime,
+      )
     ) {
       nextPreferences = remotePreferences;
       preferencesUpdatedAt = normalizeTimestamp(state.core?.preferencesUpdatedAt);
@@ -798,19 +836,29 @@ export function useGymSync({
         reportError(new Error(accountProblem));
         return;
       }
+      const services = await import('./firebase').then((module) => module.getFirebaseServices());
+      if (!services || !isCurrentConnection(revision, generation)) return;
+      const membership = await resolveOwnerVault(services.db, user);
+      if (!isCurrentConnection(revision, generation)) return;
+      const vaultId = membership.vaultId;
       const linkedAccountUid = metadataRef.current.accountUid;
-      if (linkedAccountUid && linkedAccountUid !== user.uid) {
-        reportError(new Error('This device is linked to a different Google account. Sign out and use the linked account.'));
+      const binding = resolveOwnerVaultBinding(linkedAccountUid, user.uid, vaultId);
+      if (binding === 'reject') {
+        reportError(new Error('This device is linked to a different owner vault. Its local data was not uploaded.'));
         return;
       }
+      if (binding === 'adopt-legacy') {
+        metadataRef.current = { ...metadataRef.current, accountUid: vaultId };
+        saveSyncMetadata(metadataRef.current);
+      }
 
-      const repository = await syncModule.createGymSyncRepository(user.uid);
+      const repository = await syncModule.createGymSyncRepository(vaultId);
       if (!repository || !isCurrentConnection(revision, generation)) {
         return;
       }
       repositoryRef.current = repository;
       const connectionUnsubscribe = repository.subscribe(
-        (state) => handleCloudSnapshot(state, user.uid, repository, revision, generation),
+        (state) => handleCloudSnapshot(state, vaultId, repository, revision, generation),
         (reason) => {
           if (isCurrentConnection(revision, generation, repository)) {
             reportError(reason);
