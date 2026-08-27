@@ -1,5 +1,32 @@
 import type { Exercise, ExerciseKind, ExerciseTarget, Weekday } from './types';
 
+/**
+ * External schedule blocks represent activities from external schedulers
+ * (e.g. Google Calendar) that appear in the day overview alongside Cursor's
+ * workout blocks. These are never logged as exercises — they simply appear
+ * in the schedule summary.
+ */
+export interface ExternalBlock {
+  /** The scheduler or owner that manages this block (e.g. "Sch" for Scheduler). */
+  owner: string;
+  /** Display label for this block (e.g. "Basketball"). */
+  label: string;
+  /** Ordering index within the day; lower values appear first. */
+  order: number;
+}
+
+/**
+ * External blocks for each weekday. Mon-Thu have basketball from the external
+ * scheduler; Fri-Sun have no external blocks. These appear in the day overview
+ * before Cursor's workout blocks.
+ */
+export const EXTERNAL_BLOCKS: Partial<Record<Weekday, ExternalBlock[]>> = {
+  Monday: [{ owner: 'Sch', label: 'Basketball', order: 0 }],
+  Tuesday: [{ owner: 'Sch', label: 'Basketball', order: 0 }],
+  Wednesday: [{ owner: 'Sch', label: 'Basketball', order: 0 }],
+  Thursday: [{ owner: 'Sch', label: 'Basketball', order: 0 }],
+};
+
 export const WEEK_DAYS: Weekday[] = [
   'Monday',
   'Tuesday',

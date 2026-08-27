@@ -77,8 +77,10 @@ import {
 } from './exerciseLibrary';
 import {
   createDefaultExerciseTarget,
+  EXTERNAL_BLOCKS,
   inferExerciseKind,
   WEEK_DAYS,
+  type ExternalBlock,
 } from './program';
 import {
   createEmptyExerciseDetail,
@@ -495,6 +497,63 @@ function isExerciseDetailEmpty(detail?: ReturnType<typeof createEmptyExerciseDet
 
 function getExerciseKind(exercise: Exercise): ExerciseKind {
   return exercise.kind ?? inferExerciseKind(exercise.name);
+}
+
+interface ScheduleBlockEntry {
+  owner: string;
+  label: string;
+}
+
+interface DayScheduleBlock {
+  workoutBlock: 1 | 2;
+  entries: ScheduleBlockEntry[];
+}
+
+function getDayScheduleBlocks(weekday: Weekday, exercises: Exercise[]): DayScheduleBlock[] {
+  const externalBlocks = EXTERNAL_BLOCKS[weekday] ?? [];
+  const workoutBlocks = new Map<1 | 2, string>();
+
+  for (const exercise of exercises) {
+    const block = exercise.workoutBlock ?? 1;
+    if (exercise.workoutLabel && !workoutBlocks.has(block)) {
+      workoutBlocks.set(block, exercise.workoutLabel);
+    }
+  }
+
+  const scheduleBlocks: DayScheduleBlock[] = [];
+
+  if (externalBlocks.length > 0 || workoutBlocks.has(1)) {
+    const entries: ScheduleBlockEntry[] = [];
+
+    for (const ext of externalBlocks.sort((a, b) => a.order - b.order)) {
+      entries.push({ owner: ext.owner, label: ext.label });
+    }
+
+    const cursorLabel = workoutBlocks.get(1);
+    if (cursorLabel) {
+      entries.push({ owner: 'Cursor', label: cursorLabel });
+    }
+
+    if (entries.length > 0) {
+      scheduleBlocks.push({ workoutBlock: 1, entries });
+    }
+  }
+
+  const block2Label = workoutBlocks.get(2);
+  if (block2Label) {
+    scheduleBlocks.push({
+      workoutBlock: 2,
+      entries: [{ owner: 'Cursor', label: block2Label }],
+    });
+  }
+
+  return scheduleBlocks;
+}
+
+function formatScheduleBlockLabel(block: DayScheduleBlock): string {
+  return block.entries
+    .map((entry) => `${entry.label} (${entry.owner})`)
+    .join(' + ');
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -1733,6 +1792,12 @@ function WorkoutPanel({
             groupIndex === 0 || previousGroupFinished || workoutBlock !== previousWorkoutBlock
           );
           const workoutLabel = group.exercises[0]?.workoutLabel;
+          const weekday = getWeekday(parseDateKey(dateKey));
+          const scheduleBlocks = getDayScheduleBlocks(weekday, exercises);
+          const currentScheduleBlock = scheduleBlocks.find((b) => b.workoutBlock === workoutBlock);
+          const scheduleLabel = currentScheduleBlock
+            ? formatScheduleBlockLabel(currentScheduleBlock)
+            : workoutLabel;
 
           return (
             <Fragment key={group.id}>
@@ -1742,10 +1807,10 @@ function WorkoutPanel({
                   <strong>Completed</strong>
                 </div>
               )}
-              {startsWorkoutBlock && workoutLabel && (
+              {startsWorkoutBlock && scheduleLabel && (
                 <div className="workout-block-heading">
                   <span>{workoutBlock === 1 ? 'Start here' : 'Then'}</span>
-                  <strong>{workoutLabel}</strong>
+                  <strong>{scheduleLabel}</strong>
                 </div>
               )}
               <article
@@ -3042,13 +3107,20 @@ function SearchView({
               const startsWorkoutBlock = selectedDay !== 'all' && Boolean(entry.workoutLabel) && (
                 index === 0 || entry.workoutBlock !== previousEntry?.workoutBlock
               );
+              const scheduleBlocks = selectedDay !== 'all'
+                ? getDayScheduleBlocks(selectedDay, program[selectedDay])
+                : [];
+              const currentScheduleBlock = scheduleBlocks.find((b) => b.workoutBlock === (entry.workoutBlock ?? 1));
+              const scheduleLabel = currentScheduleBlock
+                ? formatScheduleBlockLabel(currentScheduleBlock)
+                : entry.workoutLabel;
 
               return (
                 <Fragment key={`saved-${guide.id}`}>
-                  {startsWorkoutBlock && (
+                  {startsWorkoutBlock && scheduleLabel && (
                     <div className="exercise-search-workout-heading">
                       <span>{entry.workoutBlock === 2 ? 'Then' : 'Start here'}</span>
-                      <strong>{entry.workoutLabel}</strong>
+                      <strong>{scheduleLabel}</strong>
                     </div>
                   )}
                   <ExerciseGuideCard
