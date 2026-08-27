@@ -154,14 +154,7 @@ export function listWorkoutSectionLabels(exercises: Array<{
  */
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Monday: [
-    ...buildWorkoutBlock(1, 'Lower Body Stretch', 1, [
-      { slot: 6, name: 'Hip Flexor Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 7, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 31, name: "Child's Pose", kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 26, name: 'Glute Bridge', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 32, name: 'Standing Hamstring Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Chest + Tris', 2, [
+    ...buildWorkoutBlock(1, 'Chest + Tris', 1, [
       { slot: 1, name: 'Bench', target: STRENGTH_TARGET },
       { slot: 4, name: 'Incline DB', target: HYPERTROPHY_TARGET },
       { slot: 15, name: 'Machine Chest', target: HYPERTROPHY_TARGET },
@@ -170,7 +163,7 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 17, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
       { slot: 30, name: 'Dips', target: STRENGTH_TARGET },
     ]),
-    ...stretchBlock(3, [
+    ...stretchBlock(2, [
       { slot: 24, name: 'Cat-Cow' },
       { slot: 25, name: 'Bird Dog' },
       { slot: 33, name: 'Hip Flexor Stretch' },
@@ -203,13 +196,7 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ]),
   ],
   Wednesday: [
-    ...buildWorkoutBlock(1, 'Upper Body Stretch', 1, [
-      { slot: 29, name: 'Cat-Cow', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 30, name: 'Bird Dog', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 16, name: 'Open-Book T-Spine', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-      { slot: 40, name: 'Shoulder Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Chest + Tris', 2, [
+    ...buildWorkoutBlock(1, 'Chest + Tris', 1, [
       { slot: 23, name: 'Bench', target: STRENGTH_TARGET },
       { slot: 19, name: 'Incline DB', target: HYPERTROPHY_TARGET },
       { slot: 35, name: 'Machine Chest', target: HYPERTROPHY_TARGET },
@@ -218,7 +205,7 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 38, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
       { slot: 20, name: 'Dips', target: STRENGTH_TARGET },
     ]),
-    ...stretchBlock(3, [
+    ...stretchBlock(2, [
       { slot: 41, name: 'Cat-Cow' },
       { slot: 42, name: 'Bird Dog' },
       { slot: 7, name: 'Hip Flexor Stretch' },
@@ -261,27 +248,11 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 14, name: 'Calf Raise', target: CALF_TARGET },
       { slot: 15, name: 'Back Extension', target: HYPERTROPHY_TARGET },
     ]),
-    ...stretchBlock(2, [
-      { slot: 21, name: 'Cat-Cow' },
-      { slot: 22, name: 'Bird Dog' },
-      { slot: 17, name: 'Hip Flexor Stretch' },
-      { slot: 23, name: 'Glute Bridge' },
-      { slot: 24, name: "Child's Pose" },
-      { slot: 25, name: 'Figure-4 Glute Stretch' },
-    ]),
   ],
   Saturday: [
     ...buildWorkoutBlock(1, 'Abs', 1, [
       { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
       { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-    ]),
-    ...stretchBlock(2, [
-      { slot: 9, name: 'Cat-Cow' },
-      { slot: 10, name: 'Bird Dog' },
-      { slot: 11, name: 'Hip Flexor Stretch' },
-      { slot: 12, name: 'Glute Bridge' },
-      { slot: 13, name: "Child's Pose" },
-      { slot: 14, name: 'Figure-4 Glute Stretch' },
     ]),
   ],
   Sunday: stretchBlock(1, [

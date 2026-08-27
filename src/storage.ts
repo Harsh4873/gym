@@ -27,7 +27,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 10;
+const PROGRAM_SCHEMA_VERSION = 11;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -728,8 +728,8 @@ export function loadProgram(): ProgramByDay {
         }
 
         // Versions 7 and 9 are intentional full weekly-plan resets. Later
-        // template updates, including v10, preserve personal additions and
-        // names while bringing untouched default exercises in sync.
+        // template updates, including v10 and v11, preserve personal additions
+        // and names while bringing untouched default exercises in sync.
         const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 9);
         saveProgram(migratedProgram);
         return migratedProgram;
