@@ -147,7 +147,7 @@ export function listWorkoutSectionLabels(exercises: Array<{
 }
 
 /**
- * SHIPPED_DEFAULT_PROGRAM_V3..V8 below stay populated on purpose — they are
+ * SHIPPED_DEFAULT_PROGRAM_V3..V9 below stay populated on purpose — they are
  * the signature tables `reconcileProgramWithDefaults` uses to recognise
  * entries that older versions shipped, so devices that already store them are
  * migrated instead of stranded.
@@ -183,8 +183,6 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ...buildWorkoutBlock(1, 'Abs', 1, [
       { slot: 2, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
       { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 11, name: 'Ab Rolls', target: HYPERTROPHY_TARGET },
-      { slot: 9, name: 'Dead Bug', target: HYPERTROPHY_TARGET },
     ]),
     ...buildWorkoutBlock(2, 'Back + Bis', 2, [
       { slot: 24, name: 'Lat Pulldown', target: STRENGTH_TARGET },
@@ -233,13 +231,12 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ...buildWorkoutBlock(1, 'Abs', 1, [
       { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
       { slot: 7, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 23, name: 'Ab Rolls', target: HYPERTROPHY_TARGET },
-      { slot: 24, name: 'Dead Bug', target: HYPERTROPHY_TARGET },
+      { slot: 23, name: 'Back Extension', target: HYPERTROPHY_TARGET },
+      { slot: 24, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
     ]),
     ...buildWorkoutBlock(2, 'Back + Bis', 2, [
       { slot: 25, name: 'Lat Pulldown', target: STRENGTH_TARGET },
       { slot: 26, name: 'Low Row', target: STRENGTH_TARGET },
-      { slot: 27, name: 'Single-Arm Row', target: STRENGTH_TARGET },
       { slot: 12, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
       { slot: 28, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
       { slot: 29, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
@@ -277,8 +274,6 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ...buildWorkoutBlock(1, 'Abs', 1, [
       { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
       { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 7, name: 'Ab Rolls', target: HYPERTROPHY_TARGET },
-      { slot: 8, name: 'Dead Bug', target: HYPERTROPHY_TARGET },
     ]),
     ...stretchBlock(2, [
       { slot: 9, name: 'Cat-Cow' },
@@ -702,12 +697,31 @@ const SHIPPED_DEFAULT_PROGRAM_V8: Record<Weekday, Record<number, string>> = {
   },
 };
 
+/**
+ * Slots the v9 follow-up changes. Retain the prior names in V8 so stored
+ * default exercises can be recognised and migrated, while these replacements
+ * keep Thursday's existing Abs slots stable.
+ */
+const SHIPPED_DEFAULT_PROGRAM_V9: Record<Weekday, Record<number, string>> = {
+  Monday: {},
+  Tuesday: {},
+  Wednesday: {},
+  Thursday: {
+    23: 'Back Extension',
+    24: 'Incline Sit-Ups',
+  },
+  Friday: {},
+  Saturday: {},
+  Sunday: {},
+};
+
 const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V4,
   SHIPPED_DEFAULT_PROGRAM_V5,
   SHIPPED_DEFAULT_PROGRAM_V6,
   SHIPPED_DEFAULT_PROGRAM_V7,
   SHIPPED_DEFAULT_PROGRAM_V8,
+  SHIPPED_DEFAULT_PROGRAM_V9,
 ];
 
 /**

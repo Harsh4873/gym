@@ -127,6 +127,7 @@ const LIBRARY_ALIASES: Record<string, string> = {
   'abs circuit': 'Air_Bike',
   'back extension': 'Hyperextensions_Back_Extensions',
   'back extensions incline sit ups': 'Hyperextensions_Back_Extensions',
+  'incline sit ups': 'Sit-Up',
   bench: 'Barbell_Bench_Press_-_Medium_Grip',
   'bicep stretch': 'Standing_Biceps_Stretch',
   'cable fly': 'Flat_Bench_Cable_Flyes',
