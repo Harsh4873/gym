@@ -1,4 +1,4 @@
-import type { Exercise, ExerciseKind, ExerciseTarget, Weekday } from './types';
+import type { Exercise, ExerciseKind, ExerciseTarget, ExternalBlock, Weekday } from './types';
 
 export const WEEK_DAYS: Weekday[] = [
   'Monday',
@@ -62,6 +62,8 @@ interface ProgramEntry {
   target?: ExerciseTarget;
   workoutBlock?: 1 | 2;
   workoutLabel?: string;
+  /** Order of this block among all blocks (including external) for the day. */
+  blockOrder?: number;
 }
 
 const CALF_TARGET: ExerciseTarget = { sets: 2, repMin: 15, repMax: 20, restSeconds: 60 };
@@ -75,30 +77,179 @@ const STRENGTH_TARGET: ExerciseTarget = { sets: 4, repMin: 6, repMax: 10, restSe
 function buildWorkoutBlock(
   workoutBlock: 1 | 2,
   workoutLabel: string,
-  entries: Array<Omit<ProgramEntry, 'workoutBlock' | 'workoutLabel'>>,
+  blockOrder: number,
+  entries: Array<Omit<ProgramEntry, 'workoutBlock' | 'workoutLabel' | 'blockOrder'>>,
 ): ProgramEntry[] {
-  return entries.map((entry) => ({ ...entry, workoutBlock, workoutLabel }));
+  return entries.map((entry) => ({ ...entry, workoutBlock, workoutLabel, blockOrder }));
+}
+
+const DAILY_STRETCH_TARGET: ExerciseTarget = { sets: 1, restSeconds: 0 };
+
+function stretchBlock(
+  blockOrder: number,
+  entries: Array<{ slot: number; name: string }>,
+): ProgramEntry[] {
+  return entries.map(({ slot, name }) => ({
+    slot,
+    name,
+    kind: 'mobility' as ExerciseKind,
+    target: DAILY_STRETCH_TARGET,
+    workoutLabel: 'Stretch',
+    blockOrder,
+  }));
 }
 
 /**
- * A new install starts with an empty week. Nobody else's training split is
- * compiled into the app: your own program is restored from this device, or
- * from your account once you sign in, and the weekly template editor in
- * Settings is where you build one.
- *
- * SHIPPED_DEFAULT_PROGRAM_V3..V7 below stay populated on purpose — they are
+ * SHIPPED_DEFAULT_PROGRAM_V3..V8 below stay populated on purpose — they are
  * the signature tables `reconcileProgramWithDefaults` uses to recognise
  * entries that older versions shipped, so devices that already store them are
  * migrated instead of stranded.
  */
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
-  Monday: [],
-  Tuesday: [],
-  Wednesday: [],
-  Thursday: [],
-  Friday: [],
-  Saturday: [],
-  Sunday: [],
+  Monday: [
+    ...buildWorkoutBlock(1, 'Lower Body Stretch', 1, [
+      { slot: 6, name: 'Hip Flexor Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 7, name: 'Figure-4 Glute Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 31, name: "Child's Pose", kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 26, name: 'Glute Bridge', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 32, name: 'Standing Hamstring Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+    ]),
+    ...buildWorkoutBlock(2, 'Chest + Tris', 2, [
+      { slot: 1, name: 'Bench', target: STRENGTH_TARGET },
+      { slot: 4, name: 'Incline DB', target: HYPERTROPHY_TARGET },
+      { slot: 15, name: 'Machine Chest', target: HYPERTROPHY_TARGET },
+      { slot: 8, name: 'Cable Fly', target: HYPERTROPHY_TARGET },
+      { slot: 16, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
+      { slot: 17, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
+      { slot: 30, name: 'Dips', target: STRENGTH_TARGET },
+    ]),
+    ...stretchBlock(3, [
+      { slot: 24, name: 'Cat-Cow' },
+      { slot: 25, name: 'Bird Dog' },
+      { slot: 33, name: 'Hip Flexor Stretch' },
+      { slot: 34, name: 'Glute Bridge' },
+      { slot: 35, name: "Child's Pose" },
+      { slot: 36, name: 'Figure-4 Glute Stretch' },
+    ]),
+  ],
+  Tuesday: [
+    ...buildWorkoutBlock(1, 'Abs', 1, [
+      { slot: 2, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
+      { slot: 11, name: 'Ab Rolls', target: HYPERTROPHY_TARGET },
+      { slot: 9, name: 'Dead Bug', target: HYPERTROPHY_TARGET },
+    ]),
+    ...buildWorkoutBlock(2, 'Back + Bis', 2, [
+      { slot: 24, name: 'Lat Pulldown', target: STRENGTH_TARGET },
+      { slot: 25, name: 'Low Row', target: STRENGTH_TARGET },
+      { slot: 26, name: 'Single-Arm Row', target: STRENGTH_TARGET },
+      { slot: 27, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
+      { slot: 1, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
+      { slot: 12, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
+      { slot: 28, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
+    ]),
+    ...stretchBlock(3, [
+      { slot: 17, name: 'Cat-Cow' },
+      { slot: 18, name: 'Bird Dog' },
+      { slot: 16, name: 'Hip Flexor Stretch' },
+      { slot: 19, name: 'Glute Bridge' },
+      { slot: 29, name: "Child's Pose" },
+      { slot: 23, name: 'Figure-4 Glute Stretch' },
+    ]),
+  ],
+  Wednesday: [
+    ...buildWorkoutBlock(1, 'Upper Body Stretch', 1, [
+      { slot: 29, name: 'Cat-Cow', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 30, name: 'Bird Dog', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 16, name: 'Open-Book T-Spine', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+      { slot: 40, name: 'Shoulder Stretch', kind: 'mobility', target: DAILY_STRETCH_TARGET },
+    ]),
+    ...buildWorkoutBlock(2, 'Chest + Tris', 2, [
+      { slot: 23, name: 'Bench', target: STRENGTH_TARGET },
+      { slot: 19, name: 'Incline DB', target: HYPERTROPHY_TARGET },
+      { slot: 35, name: 'Machine Chest', target: HYPERTROPHY_TARGET },
+      { slot: 36, name: 'Cable Fly', target: HYPERTROPHY_TARGET },
+      { slot: 37, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
+      { slot: 38, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
+      { slot: 20, name: 'Dips', target: STRENGTH_TARGET },
+    ]),
+    ...stretchBlock(3, [
+      { slot: 41, name: 'Cat-Cow' },
+      { slot: 42, name: 'Bird Dog' },
+      { slot: 7, name: 'Hip Flexor Stretch' },
+      { slot: 31, name: 'Glute Bridge' },
+      { slot: 39, name: "Child's Pose" },
+      { slot: 8, name: 'Figure-4 Glute Stretch' },
+    ]),
+  ],
+  Thursday: [
+    ...buildWorkoutBlock(1, 'Abs', 1, [
+      { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 7, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
+      { slot: 23, name: 'Ab Rolls', target: HYPERTROPHY_TARGET },
+      { slot: 24, name: 'Dead Bug', target: HYPERTROPHY_TARGET },
+    ]),
+    ...buildWorkoutBlock(2, 'Back + Bis', 2, [
+      { slot: 25, name: 'Lat Pulldown', target: STRENGTH_TARGET },
+      { slot: 26, name: 'Low Row', target: STRENGTH_TARGET },
+      { slot: 27, name: 'Single-Arm Row', target: STRENGTH_TARGET },
+      { slot: 12, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
+      { slot: 28, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
+      { slot: 29, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
+      { slot: 14, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
+    ]),
+    ...stretchBlock(3, [
+      { slot: 16, name: 'Cat-Cow' },
+      { slot: 17, name: 'Bird Dog' },
+      { slot: 15, name: 'Hip Flexor Stretch' },
+      { slot: 18, name: 'Glute Bridge' },
+      { slot: 30, name: "Child's Pose" },
+      { slot: 22, name: 'Figure-4 Glute Stretch' },
+    ]),
+  ],
+  Friday: [
+    ...buildWorkoutBlock(2, 'Legs + Back', 1, [
+      { slot: 18, name: 'Hack Squat', target: LOWER_BODY_TARGET },
+      { slot: 12, name: 'Leg Press', target: LOWER_BODY_TARGET },
+      { slot: 20, name: 'Bulgarian Split Squat', target: LOWER_BODY_TARGET },
+      { slot: 19, name: 'Leg Curl', target: LOWER_BODY_TARGET },
+      { slot: 13, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
+      { slot: 14, name: 'Calf Raise', target: CALF_TARGET },
+      { slot: 15, name: 'Back Extension', target: HYPERTROPHY_TARGET },
+    ]),
+    ...stretchBlock(2, [
+      { slot: 21, name: 'Cat-Cow' },
+      { slot: 22, name: 'Bird Dog' },
+      { slot: 17, name: 'Hip Flexor Stretch' },
+      { slot: 23, name: 'Glute Bridge' },
+      { slot: 24, name: "Child's Pose" },
+      { slot: 25, name: 'Figure-4 Glute Stretch' },
+    ]),
+  ],
+  Saturday: [
+    ...buildWorkoutBlock(1, 'Abs', 1, [
+      { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
+      { slot: 7, name: 'Ab Rolls', target: HYPERTROPHY_TARGET },
+      { slot: 8, name: 'Dead Bug', target: HYPERTROPHY_TARGET },
+    ]),
+    ...stretchBlock(2, [
+      { slot: 9, name: 'Cat-Cow' },
+      { slot: 10, name: 'Bird Dog' },
+      { slot: 11, name: 'Hip Flexor Stretch' },
+      { slot: 12, name: 'Glute Bridge' },
+      { slot: 13, name: "Child's Pose" },
+      { slot: 14, name: 'Figure-4 Glute Stretch' },
+    ]),
+  ],
+  Sunday: stretchBlock(1, [
+    { slot: 18, name: 'Cat-Cow' },
+    { slot: 22, name: 'Bird Dog' },
+    { slot: 11, name: 'Hip Flexor Stretch' },
+    { slot: 23, name: 'Glute Bridge' },
+    { slot: 19, name: "Child's Pose" },
+    { slot: 12, name: 'Figure-4 Glute Stretch' },
+  ]),
 };
 
 /**
@@ -384,11 +535,132 @@ const SHIPPED_DEFAULT_PROGRAM_V7: Record<Weekday, Record<number, string>> = {
   },
 };
 
+/**
+ * Slots the v8 weekly-plan reset introduced. This version reorganises the site
+ * to show exercises only, dropping court sports and extraneous stretches while
+ * keeping the daily stretch routine.
+ */
+const SHIPPED_DEFAULT_PROGRAM_V8: Record<Weekday, Record<number, string>> = {
+  Monday: {
+    1: 'Bench',
+    4: 'Incline DB',
+    6: 'Hip Flexor Stretch',
+    7: 'Figure-4 Glute Stretch',
+    8: 'Cable Fly',
+    15: 'Machine Chest',
+    16: 'Tricep Pushdown',
+    17: 'Overhead Extension',
+    24: 'Cat-Cow',
+    25: 'Bird Dog',
+    26: 'Glute Bridge',
+    30: 'Dips',
+    31: "Child's Pose",
+    32: 'Standing Hamstring Stretch',
+    33: 'Hip Flexor Stretch',
+    34: 'Glute Bridge',
+    35: "Child's Pose",
+    36: 'Figure-4 Glute Stretch',
+  },
+  Tuesday: {
+    1: 'Incline Curls',
+    2: 'Ab Machine',
+    6: 'Leg Raises',
+    9: 'Dead Bug',
+    11: 'Ab Rolls',
+    12: 'Hammer Curls',
+    16: 'Hip Flexor Stretch',
+    17: 'Cat-Cow',
+    18: 'Bird Dog',
+    19: 'Glute Bridge',
+    23: 'Figure-4 Glute Stretch',
+    24: 'Lat Pulldown',
+    25: 'Low Row',
+    26: 'Single-Arm Row',
+    27: 'Face Pulls',
+    28: 'Preacher Curl',
+    29: "Child's Pose",
+  },
+  Wednesday: {
+    7: 'Hip Flexor Stretch',
+    8: 'Figure-4 Glute Stretch',
+    16: 'Open-Book T-Spine',
+    19: 'Incline DB',
+    20: 'Dips',
+    23: 'Bench',
+    29: 'Cat-Cow',
+    30: 'Bird Dog',
+    31: 'Glute Bridge',
+    35: 'Machine Chest',
+    36: 'Cable Fly',
+    37: 'Tricep Pushdown',
+    38: 'Overhead Extension',
+    39: "Child's Pose",
+    40: 'Shoulder Stretch',
+    41: 'Cat-Cow',
+    42: 'Bird Dog',
+  },
+  Thursday: {
+    5: 'Ab Machine',
+    7: 'Leg Raises',
+    12: 'Face Pulls',
+    14: 'Preacher Curl',
+    15: 'Hip Flexor Stretch',
+    16: 'Cat-Cow',
+    17: 'Bird Dog',
+    18: 'Glute Bridge',
+    22: 'Figure-4 Glute Stretch',
+    23: 'Ab Rolls',
+    24: 'Dead Bug',
+    25: 'Lat Pulldown',
+    26: 'Low Row',
+    27: 'Single-Arm Row',
+    28: 'Incline Curls',
+    29: 'Hammer Curls',
+    30: "Child's Pose",
+  },
+  Friday: {
+    12: 'Leg Press',
+    13: 'Hip Thrust',
+    14: 'Calf Raise',
+    15: 'Back Extension',
+    17: 'Hip Flexor Stretch',
+    18: 'Hack Squat',
+    19: 'Leg Curl',
+    20: 'Bulgarian Split Squat',
+    21: 'Cat-Cow',
+    22: 'Bird Dog',
+    23: 'Glute Bridge',
+    24: "Child's Pose",
+    25: 'Figure-4 Glute Stretch',
+  },
+  Saturday: {
+    5: 'Ab Machine',
+    6: 'Leg Raises',
+    7: 'Ab Rolls',
+    8: 'Dead Bug',
+    9: 'Cat-Cow',
+    10: 'Bird Dog',
+    11: 'Hip Flexor Stretch',
+    12: 'Glute Bridge',
+    13: "Child's Pose",
+    14: 'Figure-4 Glute Stretch',
+  },
+  Sunday: {
+    11: 'Hip Flexor Stretch',
+    12: 'Figure-4 Glute Stretch',
+    18: 'Cat-Cow',
+    19: "Child's Pose",
+    22: 'Bird Dog',
+    23: 'Glute Bridge',
+  },
+};
+
 const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V4,
   SHIPPED_DEFAULT_PROGRAM_V5,
   SHIPPED_DEFAULT_PROGRAM_V6,
   SHIPPED_DEFAULT_PROGRAM_V7,
+  SHIPPED_DEFAULT_PROGRAM_V8,
 ];
 
 /**
@@ -431,8 +703,25 @@ export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, d
       target: entry.target ? { ...entry.target } : createDefaultExerciseTarget(entry.name, kind),
       ...(entry.workoutBlock ? { workoutBlock: entry.workoutBlock } : {}),
       ...(entry.workoutLabel ? { workoutLabel: entry.workoutLabel } : {}),
+      ...(entry.blockOrder ? { blockOrder: entry.blockOrder } : {}),
+      owner: 'Cursor' as const,
     };
   });
 
   return program;
 }, {} as Record<Weekday, Exercise[]>);
+
+/**
+ * External blocks are not shown on this site. Court sports (basketball,
+ * badminton, soccer) are managed by the owner's scheduler and never appear
+ * as exercises here.
+ */
+export const EXTERNAL_BLOCKS: Record<Weekday, ExternalBlock[]> = {
+  Monday: [],
+  Tuesday: [],
+  Wednesday: [],
+  Thursday: [],
+  Friday: [],
+  Saturday: [],
+  Sunday: [],
+};
