@@ -124,7 +124,6 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exerci
     (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
     (value.workoutLabel === undefined || (typeof value.workoutLabel === 'string' && value.workoutLabel.trim().length > 0)) &&
     (value.blockOrder === undefined || (typeof value.blockOrder === 'number' && Number.isInteger(value.blockOrder) && value.blockOrder >= 1)) &&
-    (value.owner === undefined || value.owner === 'Cursor' || value.owner === 'Sch') &&
     isValidExerciseTarget(value.target, kind)
   );
 }
@@ -315,9 +314,6 @@ function normalizeExercise(
   const blockOrder = typeof value.blockOrder === 'number' && Number.isInteger(value.blockOrder) && value.blockOrder >= 1
     ? value.blockOrder
     : undefined;
-  const owner = value.owner === 'Cursor' || value.owner === 'Sch'
-    ? value.owner
-    : undefined;
 
   return {
     id: typeof value.id === 'string' && value.id.trim() ? value.id : `${day.toLowerCase()}-custom-${fallbackIndex + 1}`,
@@ -328,7 +324,6 @@ function normalizeExercise(
     ...(workoutBlock ? { workoutBlock } : {}),
     ...(workoutLabel ? { workoutLabel } : {}),
     ...(blockOrder ? { blockOrder } : {}),
-    ...(owner ? { owner } : {}),
   };
 }
 
@@ -695,15 +690,17 @@ function reconcileProgramWithDefaults(
       const wasTunedByHand = !sameTarget(stored.target, createDefaultExerciseTarget(stored.name, stored.kind));
       const target = wasTunedByHand ? stored.target : defaultExercise.target;
 
+      const storedRest = { ...stored };
+      delete (storedRest as { owner?: unknown }).owner;
+
       return {
-        ...stored,
+        ...storedRest,
         name,
         kind,
         target: { ...target },
         workoutBlock: defaultExercise.workoutBlock,
         workoutLabel: defaultExercise.workoutLabel,
         blockOrder: defaultExercise.blockOrder,
-        owner: defaultExercise.owner,
       };
     });
 

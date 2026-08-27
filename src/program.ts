@@ -1,4 +1,4 @@
-import type { Exercise, ExerciseKind, ExerciseTarget, ExternalBlock, Weekday } from './types';
+import type { Exercise, ExerciseKind, ExerciseTarget, Weekday } from './types';
 
 export const WEEK_DAYS: Weekday[] = [
   'Monday',
@@ -85,6 +85,12 @@ function buildWorkoutBlock(
 
 const DAILY_STRETCH_TARGET: ExerciseTarget = { sets: 1, restSeconds: 0 };
 
+/**
+ * Evening stretch is its own section. It is never Workout 1 (morning stretch or
+ * abs) and never the lift. Keep `workoutLabel: 'Stretch'` so the page can render
+ * it under a heading distinct from 'Lower Body Stretch', 'Upper Body Stretch',
+ * and 'Abs'.
+ */
 function stretchBlock(
   blockOrder: number,
   entries: Array<{ slot: number; name: string }>,
@@ -97,6 +103,47 @@ function stretchBlock(
     workoutLabel: 'Stretch',
     blockOrder,
   }));
+}
+
+/** Stable section identity: evening stretch must not collapse into morning or the lift. */
+export function getWorkoutSectionKey(exercise: {
+  workoutLabel?: string;
+  blockOrder?: number;
+  workoutBlock?: 1 | 2;
+}): string {
+  return `${getWorkoutSectionOrder(exercise)}::${exercise.workoutLabel ?? ''}`;
+}
+
+export function getWorkoutSectionOrder(exercise: {
+  blockOrder?: number;
+  workoutBlock?: 1 | 2;
+}): number {
+  return exercise.blockOrder ?? exercise.workoutBlock ?? 1;
+}
+
+export function listWorkoutSectionLabels(exercises: Array<{
+  workoutLabel?: string;
+  blockOrder?: number;
+  workoutBlock?: 1 | 2;
+}>): string[] {
+  const labels: string[] = [];
+  const seen = new Set<string>();
+
+  for (const exercise of exercises) {
+    if (!exercise.workoutLabel) {
+      continue;
+    }
+
+    const key = getWorkoutSectionKey(exercise);
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    labels.push(exercise.workoutLabel);
+  }
+
+  return labels;
 }
 
 /**
@@ -704,23 +751,8 @@ export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, d
       ...(entry.workoutBlock ? { workoutBlock: entry.workoutBlock } : {}),
       ...(entry.workoutLabel ? { workoutLabel: entry.workoutLabel } : {}),
       ...(entry.blockOrder ? { blockOrder: entry.blockOrder } : {}),
-      owner: 'Cursor' as const,
     };
   });
 
   return program;
 }, {} as Record<Weekday, Exercise[]>);
-
-/**
- * Court sports are Scheduler labels only. They never appear as exercises.
- * Mon-Thu morning is one 7:30–8:30 block: Basketball (Sch) plus Workout 1 (Cursor).
- */
-export const EXTERNAL_BLOCKS: Record<Weekday, ExternalBlock[]> = {
-  Monday: [{ id: 'monday-basketball', day: 'Monday', label: 'Basketball', owner: 'Sch', order: 0 }],
-  Tuesday: [{ id: 'tuesday-basketball', day: 'Tuesday', label: 'Basketball', owner: 'Sch', order: 0 }],
-  Wednesday: [{ id: 'wednesday-basketball', day: 'Wednesday', label: 'Basketball', owner: 'Sch', order: 0 }],
-  Thursday: [{ id: 'thursday-basketball', day: 'Thursday', label: 'Basketball', owner: 'Sch', order: 0 }],
-  Friday: [],
-  Saturday: [],
-  Sunday: [],
-};
