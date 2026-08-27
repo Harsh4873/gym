@@ -712,15 +712,14 @@ export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, d
 }, {} as Record<Weekday, Exercise[]>);
 
 /**
- * External blocks are not shown on this site. Court sports (basketball,
- * badminton, soccer) are managed by the owner's scheduler and never appear
- * as exercises here.
+ * Court sports are Scheduler labels only. They never appear as exercises.
+ * Mon-Thu morning is one 7:30–8:30 block: Basketball (Sch) plus Workout 1 (Cursor).
  */
 export const EXTERNAL_BLOCKS: Record<Weekday, ExternalBlock[]> = {
-  Monday: [],
-  Tuesday: [],
-  Wednesday: [],
-  Thursday: [],
+  Monday: [{ id: 'monday-basketball', day: 'Monday', label: 'Basketball', owner: 'Sch', order: 0 }],
+  Tuesday: [{ id: 'tuesday-basketball', day: 'Tuesday', label: 'Basketball', owner: 'Sch', order: 0 }],
+  Wednesday: [{ id: 'wednesday-basketball', day: 'Wednesday', label: 'Basketball', owner: 'Sch', order: 0 }],
+  Thursday: [{ id: 'thursday-basketball', day: 'Thursday', label: 'Basketball', owner: 'Sch', order: 0 }],
   Friday: [],
   Saturday: [],
   Sunday: [],
