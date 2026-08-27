@@ -27,7 +27,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 8;
+const PROGRAM_SCHEMA_VERSION = 9;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -123,6 +123,8 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exerci
     (kind === 'strength' || kind === 'mobility') &&
     (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
     (value.workoutLabel === undefined || (typeof value.workoutLabel === 'string' && value.workoutLabel.trim().length > 0)) &&
+    (value.blockOrder === undefined || (typeof value.blockOrder === 'number' && Number.isInteger(value.blockOrder) && value.blockOrder >= 1)) &&
+    (value.owner === undefined || value.owner === 'Cursor' || value.owner === 'Sch') &&
     isValidExerciseTarget(value.target, kind)
   );
 }
@@ -310,6 +312,12 @@ function normalizeExercise(
   const workoutLabel = typeof value.workoutLabel === 'string' && value.workoutLabel.trim()
     ? value.workoutLabel.trim()
     : undefined;
+  const blockOrder = typeof value.blockOrder === 'number' && Number.isInteger(value.blockOrder) && value.blockOrder >= 1
+    ? value.blockOrder
+    : undefined;
+  const owner = value.owner === 'Cursor' || value.owner === 'Sch'
+    ? value.owner
+    : undefined;
 
   return {
     id: typeof value.id === 'string' && value.id.trim() ? value.id : `${day.toLowerCase()}-custom-${fallbackIndex + 1}`,
@@ -319,6 +327,8 @@ function normalizeExercise(
     target: normalizeExerciseTarget(value.target, name, kind),
     ...(workoutBlock ? { workoutBlock } : {}),
     ...(workoutLabel ? { workoutLabel } : {}),
+    ...(blockOrder ? { blockOrder } : {}),
+    ...(owner ? { owner } : {}),
   };
 }
 
@@ -692,6 +702,8 @@ function reconcileProgramWithDefaults(
         target: { ...target },
         workoutBlock: defaultExercise.workoutBlock,
         workoutLabel: defaultExercise.workoutLabel,
+        blockOrder: defaultExercise.blockOrder,
+        owner: defaultExercise.owner,
       };
     });
 
@@ -718,10 +730,11 @@ export function loadProgram(): ProgramByDay {
           return storedProgram;
         }
 
-        // Version 7 is an intentional full weekly-plan reset requested by the
-        // owner. Keep tuned targets for matching ids, but make names, order,
-        // workout blocks, additions, and removals match the new template.
-        const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 7);
+        // Version 7 and 9 are intentional full weekly-plan resets. Keep tuned
+        // targets for matching ids, but make names, order, workout blocks,
+        // additions, and removals match the new template. Version 9 reorganises
+        // the site to be exercises only, matching the signed-off weekly plan.
+        const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 9);
         saveProgram(migratedProgram);
         return migratedProgram;
       }

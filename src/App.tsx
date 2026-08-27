@@ -77,6 +77,7 @@ import {
 } from './exerciseLibrary';
 import {
   createDefaultExerciseTarget,
+  EXTERNAL_BLOCKS,
   inferExerciseKind,
   WEEK_DAYS,
 } from './program';
@@ -95,10 +96,12 @@ import {
 } from './storage';
 import { useGymSync, type GymSyncController, type GymSyncStatus } from './useGymSync';
 import type {
+  BlockOwner,
   DayStatus,
   Exercise,
   ExerciseKind,
   ExerciseSet,
+  ExternalBlock,
   LogsByDate,
   Preferences,
   ProgramByDay,
@@ -958,6 +961,66 @@ function AppFooter() {
   );
 }
 
+interface ScheduleBlock {
+  id: string;
+  label: string;
+  owner: BlockOwner;
+  order: number;
+  type: 'external' | 'exercise';
+}
+
+function DayScheduleOverview({ dateKey, exercises }: { dateKey: string; exercises: Exercise[] }) {
+  const weekday = getWeekday(parseDateKey(dateKey));
+  const externalBlocks = EXTERNAL_BLOCKS[weekday];
+
+  const exerciseBlockMap = new Map<string, { label: string; order: number }>();
+  for (const exercise of exercises) {
+    if (exercise.workoutLabel && exercise.blockOrder) {
+      const key = `${exercise.workoutLabel}-${exercise.blockOrder}`;
+      if (!exerciseBlockMap.has(key)) {
+        exerciseBlockMap.set(key, { label: exercise.workoutLabel, order: exercise.blockOrder });
+      }
+    }
+  }
+
+  const allBlocks: ScheduleBlock[] = [
+    ...externalBlocks.map((block) => ({
+      id: block.id,
+      label: block.label,
+      owner: block.owner,
+      order: block.order,
+      type: 'external' as const,
+    })),
+    ...Array.from(exerciseBlockMap.entries()).map(([key, { label, order }]) => ({
+      id: `exercise-${key}`,
+      label,
+      owner: 'Cursor' as BlockOwner,
+      order,
+      type: 'exercise' as const,
+    })),
+  ].sort((a, b) => a.order - b.order);
+
+  if (allBlocks.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="day-schedule-overview">
+      <div className="schedule-blocks">
+        {allBlocks.map((block, index) => (
+          <Fragment key={block.id}>
+            {index > 0 && <span className="block-separator">+</span>}
+            <span className={`schedule-block ${block.type} owner-${block.owner.toLowerCase()}`}>
+              <span className="block-label">{block.label}</span>
+              <span className="block-owner">({block.owner})</span>
+            </span>
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function WorkoutPanel({
   dateKey,
   exercises,
@@ -1515,6 +1578,8 @@ function WorkoutPanel({
         </div>
       </div>
 
+      <DayScheduleOverview dateKey={dateKey} exercises={exercises} />
+
       <div className="session-toolbar">
         <div className="session-actions">
           {!log.startedAt && !log.finishedAt && !sessionLogged && (
@@ -1746,6 +1811,7 @@ function WorkoutPanel({
                 <div className="workout-block-heading">
                   <span>{workoutBlock === 1 ? 'Start here' : 'Then'}</span>
                   <strong>{workoutLabel}</strong>
+                  <span className="block-owner-tag">(Cursor)</span>
                 </div>
               )}
               <article
