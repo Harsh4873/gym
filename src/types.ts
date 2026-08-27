@@ -17,16 +17,6 @@ export type WeightMode = 'bodyweight' | 'pounds';
 
 export type ExerciseKind = 'strength' | 'mobility';
 
-export type BlockOwner = 'Cursor' | 'Sch';
-
-export interface ExternalBlock {
-  id: string;
-  day: Weekday;
-  label: string;
-  owner: BlockOwner;
-  order: number;
-}
-
 export interface ExerciseTarget {
   sets?: number;
   repMin?: number;
@@ -43,7 +33,6 @@ export interface Exercise {
   workoutBlock?: 1 | 2;
   workoutLabel?: string;
   blockOrder?: number;
-  owner?: BlockOwner;
 }
 
 export interface SupersetPair {

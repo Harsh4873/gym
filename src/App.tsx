@@ -77,7 +77,8 @@ import {
 } from './exerciseLibrary';
 import {
   createDefaultExerciseTarget,
-  EXTERNAL_BLOCKS,
+  getWorkoutSectionKey,
+  getWorkoutSectionOrder,
   inferExerciseKind,
   WEEK_DAYS,
 } from './program';
@@ -96,12 +97,10 @@ import {
 } from './storage';
 import { useGymSync, type GymSyncController, type GymSyncStatus } from './useGymSync';
 import type {
-  BlockOwner,
   DayStatus,
   Exercise,
   ExerciseKind,
   ExerciseSet,
-  ExternalBlock,
   LogsByDate,
   Preferences,
   ProgramByDay,
@@ -451,9 +450,9 @@ function orderExercisesForLog(exercises: Exercise[], log: WorkoutLog): Exercise[
       return leftFinished - rightFinished;
     }
 
-    const workoutBlockDifference = (left.workoutBlock ?? 1) - (right.workoutBlock ?? 1);
-    if (workoutBlockDifference !== 0) {
-      return workoutBlockDifference;
+    const sectionOrderDifference = getWorkoutSectionOrder(left) - getWorkoutSectionOrder(right);
+    if (sectionOrderDifference !== 0) {
+      return sectionOrderDifference;
     }
 
     return (originalIndexes.get(left.id) ?? 0) - (originalIndexes.get(right.id) ?? 0);
@@ -958,66 +957,6 @@ function AppFooter() {
       </div>
       <p>Local-first by default, securely synced across your devices when you sign in.</p>
     </footer>
-  );
-}
-
-interface ScheduleBlock {
-  id: string;
-  label: string;
-  owner: BlockOwner;
-  order: number;
-  type: 'external' | 'exercise';
-}
-
-function DayScheduleOverview({ dateKey, exercises }: { dateKey: string; exercises: Exercise[] }) {
-  const weekday = getWeekday(parseDateKey(dateKey));
-  const externalBlocks = EXTERNAL_BLOCKS[weekday];
-
-  const exerciseBlockMap = new Map<string, { label: string; order: number }>();
-  for (const exercise of exercises) {
-    if (exercise.workoutLabel && exercise.blockOrder) {
-      const key = `${exercise.workoutLabel}-${exercise.blockOrder}`;
-      if (!exerciseBlockMap.has(key)) {
-        exerciseBlockMap.set(key, { label: exercise.workoutLabel, order: exercise.blockOrder });
-      }
-    }
-  }
-
-  const allBlocks: ScheduleBlock[] = [
-    ...externalBlocks.map((block) => ({
-      id: block.id,
-      label: block.label,
-      owner: block.owner,
-      order: block.order,
-      type: 'external' as const,
-    })),
-    ...Array.from(exerciseBlockMap.entries()).map(([key, { label, order }]) => ({
-      id: `exercise-${key}`,
-      label,
-      owner: 'Cursor' as BlockOwner,
-      order,
-      type: 'exercise' as const,
-    })),
-  ].sort((a, b) => a.order - b.order);
-
-  if (allBlocks.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="day-schedule-overview">
-      <div className="schedule-blocks">
-        {allBlocks.map((block, index) => (
-          <Fragment key={block.id}>
-            {index > 0 && <span className="block-separator">+</span>}
-            <span className={`schedule-block ${block.type} owner-${block.owner.toLowerCase()}`}>
-              <span className="block-label">{block.label}</span>
-              <span className="block-owner">({block.owner})</span>
-            </span>
-          </Fragment>
-        ))}
-      </div>
-    </div>
   );
 }
 
@@ -1578,8 +1517,6 @@ function WorkoutPanel({
         </div>
       </div>
 
-      <DayScheduleOverview dateKey={dateKey} exercises={exercises} />
-
       <div className="session-toolbar">
         <div className="session-actions">
           {!log.startedAt && !log.finishedAt && !sessionLogged && (
@@ -1784,8 +1721,8 @@ function WorkoutPanel({
             group.type === 'superset'
               ? `superset with ${group.exercises.map((exercise) => exercise.name).join(' and ')}`
               : group.exercises[0]?.name ?? 'exercise';
-          const workoutBlock = group.exercises[0]?.workoutBlock ?? 1;
-          const previousWorkoutBlock = groups[groupIndex - 1]?.exercises[0]?.workoutBlock ?? 1;
+          const sectionExercise = group.exercises[0];
+          const previousSectionExercise = groups[groupIndex - 1]?.exercises[0];
           const groupFinished = group.exercises.every((exercise) => (
             log.completed.includes(exercise.id) || log.skipped.includes(exercise.id)
           ));
@@ -1794,10 +1731,13 @@ function WorkoutPanel({
             log.completed.includes(exercise.id) || log.skipped.includes(exercise.id)
           )) ?? false;
           const startsFinishedSection = groupFinished && !previousGroupFinished;
-          const startsWorkoutBlock = !groupFinished && (
-            groupIndex === 0 || previousGroupFinished || workoutBlock !== previousWorkoutBlock
+          const startsWorkoutBlock = !groupFinished && Boolean(sectionExercise?.workoutLabel) && (
+            groupIndex === 0
+            || previousGroupFinished
+            || !previousSectionExercise
+            || getWorkoutSectionKey(sectionExercise) !== getWorkoutSectionKey(previousSectionExercise)
           );
-          const workoutLabel = group.exercises[0]?.workoutLabel;
+          const workoutLabel = sectionExercise?.workoutLabel;
 
           return (
             <Fragment key={group.id}>
@@ -1807,11 +1747,10 @@ function WorkoutPanel({
                   <strong>Completed</strong>
                 </div>
               )}
-              {startsWorkoutBlock && workoutLabel && (
+              {startsWorkoutBlock && workoutLabel && sectionExercise && (
                 <div className="workout-block-heading">
-                  <span>{workoutBlock === 1 ? 'Start here' : 'Then'}</span>
+                  <span>{getWorkoutSectionOrder(sectionExercise) === 1 ? 'Start here' : 'Then'}</span>
                   <strong>{workoutLabel}</strong>
-                  <span className="block-owner-tag">(Cursor)</span>
                 </div>
               )}
               <article
@@ -2595,6 +2534,7 @@ interface SavedExerciseLibraryEntry {
   order?: number;
   workoutBlock?: 1 | 2;
   workoutLabel?: string;
+  blockOrder?: number;
 }
 
 function getFamilyForExerciseKind(kind: ExerciseKind): ExerciseGuideFamily {
@@ -2614,6 +2554,7 @@ function buildSavedExerciseLibraryEntries(
     order?: number,
     workoutBlock?: 1 | 2,
     workoutLabel?: string,
+    blockOrder?: number,
   ) => {
     const trimmedName = name?.trim();
     if (!trimmedName) {
@@ -2632,6 +2573,7 @@ function buildSavedExerciseLibraryEntries(
       ...(order ? { order } : {}),
       ...(workoutBlock ? { workoutBlock } : {}),
       ...(workoutLabel ? { workoutLabel } : {}),
+      ...(blockOrder ? { blockOrder } : {}),
     });
   };
 
@@ -2643,6 +2585,7 @@ function buildSavedExerciseLibraryEntries(
         index + 1,
         exercise.workoutBlock,
         exercise.workoutLabel,
+        exercise.blockOrder,
       );
     });
   });
@@ -2923,6 +2866,7 @@ function SearchView({
       order: index + 1,
       workoutBlock: exercise.workoutBlock,
       workoutLabel: exercise.workoutLabel,
+      blockOrder: exercise.blockOrder,
     }));
   }, [allSavedEntries, program, selectedDay]);
   const savedGuideResults = useMemo(
@@ -3106,14 +3050,16 @@ function SearchView({
             {visibleSavedGuideResults.map(({ guide, entry }, index) => {
               const previousEntry = visibleSavedGuideResults[index - 1]?.entry;
               const startsWorkoutBlock = selectedDay !== 'all' && Boolean(entry.workoutLabel) && (
-                index === 0 || entry.workoutBlock !== previousEntry?.workoutBlock
+                index === 0
+                || !previousEntry
+                || getWorkoutSectionKey(entry) !== getWorkoutSectionKey(previousEntry)
               );
 
               return (
                 <Fragment key={`saved-${guide.id}`}>
                   {startsWorkoutBlock && (
                     <div className="exercise-search-workout-heading">
-                      <span>{entry.workoutBlock === 2 ? 'Then' : 'Start here'}</span>
+                      <span>{getWorkoutSectionOrder(entry) === 1 ? 'Start here' : 'Then'}</span>
                       <strong>{entry.workoutLabel}</strong>
                     </div>
                   )}
@@ -3527,8 +3473,23 @@ function SettingsView({
 
           <div className="program-workout-list">
             {dayWorkouts.length > 0 ? (
-              dayWorkouts.map((exercise, index) => (
-                <article key={exercise.id} className="program-workout-row">
+              dayWorkouts.map((exercise, index) => {
+                const previousExercise = dayWorkouts[index - 1];
+                const startsWorkoutBlock = Boolean(exercise.workoutLabel) && (
+                  index === 0
+                  || !previousExercise
+                  || getWorkoutSectionKey(exercise) !== getWorkoutSectionKey(previousExercise)
+                );
+
+                return (
+                <Fragment key={exercise.id}>
+                {startsWorkoutBlock && (
+                  <div className="workout-block-heading">
+                    <span>{getWorkoutSectionOrder(exercise) === 1 ? 'Start here' : 'Then'}</span>
+                    <strong>{exercise.workoutLabel}</strong>
+                  </div>
+                )}
+                <article className="program-workout-row">
                   <div className="move-pair">
                     <button
                       className="move-mini-button"
@@ -3629,7 +3590,9 @@ function SettingsView({
                     <X aria-hidden="true" />
                   </button>
                 </article>
-              ))
+                </Fragment>
+                );
+              })
             ) : (
               <p className="empty-note">No workouts saved for {selectedProgramDay}.</p>
             )}

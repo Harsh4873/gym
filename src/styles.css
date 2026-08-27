@@ -755,58 +755,6 @@ a:focus-visible {
   font-weight: 500;
 }
 
-.day-schedule-overview {
-  padding: var(--space-4) var(--space-6);
-  background: var(--color-bg-secondary);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.schedule-blocks {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 14px;
-}
-
-.block-separator {
-  color: var(--color-text-tertiary);
-  font-weight: 300;
-}
-
-.schedule-block {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-2);
-  font-weight: 500;
-}
-
-.schedule-block.external {
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-}
-
-.schedule-block.exercise {
-  background: var(--color-accent-tint);
-  color: var(--color-text-primary);
-}
-
-.schedule-block .block-owner {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--color-text-tertiary);
-}
-
-.schedule-block.owner-sch .block-owner {
-  color: var(--color-text-muted);
-}
-
-.schedule-block.owner-cursor .block-owner {
-  color: var(--color-accent);
-}
-
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -1078,16 +1026,6 @@ a:focus-visible {
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.025em;
-}
-
-.workout-block-heading .block-owner-tag {
-  flex-basis: auto;
-  color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
 }
 
 .workout-block-heading.completed-block {
