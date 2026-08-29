@@ -30,6 +30,7 @@ import {
   LogIn,
   LogOut,
   Medal,
+  Moon,
   Pause,
   Pencil,
   Play,
@@ -39,6 +40,7 @@ import {
   Search,
   Settings,
   Square,
+  Sun,
   Target,
   Trophy,
   Upload,
@@ -104,6 +106,7 @@ import type {
   ProgramByDay,
   SupersetPair,
   TabId,
+  ThemeMode,
   Weekday,
   WeightMode,
   WorkoutLog,
@@ -111,6 +114,7 @@ import type {
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
+const THEME_STORAGE_KEY = 'harsh-gym-theme-v1';
 const REST_TIMER_STORAGE_KEY = 'harsh-gym-rest-timer-v1';
 const WEEKLY_PLAN_ROLLOUT_STORAGE_KEY = 'harsh-gym-weekly-plan-v7-rollout';
 type GetExercisesForDate = (dateKey: string) => Exercise[];
@@ -121,18 +125,6 @@ type RenameExerciseForDate = (
   scope: 'date' | 'template',
 ) => void;
 type CanRenameTemplateForDate = (dateKey: string, exerciseId: string) => boolean;
-
-interface ConfirmationCopy {
-  title: string;
-  description: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  cancellationMessage: string;
-}
-
-interface ConfirmationRequest extends ConfirmationCopy {
-  onConfirm: () => void;
-}
 
 interface ExerciseGroup {
   id: string;
@@ -168,6 +160,19 @@ const SYNC_LABELS: Record<GymSyncStatus, string> = {
   offline: 'Offline',
   error: 'Sync error',
 };
+
+function getStoredTheme(): ThemeMode {
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') {
+      return stored;
+    }
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch {
+    return 'dark';
+  }
+}
 
 function getTabFromHash(): TabId {
   const rawHash = window.location.hash.slice(1);
@@ -876,11 +881,15 @@ function GymLogo() {
 function AppHeader({
   activeTab,
   sync,
+  theme,
   onNavigate,
+  onThemeToggle,
 }: {
   activeTab: TabId;
   sync: GymSyncController;
+  theme: ThemeMode;
   onNavigate: (tab: TabId) => void;
+  onThemeToggle: () => void;
 }) {
   return (
     <header className="app-header">
@@ -923,6 +932,14 @@ function AppHeader({
         >
           <Settings aria-hidden="true" />
         </button>
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={onThemeToggle}
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        >
+          {theme === 'dark' ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
+        </button>
       </div>
     </header>
   );
@@ -943,61 +960,6 @@ function AppFooter() {
   );
 }
 
-function ConfirmationSheet({
-  request,
-  onCancel,
-  onConfirm,
-}: {
-  request: ConfirmationRequest;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onCancel();
-      }
-    };
-
-    cancelButtonRef.current?.focus();
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      previousFocus?.focus();
-    };
-  }, [onCancel]);
-
-  return (
-    <div className="confirmation-backdrop" onMouseDown={onCancel}>
-      <section
-        className="confirmation-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirmation-title"
-        aria-describedby="confirmation-description"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <span className="sheet-handle" aria-hidden="true" />
-        <p className="eyebrow">Confirm</p>
-        <h2 id="confirmation-title">{request.title}</h2>
-        <p id="confirmation-description">{request.description}</p>
-        <div className="confirmation-actions">
-          <button ref={cancelButtonRef} className="icon-text-button primary" type="button" onClick={onCancel}>
-            <span>{request.cancelLabel}</span>
-          </button>
-          <button className="icon-text-button confirmation-action" type="button" onClick={onConfirm}>
-            <span>{request.confirmLabel}</span>
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-}
-
 function WorkoutPanel({
   dateKey,
   exercises,
@@ -1011,7 +973,6 @@ function WorkoutPanel({
   canRenameTemplate,
   onUpdate,
   onClear,
-  onNotice,
 }: {
   dateKey: string;
   exercises: Exercise[];
@@ -1025,7 +986,6 @@ function WorkoutPanel({
   canRenameTemplate: (exerciseId: string) => boolean;
   onUpdate: (updater: (log: WorkoutLog) => WorkoutLog) => void;
   onClear: () => void;
-  onNotice: (message: string) => void;
 }) {
   const [firstSupersetId, setFirstSupersetId] = useState(exercises[0]?.id ?? '');
   const [secondSupersetId, setSecondSupersetId] = useState(exercises[1]?.id ?? '');
@@ -1129,12 +1089,6 @@ function WorkoutPanel({
   const beginRenameExercise = (exercise: Exercise) => {
     setEditingExerciseId(exercise.id);
     setExerciseNameDraft(exercise.name);
-  };
-
-  const cancelExerciseRename = () => {
-    setEditingExerciseId(null);
-    setExerciseNameDraft('');
-    onNotice('Name change discarded. Your exercise name is unchanged.');
   };
 
   const saveExerciseName = (exerciseId: string, scope: 'date' | 'template') => {
@@ -1665,7 +1619,7 @@ function WorkoutPanel({
           onClick={() => setMobileToolsOpen((current) => !current)}
         >
           <Settings aria-hidden="true" />
-          <span>More</span>
+          <span>Workout tools</span>
           <ChevronDown aria-hidden="true" />
         </button>
         <div className="mobile-workout-tools-body">
@@ -1691,7 +1645,7 @@ function WorkoutPanel({
               <Ban aria-hidden="true" />
               <span>Skip day</span>
             </button>
-            <button className="icon-text-button" type="button" onClick={onClear} disabled={!hasSavedLog}>
+            <button className="icon-text-button danger" type="button" onClick={onClear} disabled={!hasSavedLog}>
               <X aria-hidden="true" />
               <span>Clear log</span>
             </button>
@@ -1906,7 +1860,8 @@ function WorkoutPanel({
                                   onChange={(event) => setExerciseNameDraft(event.target.value)}
                                   onKeyDown={(event) => {
                                     if (event.key === 'Escape') {
-                                      cancelExerciseRename();
+                                      setEditingExerciseId(null);
+                                      setExerciseNameDraft('');
                                     }
                                   }}
                                 />
@@ -1936,7 +1891,10 @@ function WorkoutPanel({
                                   className="icon-only-button small"
                                   type="button"
                                   aria-label="Cancel rename"
-                                  onClick={cancelExerciseRename}
+                                  onClick={() => {
+                                    setEditingExerciseId(null);
+                                    setExerciseNameDraft('');
+                                  }}
                                 >
                                   <X aria-hidden="true" />
                                 </button>
@@ -2464,7 +2422,6 @@ function LogbookView({
   canRenameTemplate,
   updateLog,
   clearLog,
-  onNotice,
 }: {
   logs: LogsByDate;
   preferences: Preferences;
@@ -2477,7 +2434,6 @@ function LogbookView({
   canRenameTemplate: CanRenameTemplateForDate;
   updateLog: (dateKey: string, updater: (log: WorkoutLog) => WorkoutLog) => void;
   clearLog: (dateKey: string) => void;
-  onNotice: (message: string) => void;
 }) {
   const recentEntries = Object.values(logs)
     .filter((log) => hasTrainingActivity(log) || hasPlanActivity(log))
@@ -2540,7 +2496,6 @@ function LogbookView({
           canRenameTemplate={(exerciseId) => canRenameTemplate(selectedDate, exerciseId)}
           onUpdate={(updater) => updateLog(selectedDate, updater)}
           onClear={() => clearLog(selectedDate)}
-          onNotice={onNotice}
         />
       </div>
 
@@ -3187,7 +3142,6 @@ function SettingsView({
   sync,
   onExport,
   onImport,
-  onRequestConfirmation,
 }: {
   program: ProgramByDay;
   setProgram: Dispatch<SetStateAction<ProgramByDay>>;
@@ -3197,7 +3151,6 @@ function SettingsView({
   sync: GymSyncController;
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
-  onRequestConfirmation: (request: ConfirmationRequest) => void;
 }) {
   const [selectedProgramDay, setSelectedProgramDay] = useState<Weekday>(() => getWeekday(new Date()));
   const [newWorkoutName, setNewWorkoutName] = useState('');
@@ -3293,23 +3246,14 @@ function SettingsView({
 
   const removeWorkout = (exerciseId: string) => {
     const workout = program[selectedProgramDay].find((exercise) => exercise.id === exerciseId);
-    if (!workout) {
+    if (workout && !window.confirm(`Remove ${workout.name} from ${selectedProgramDay}? Historical snapshots will be kept.`)) {
       return;
     }
 
-    onRequestConfirmation({
-      title: `Remove ${workout.name}?`,
-      description: `It will be removed from your ${selectedProgramDay} plan. Past workout records stay as they are.`,
-      cancelLabel: 'Keep workout',
-      confirmLabel: 'Remove workout',
-      cancellationMessage: 'Removal cancelled. Your plan is unchanged.',
-      onConfirm: () => {
-        setProgram((current) => ({
-          ...current,
-          [selectedProgramDay]: current[selectedProgramDay].filter((exercise) => exercise.id !== exerciseId),
-        }));
-      },
-    });
+    setProgram((current) => ({
+      ...current,
+      [selectedProgramDay]: current[selectedProgramDay].filter((exercise) => exercise.id !== exerciseId),
+    }));
   };
 
   const moveWorkout = (exerciseId: string, direction: -1 | 1) => {
@@ -3666,13 +3610,9 @@ export default function App() {
   const [program, setProgram] = useState<ProgramByDay>(() => loadProgram());
   const [logs, setLogs] = useState<LogsByDate>(() => loadLogsWithCurrentPlan(todayKey, program));
   const [preferences, setPreferences] = useState<Preferences>(() => loadPreferences());
-  const [pendingConfirmation, setPendingConfirmation] = useState<ConfirmationRequest | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [cancellationPulse, setCancellationPulse] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme());
   const sync = useGymSync({ logs, setLogs, program, setProgram, preferences, setPreferences });
   const previousActiveTab = useRef(activeTab);
-  const noticeTimeoutRef = useRef<number | undefined>(undefined);
-  const pulseTimeoutRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const refreshToday = () => setTodayKey(toDateKey(new Date()));
@@ -3712,15 +3652,15 @@ export default function App() {
   }, [preferences]);
 
   useEffect(() => {
-    return () => {
-      if (noticeTimeoutRef.current) {
-        window.clearTimeout(noticeTimeoutRef.current);
-      }
-      if (pulseTimeoutRef.current) {
-        window.clearTimeout(pulseTimeoutRef.current);
-      }
-    };
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+    document.documentElement.style.colorScheme = theme;
+    const metaTheme = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.content = theme === 'dark' ? '#101311' : '#f2f3ed';
+    }
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
 
   const navigate = (tab: TabId) => {
     setActiveTab(tab);
@@ -3728,45 +3668,6 @@ export default function App() {
     if (window.location.hash !== nextHash) {
       window.location.hash = tab;
     }
-  };
-
-  const showNotice = (message: string, retainedStateEffect = false) => {
-    setNotice(message);
-    if (noticeTimeoutRef.current) {
-      window.clearTimeout(noticeTimeoutRef.current);
-    }
-    noticeTimeoutRef.current = window.setTimeout(() => setNotice(null), 3600);
-
-    if (retainedStateEffect) {
-      setCancellationPulse(false);
-      window.requestAnimationFrame(() => setCancellationPulse(true));
-      if (pulseTimeoutRef.current) {
-        window.clearTimeout(pulseTimeoutRef.current);
-      }
-      pulseTimeoutRef.current = window.setTimeout(() => setCancellationPulse(false), 280);
-    }
-  };
-
-  const requestConfirmation = (request: ConfirmationRequest) => setPendingConfirmation(request);
-
-  const cancelConfirmation = () => {
-    if (!pendingConfirmation) {
-      return;
-    }
-
-    const { cancellationMessage } = pendingConfirmation;
-    setPendingConfirmation(null);
-    showNotice(cancellationMessage, true);
-  };
-
-  const confirmPendingAction = () => {
-    if (!pendingConfirmation) {
-      return;
-    }
-
-    const { onConfirm } = pendingConfirmation;
-    setPendingConfirmation(null);
-    onConfirm();
   };
 
   const updateLog = (dateKey: string, updater: (log: WorkoutLog) => WorkoutLog) => {
@@ -3912,14 +3813,14 @@ export default function App() {
       return;
     }
 
-    requestConfirmation({
-      title: 'Clear this workout?',
-      description: `${formatDateLabel(dateKey)} and any one-day plan changes will be cleared. This cannot be undone.`,
-      cancelLabel: 'Keep workout',
-      confirmLabel: 'Clear workout',
-      cancellationMessage: 'Clear cancelled. Your workout is unchanged.',
-      onConfirm: () => sync.markLogDeleted(dateKey),
-    });
+    const confirmed = window.confirm(
+      `Clear the workout log and any one-day plan changes for ${formatDateLabel(dateKey)}? This cannot be undone.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    sync.markLogDeleted(dateKey);
   };
 
   const openLogbook = (dateKey: string) => {
@@ -3963,41 +3864,39 @@ export default function App() {
 
   const importBackup = async (file: File) => {
     if (sync.user && sync.status !== 'synced') {
-      showNotice('Wait for syncing to finish before importing a backup.');
+      window.alert('Wait for Firebase to finish syncing before importing a backup.');
       return;
     }
 
     const backup = parseGymBackup(await file.text());
     if (!backup) {
-      showNotice('That file is not a valid Gym backup. Nothing was changed.');
+      window.alert('That file is not a valid Gym backup. Nothing was changed.');
       return;
     }
 
-    requestConfirmation({
-      title: 'Replace data from backup?',
-      description: `This replaces the data on this phone with the backup from ${new Date(backup.exportedAt).toLocaleString()}.`,
-      cancelLabel: 'Keep current data',
-      confirmLabel: 'Replace data',
-      cancellationMessage: 'Import cancelled. Your current data is unchanged.',
-      onConfirm: () => {
-        Object.keys(logs).forEach((dateKey) => {
-          if (!backup.logs[dateKey]) {
-            sync.markLogDeleted(dateKey);
-          }
-        });
-        const importedAt = sync.prepareImportedLogs(Object.keys(backup.logs));
-        const importedLogs = Object.fromEntries(
-          Object.entries(backup.logs).map(([dateKey, log]) => [dateKey, { ...log, updatedAt: importedAt }]),
-        );
-        setLogs(importedLogs);
-        setProgram(backup.program);
-        setPreferences(backup.preferences);
-      },
+    const confirmed = window.confirm(
+      `Replace this device's Gym data with the backup from ${new Date(backup.exportedAt).toLocaleString()}?`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    Object.keys(logs).forEach((dateKey) => {
+      if (!backup.logs[dateKey]) {
+        sync.markLogDeleted(dateKey);
+      }
     });
+    const importedAt = sync.prepareImportedLogs(Object.keys(backup.logs));
+    const importedLogs = Object.fromEntries(
+      Object.entries(backup.logs).map(([dateKey, log]) => [dateKey, { ...log, updatedAt: importedAt }]),
+    );
+    setLogs(importedLogs);
+    setProgram(backup.program);
+    setPreferences(backup.preferences);
   };
 
   return (
-    <div className={`app-shell ${cancellationPulse ? 'cancellation-pulse' : ''}`}>
+    <div className="app-shell">
       <a
         className="skip-link"
         href="#main-content"
@@ -4012,7 +3911,9 @@ export default function App() {
       <AppHeader
         activeTab={activeTab}
         sync={sync}
+        theme={theme}
         onNavigate={navigate}
+        onThemeToggle={() => setTheme((current) => (current === 'dark' ? 'light' : 'dark'))}
       />
 
       <main
@@ -4061,7 +3962,6 @@ export default function App() {
             canRenameTemplate={canRenameTemplateForDate}
             updateLog={updateLog}
             clearLog={clearLog}
-            onNotice={showNotice}
           />
         )}
         {activeTab === 'search' && <SearchView program={program} logs={logs} todayKey={todayKey} />}
@@ -4075,7 +3975,6 @@ export default function App() {
             sync={sync}
             onExport={exportBackup}
             onImport={importBackup}
-            onRequestConfirmation={requestConfirmation}
           />
         )}
       </main>
@@ -4093,20 +3992,6 @@ export default function App() {
           />
         ))}
       </nav>
-
-      {notice && (
-        <div className="app-notice" role="status" aria-live="polite">
-          {notice}
-        </div>
-      )}
-
-      {pendingConfirmation && (
-        <ConfirmationSheet
-          request={pendingConfirmation}
-          onCancel={cancelConfirmation}
-          onConfirm={confirmPendingAction}
-        />
-      )}
     </div>
   );
 }
