@@ -147,7 +147,7 @@ export function listWorkoutSectionLabels(exercises: Array<{
 }
 
 /**
- * SHIPPED_DEFAULT_PROGRAM_V3..V9, V12, and V13 below stay populated on purpose — they
+ * SHIPPED_DEFAULT_PROGRAM_V3..V9 and V12–V14 below stay populated on purpose — they
  * are the signature tables `reconcileProgramWithDefaults` uses to recognise
  * entries that older versions shipped, so devices that already store them are
  * migrated instead of stranded.
@@ -156,20 +156,14 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Monday: [
     ...buildWorkoutBlock(1, 'Chest + Tris', 1, [
       { slot: 1, name: 'Bench', target: STRENGTH_TARGET },
-      { slot: 4, name: 'Incline DB', target: HYPERTROPHY_TARGET },
-      { slot: 15, name: 'Machine Chest', target: HYPERTROPHY_TARGET },
-      { slot: 8, name: 'Cable Fly', target: HYPERTROPHY_TARGET },
-      { slot: 16, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
-      { slot: 17, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
-      { slot: 30, name: 'Dips', target: STRENGTH_TARGET },
     ]),
     ...stretchBlock(2, [
-      { slot: 24, name: 'Cat-Cow' },
-      { slot: 25, name: 'Bird Dog' },
-      { slot: 33, name: 'Hip Flexor Stretch' },
-      { slot: 34, name: 'Glute Bridge' },
-      { slot: 35, name: "Child's Pose" },
-      { slot: 36, name: 'Figure-4 Glute Stretch' },
+      { slot: 3, name: 'Standing Hamstring Stretch with Heel Elevated' },
+    ]),
+    ...buildWorkoutBlock(1, 'Chest + Tris', 3, [
+      { slot: 17, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
+      { slot: 4, name: 'Incline DB', target: HYPERTROPHY_TARGET },
+      { slot: 30, name: 'Dips', target: STRENGTH_TARGET },
     ]),
   ],
   Tuesday: [
@@ -748,6 +742,23 @@ const SHIPPED_DEFAULT_PROGRAM_V13: Record<Weekday, Record<number, string>> = {
   Sunday: {},
 };
 
+/** Slots v14 kept on the shortened Monday so today's lift can drop the extra chest and evening stretch. */
+const SHIPPED_DEFAULT_PROGRAM_V14: Record<Weekday, Record<number, string>> = {
+  Monday: {
+    1: 'Bench',
+    3: 'Standing Hamstring Stretch with Heel Elevated',
+    4: 'Incline DB',
+    17: 'Overhead Extension',
+    30: 'Dips',
+  },
+  Tuesday: {},
+  Wednesday: {},
+  Thursday: {},
+  Friday: {},
+  Saturday: {},
+  Sunday: {},
+};
+
 const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V4,
   SHIPPED_DEFAULT_PROGRAM_V5,
@@ -757,6 +768,7 @@ const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V9,
   SHIPPED_DEFAULT_PROGRAM_V12,
   SHIPPED_DEFAULT_PROGRAM_V13,
+  SHIPPED_DEFAULT_PROGRAM_V14,
 ];
 
 /**

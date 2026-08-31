@@ -18,7 +18,13 @@ const EVENING_STRETCH_NAMES = [
   "Child's Pose",
   'Figure-4 Glute Stretch',
 ] as const;
-const CHEST_TRIS_NAMES = [
+const MONDAY_CHEST_TRIS_NAMES = [
+  'Bench',
+  'Overhead Extension',
+  'Incline DB',
+  'Dips',
+] as const;
+const WEDNESDAY_CHEST_TRIS_NAMES = [
   'Bench',
   'Incline DB',
   'Machine Chest',
@@ -42,16 +48,23 @@ function namesForLabel(day: keyof typeof PROGRAM, label: string): string[] {
 }
 
 describe('weekly exercise sections', () => {
-  it('keeps Monday as chest+tris then evening stretch with no abs', () => {
-    expect(listWorkoutSectionLabels(PROGRAM.Monday)).toEqual(['Chest + Tris', 'Stretch']);
-    expect(namesForLabel('Monday', 'Chest + Tris')).toEqual([...CHEST_TRIS_NAMES]);
-    expect(namesForLabel('Monday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
+  it('keeps Monday short: bench, hamstring stretch, cable extension, incline, dips', () => {
+    expect(listWorkoutSectionLabels(PROGRAM.Monday)).toEqual(['Chest + Tris', 'Stretch', 'Chest + Tris']);
+    expect(PROGRAM.Monday.map((exercise) => exercise.name)).toEqual([
+      'Bench',
+      'Standing Hamstring Stretch with Heel Elevated',
+      'Overhead Extension',
+      'Incline DB',
+      'Dips',
+    ]);
+    expect(namesForLabel('Monday', 'Chest + Tris')).toEqual([...MONDAY_CHEST_TRIS_NAMES]);
+    expect(namesForLabel('Monday', 'Stretch')).toEqual(['Standing Hamstring Stretch with Heel Elevated']);
     expect(PROGRAM.Monday.some((exercise) => ABS_EXERCISE_NAMES.includes(exercise.name as typeof ABS_EXERCISE_NAMES[number]))).toBe(false);
   });
 
   it('keeps Wednesday as chest+tris then evening stretch with no abs', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Wednesday)).toEqual(['Chest + Tris', 'Stretch']);
-    expect(namesForLabel('Wednesday', 'Chest + Tris')).toEqual([...CHEST_TRIS_NAMES]);
+    expect(namesForLabel('Wednesday', 'Chest + Tris')).toEqual([...WEDNESDAY_CHEST_TRIS_NAMES]);
     expect(namesForLabel('Wednesday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
     expect(PROGRAM.Wednesday.some((exercise) => ABS_EXERCISE_NAMES.includes(exercise.name as typeof ABS_EXERCISE_NAMES[number]))).toBe(false);
   });
