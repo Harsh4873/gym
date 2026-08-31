@@ -27,7 +27,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 12;
+const PROGRAM_SCHEMA_VERSION = 13;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -727,7 +727,7 @@ export function loadProgram(): ProgramByDay {
           return storedProgram;
         }
 
-        // v7 and v9 full resets; v10–v12 preserve personal additions while syncing untouched defaults.
+        // v7 and v9 full resets; v10–v13 preserve personal additions while syncing untouched defaults.
         const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 9);
         saveProgram(migratedProgram);
         return migratedProgram;
