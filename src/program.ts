@@ -64,6 +64,7 @@ interface ProgramEntry {
   workoutLabel?: string;
   /** Order of this block among all blocks (including external) for the day. */
   blockOrder?: number;
+  extra?: boolean;
 }
 
 const CALF_TARGET: ExerciseTarget = { sets: 2, repMin: 15, repMax: 20, restSeconds: 60 };
@@ -155,21 +156,20 @@ export function listWorkoutSectionLabels(exercises: Array<{
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Monday: [
     ...buildWorkoutBlock(1, 'Chest + Abs', 1, [
-      { slot: 1, name: 'Bench', target: STRENGTH_TARGET },
-      { slot: 4, name: 'Incline DB', target: HYPERTROPHY_TARGET },
+      { slot: 1, name: 'Flat Bench', target: STRENGTH_TARGET },
       { slot: 37, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 4, name: 'Incline Bench', target: HYPERTROPHY_TARGET },
+      { slot: 40, name: 'Back Extension + Incline Sit-Ups', target: HYPERTROPHY_TARGET },
       { slot: 38, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 39, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
     ]),
   ],
   Tuesday: [
     ...buildWorkoutBlock(1, 'Biceps + Triceps', 1, [
       { slot: 1, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
-      { slot: 12, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
-      { slot: 28, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
-      { slot: 33, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
       { slot: 34, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
+      { slot: 28, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
       { slot: 35, name: 'Dips', target: STRENGTH_TARGET },
+      { slot: 12, name: 'Hammer Curl', target: HYPERTROPHY_TARGET, extra: true },
     ]),
     ...stretchBlock(2, [
       { slot: 17, name: 'Cat-Cow' },
@@ -183,11 +183,11 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Wednesday: [
     ...buildWorkoutBlock(1, 'Shoulders + Abs', 1, [
       { slot: 1, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
-      { slot: 3, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
-      { slot: 9, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
       { slot: 43, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 3, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
+      { slot: 46, name: 'Back Extension + Incline Sit-Ups', target: HYPERTROPHY_TARGET },
+      { slot: 6, name: 'Front Raises', target: HYPERTROPHY_TARGET },
       { slot: 44, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 45, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
     ]),
     ...stretchBlock(2, [
       { slot: 41, name: 'Cat-Cow' },
@@ -200,12 +200,11 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   ],
   Thursday: [
     ...buildWorkoutBlock(1, 'Back + Chest', 1, [
-      { slot: 35, name: 'Low Row', target: STRENGTH_TARGET },
       { slot: 36, name: 'Lat Pulldown', target: STRENGTH_TARGET },
-      { slot: 27, name: 'Single Arm Row', target: HYPERTROPHY_TARGET },
-      { slot: 37, name: 'Bench', target: STRENGTH_TARGET },
-      { slot: 38, name: 'Incline DB', target: HYPERTROPHY_TARGET },
-      { slot: 39, name: 'Cable Fly', target: HYPERTROPHY_TARGET },
+      { slot: 40, name: 'Flat DB Bench', target: STRENGTH_TARGET },
+      { slot: 41, name: 'Incline Smith Bench', target: HYPERTROPHY_TARGET },
+      { slot: 35, name: 'Low Row', target: STRENGTH_TARGET },
+      { slot: 12, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
     ]),
     ...stretchBlock(2, [
       { slot: 16, name: 'Cat-Cow' },
@@ -219,21 +218,19 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Friday: [
     ...buildWorkoutBlock(1, 'Legs', 1, [
       { slot: 18, name: 'Hack Squat', target: LOWER_BODY_TARGET },
-      { slot: 12, name: 'Leg Press', target: LOWER_BODY_TARGET },
+      { slot: 11, name: 'Seated Calf Raise', target: CALF_TARGET },
       { slot: 20, name: 'Bulgarian Split Squat', target: LOWER_BODY_TARGET },
-      { slot: 19, name: 'Leg Curl', target: LOWER_BODY_TARGET },
+      { slot: 26, name: 'Tibialis Raise', target: CALF_TARGET },
       { slot: 13, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
-      { slot: 14, name: 'Calf Raise', target: CALF_TARGET },
     ]),
   ],
   Saturday: [
     ...buildWorkoutBlock(1, 'Abs + Arms', 1, [
-      { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
-      { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 15, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
-      { slot: 16, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
-      { slot: 17, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
-      { slot: 18, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
+      { slot: 4, name: '10 min ab workout', target: HYPERTROPHY_TARGET },
+      { slot: 19, name: 'Zottman Curls', target: HYPERTROPHY_TARGET, extra: true },
+      { slot: 20, name: 'Triceps 7x7', target: HYPERTROPHY_TARGET, extra: true },
+      { slot: 21, name: 'Nippard Superset', target: HYPERTROPHY_TARGET, extra: true },
+      { slot: 22, name: 'EZ Bar Curl + Concentration Curl', target: HYPERTROPHY_TARGET, extra: true },
     ]),
   ],
   Sunday: stretchBlock(1, [
@@ -743,16 +740,20 @@ const SHIPPED_DEFAULT_PROGRAM_V14: Record<Weekday, Record<number, string>> = {
 
 /**
  * Slots v15 introduced for the locked weekly remap. New movements take the next
- * unused slot; Thursday's Single Arm Row reuses slot 27 under the unhyphenated
- * library name of the v8 Single-Arm Row.
+ * unused slot. Prior v15 names stay here after later retirements so stored
+ * defaults still migrate.
  */
 const SHIPPED_DEFAULT_PROGRAM_V15: Record<Weekday, Record<number, string>> = {
   Monday: {
+    1: 'Flat Bench',
+    4: 'Incline Bench',
     37: 'Ab Machine',
     38: 'Leg Raises',
     39: 'Incline Sit-Ups',
+    40: 'Back Extension + Incline Sit-Ups',
   },
   Tuesday: {
+    12: 'Hammer Curl',
     33: 'Tricep Pushdown',
     34: 'Overhead Extension',
     35: 'Dips',
@@ -761,6 +762,7 @@ const SHIPPED_DEFAULT_PROGRAM_V15: Record<Weekday, Record<number, string>> = {
     43: 'Ab Machine',
     44: 'Leg Raises',
     45: 'Incline Sit-Ups',
+    46: 'Back Extension + Incline Sit-Ups',
   },
   Thursday: {
     27: 'Single Arm Row',
@@ -769,12 +771,21 @@ const SHIPPED_DEFAULT_PROGRAM_V15: Record<Weekday, Record<number, string>> = {
     37: 'Bench',
     38: 'Incline DB',
     39: 'Cable Fly',
+    40: 'Flat DB Bench',
+    41: 'Incline Smith Bench',
   },
-  Friday: {},
+  Friday: {
+    26: 'Tibialis Raise',
+  },
   Saturday: {
+    4: '10 min ab workout',
     16: 'Incline Curls',
     17: 'Hammer Curls',
     18: 'Tricep Pushdown',
+    19: 'Zottman Curls',
+    20: 'Triceps 7x7',
+    21: 'Nippard Superset',
+    22: 'EZ Bar Curl + Concentration Curl',
   },
   Sunday: {},
 };
@@ -833,6 +844,7 @@ export const PROGRAM: Record<Weekday, Exercise[]> = WEEK_DAYS.reduce((program, d
       ...(entry.workoutBlock ? { workoutBlock: entry.workoutBlock } : {}),
       ...(entry.workoutLabel ? { workoutLabel: entry.workoutLabel } : {}),
       ...(entry.blockOrder ? { blockOrder: entry.blockOrder } : {}),
+      ...(entry.extra ? { extra: true } : {}),
     };
   });
 

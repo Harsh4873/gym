@@ -540,6 +540,10 @@ function cloneExercises(exercises: Exercise[]): Exercise[] {
   return exercises.map((exercise) => ({ ...exercise, target: { ...exercise.target } }));
 }
 
+function ExtraChip() {
+  return <span className="extra-chip">EXTRA</span>;
+}
+
 function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay): LogsByDate {
   const loadedLogs = loadLogs();
 
@@ -1914,6 +1918,7 @@ function WorkoutPanel({
                               <div>
                                 <span className="exercise-name-line">
                                   <strong>{exercise.name}</strong>
+                                  {exercise.extra ? <ExtraChip /> : null}
                                   <button
                                     className="rename-exercise-button"
                                     type="button"
@@ -2228,7 +2233,12 @@ function WeekView({
             </p>
             <ul>
               {exercises.map((exercise) => (
-                <li key={exercise.id}>{exercise.name}</li>
+                <li key={exercise.id}>
+                  <span className="week-exercise-name">
+                    {exercise.name}
+                    {exercise.extra ? <ExtraChip /> : null}
+                  </span>
+                </li>
               ))}
             </ul>
             <button className="icon-text-button compact" type="button" onClick={() => openLogbook(dateKey)}>
@@ -2574,6 +2584,7 @@ interface SavedExerciseLibraryEntry {
   workoutBlock?: 1 | 2;
   workoutLabel?: string;
   blockOrder?: number;
+  extra?: boolean;
 }
 
 function getFamilyForExerciseKind(kind: ExerciseKind): ExerciseGuideFamily {
@@ -2594,6 +2605,7 @@ function buildSavedExerciseLibraryEntries(
     workoutBlock?: 1 | 2,
     workoutLabel?: string,
     blockOrder?: number,
+    extra?: boolean,
   ) => {
     const trimmedName = name?.trim();
     if (!trimmedName) {
@@ -2613,6 +2625,7 @@ function buildSavedExerciseLibraryEntries(
       ...(workoutBlock ? { workoutBlock } : {}),
       ...(workoutLabel ? { workoutLabel } : {}),
       ...(blockOrder ? { blockOrder } : {}),
+      ...(extra ? { extra: true } : {}),
     });
   };
 
@@ -2625,6 +2638,7 @@ function buildSavedExerciseLibraryEntries(
         exercise.workoutBlock,
         exercise.workoutLabel,
         exercise.blockOrder,
+        exercise.extra,
       );
     });
   });
@@ -2687,11 +2701,13 @@ function ExerciseGuideArtwork({
 function ExerciseGuideCard({
   guide,
   saved,
+  extra,
   sourceLabel: sourceLabelOverride,
   onOpen,
 }: {
   guide: ExerciseGuide;
   saved: boolean;
+  extra?: boolean;
   sourceLabel?: string;
   onOpen: () => void;
 }) {
@@ -2709,7 +2725,10 @@ function ExerciseGuideCard({
           {getGuideFamilyLabel(guide.family)}
           {guide.equipment ? ` · ${guide.equipment}` : ''}
         </span>
-        <strong>{guide.name}</strong>
+        <span className="exercise-card-name">
+          <strong>{guide.name}</strong>
+          {extra ? <ExtraChip /> : null}
+        </span>
         <small>{getGuideMetaLabel(guide)}</small>
         <span className="exercise-card-link">
           View guide
@@ -2906,6 +2925,7 @@ function SearchView({
       workoutBlock: exercise.workoutBlock,
       workoutLabel: exercise.workoutLabel,
       blockOrder: exercise.blockOrder,
+      ...(exercise.extra ? { extra: true } : {}),
     }));
   }, [allSavedEntries, program, selectedDay]);
   const savedGuideResults = useMemo(
@@ -3105,6 +3125,7 @@ function SearchView({
                   <ExerciseGuideCard
                     guide={guide}
                     saved
+                    extra={entry.extra}
                     sourceLabel={selectedDay === 'all' ? undefined : `${selectedDay.slice(0, 3)} · ${entry.order}`}
                     onOpen={() => setSelectedGuide({ guide, saved: true })}
                   />
@@ -3551,20 +3572,23 @@ function SettingsView({
                   </div>
                   <div className="program-workout-content">
                     <div className="program-name-row">
-                      <input
-                        value={programNameDrafts[`${selectedProgramDay}:${exercise.id}`] ?? exercise.name}
-                        aria-label={`Rename ${exercise.name}`}
-                        onChange={(event) => {
-                          const key = `${selectedProgramDay}:${exercise.id}`;
-                          setProgramNameDrafts((current) => ({ ...current, [key]: event.target.value }));
-                        }}
-                        onBlur={(event) => commitWorkoutName(exercise.id, event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            event.currentTarget.blur();
-                          }
-                        }}
-                      />
+                      <span className="program-name-with-extra">
+                        <input
+                          value={programNameDrafts[`${selectedProgramDay}:${exercise.id}`] ?? exercise.name}
+                          aria-label={`Rename ${exercise.name}`}
+                          onChange={(event) => {
+                            const key = `${selectedProgramDay}:${exercise.id}`;
+                            setProgramNameDrafts((current) => ({ ...current, [key]: event.target.value }));
+                          }}
+                          onBlur={(event) => commitWorkoutName(exercise.id, event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.currentTarget.blur();
+                            }
+                          }}
+                        />
+                        {exercise.extra ? <ExtraChip /> : null}
+                      </span>
                       <select
                         value={exercise.kind}
                         aria-label={`Training type for ${exercise.name}`}
