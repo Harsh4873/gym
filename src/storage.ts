@@ -28,7 +28,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 14;
+const PROGRAM_SCHEMA_VERSION = 15;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -126,6 +126,7 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exerci
     (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
     (value.workoutLabel === undefined || (typeof value.workoutLabel === 'string' && value.workoutLabel.trim().length > 0)) &&
     (value.blockOrder === undefined || (typeof value.blockOrder === 'number' && Number.isInteger(value.blockOrder) && value.blockOrder >= 1)) &&
+    (value.extra === undefined || value.extra === true || value.extra === false) &&
     isValidExerciseTarget(value.target, kind)
   );
 }
@@ -317,6 +318,8 @@ function normalizeExercise(
     ? value.blockOrder
     : undefined;
 
+  const extra = value.extra === true;
+
   return {
     id: typeof value.id === 'string' && value.id.trim() ? value.id : `${day.toLowerCase()}-custom-${fallbackIndex + 1}`,
     day,
@@ -326,6 +329,7 @@ function normalizeExercise(
     ...(workoutBlock ? { workoutBlock } : {}),
     ...(workoutLabel ? { workoutLabel } : {}),
     ...(blockOrder ? { blockOrder } : {}),
+    ...(extra ? { extra: true } : {}),
   };
 }
 
@@ -694,6 +698,7 @@ function reconcileProgramWithDefaults(
 
       const storedRest = { ...stored };
       delete (storedRest as { owner?: unknown }).owner;
+      delete (storedRest as { extra?: unknown }).extra;
 
       return {
         ...storedRest,
@@ -703,6 +708,7 @@ function reconcileProgramWithDefaults(
         workoutBlock: defaultExercise.workoutBlock,
         workoutLabel: defaultExercise.workoutLabel,
         blockOrder: defaultExercise.blockOrder,
+        ...(defaultExercise.extra ? { extra: true } : {}),
       };
     });
 
@@ -729,7 +735,7 @@ export function loadProgram(): ProgramByDay {
           return storedProgram;
         }
 
-        // v7 and v9 full resets; v10–v14 preserve personal additions while syncing untouched defaults.
+        // v7 and v9 full resets; v10–v15 preserve personal additions while syncing untouched defaults.
         const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 9);
         saveProgram(migratedProgram);
         return migratedProgram;

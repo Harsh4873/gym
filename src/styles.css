@@ -1352,6 +1352,40 @@ a:focus-visible {
   letter-spacing: 0.02em;
 }
 
+.extra-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  color: var(--color-text-on-accent);
+  background: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.week-exercise-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.program-name-with-extra {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.program-name-with-extra input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .last-sets-button {
   display: inline-flex;
   align-items: center;
@@ -3036,6 +3070,21 @@ a:focus-visible {
 }
 
 .exercise-card-copy > strong {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.06;
+}
+
+.exercise-card-name {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.exercise-card-name > strong {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 600;

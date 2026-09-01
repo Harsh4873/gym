@@ -33,6 +33,7 @@ export interface Exercise {
   workoutBlock?: 1 | 2;
   workoutLabel?: string;
   blockOrder?: number;
+  extra?: boolean;
 }
 
 export interface SupersetPair {
