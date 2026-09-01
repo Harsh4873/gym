@@ -1002,6 +1002,7 @@ function WorkoutPanel({
   const [restTimer, setRestTimer] = useState<RestTimerState>(() => loadRestTimer(dateKey));
   const restSeconds = getRestSeconds(restTimer, clockNow);
   const restRunning = Boolean(restTimer.endsAt && restSeconds > 0);
+  const checklistMode = preferences.logbookView === 'checklist';
   const exerciseSignature = exercises.map((exercise) => `${exercise.id}:${exercise.name}`).join('|');
   const finishedExerciseSignature = [...new Set([...log.completed, ...log.skipped])].sort().join('|');
   const progress = getProgressMeta(exercises, log);
@@ -1108,7 +1109,7 @@ function WorkoutPanel({
       wasCompleted ? current.filter((id) => id !== exerciseId) : uniqueList([...current, exerciseId]),
     );
     const exercise = exercises.find((candidate) => candidate.id === exerciseId);
-    if (!wasCompleted && exercise) {
+    if (!wasCompleted && exercise && !checklistMode) {
       const nextRestSeconds = exercise.target.restSeconds ?? preferences.defaultRestSeconds;
       setRestTimer({
         dateKey,
@@ -1481,7 +1482,7 @@ function WorkoutPanel({
 
   return (
     <section
-      className={`workout-stage ${reorderMode ? 'reorder-mode' : ''}`}
+      className={`workout-stage ${reorderMode ? 'reorder-mode' : ''} ${checklistMode ? 'checklist-mode' : ''}`}
       aria-label={`${formatDateLabel(dateKey)} workout`}
     >
       <div className="workout-banner">
@@ -1490,21 +1491,23 @@ function WorkoutPanel({
           <h2>{progress.completed}/{progress.total} logged</h2>
           <div className="banner-chips">
             <StatusPill status={status} />
-            <span className="session-chip">
-              {sessionFinished
-                ? 'Session finished'
-                : sessionActive
-                  ? 'Session live'
-                  : sessionLogged
-                    ? 'Workout logged'
-                    : 'Ready to start'}
-            </span>
-            {log.startedAt && <span className="elapsed-chip">{formatDuration(sessionDurationSeconds)} elapsed</span>}
+            {!checklistMode && (
+              <span className="session-chip">
+                {sessionFinished
+                  ? 'Session finished'
+                  : sessionActive
+                    ? 'Session live'
+                    : sessionLogged
+                      ? 'Workout logged'
+                      : 'Ready to start'}
+              </span>
+            )}
+            {!checklistMode && log.startedAt && <span className="elapsed-chip">{formatDuration(sessionDurationSeconds)} elapsed</span>}
             <span className="desktop-session-chip">{activeSupersets.length} supersets</span>
             <span className="desktop-session-chip">{supersetExerciseCount} paired</span>
-            <span className="sets-chip">{loggedSets} sets</span>
-            <span className="desktop-session-chip">{sessionVolume.toLocaleString()} lb</span>
-            {restSeconds > 0 && (
+            {!checklistMode && <span className="sets-chip">{loggedSets} sets</span>}
+            {!checklistMode && <span className="desktop-session-chip">{sessionVolume.toLocaleString()} lb</span>}
+            {!checklistMode && restSeconds > 0 && (
               <span className="rest-chip">
                 Rest {Math.floor(restSeconds / 60)}:{String(restSeconds % 60).padStart(2, '0')}
               </span>
@@ -1519,7 +1522,7 @@ function WorkoutPanel({
 
       <div className="session-toolbar">
         <div className="session-actions">
-          {!log.startedAt && !log.finishedAt && !sessionLogged && (
+          {!checklistMode && !log.startedAt && !log.finishedAt && !sessionLogged && (
             <button
               className="icon-text-button primary session-primary-action"
               type="button"
@@ -1530,7 +1533,7 @@ function WorkoutPanel({
               <span>Start workout</span>
             </button>
           )}
-          {sessionActive && (
+          {!checklistMode && sessionActive && (
             <button
               className="icon-text-button primary session-primary-action"
               type="button"
@@ -1542,7 +1545,7 @@ function WorkoutPanel({
               <span>Finish session</span>
             </button>
           )}
-          {sessionFinished && (
+          {!checklistMode && sessionFinished && (
             <button className="icon-text-button session-primary-action" type="button" onClick={reopenSession}>
               <Play aria-hidden="true" />
               <span>Reopen session</span>
@@ -1552,10 +1555,12 @@ function WorkoutPanel({
             <Check aria-hidden="true" />
             <span>Complete all</span>
           </button>
-          <button className="icon-text-button" type="button" onClick={usePreviousWorkout} disabled={!hasPreviousWorkout}>
-            <RotateCcw aria-hidden="true" />
-            <span>Load last workout</span>
-          </button>
+          {!checklistMode && (
+            <button className="icon-text-button" type="button" onClick={usePreviousWorkout} disabled={!hasPreviousWorkout}>
+              <RotateCcw aria-hidden="true" />
+              <span>Load last workout</span>
+            </button>
+          )}
           <button className="icon-text-button" type="button" onClick={skipDay}>
             <Ban aria-hidden="true" />
             <span>Skip day</span>
@@ -1571,6 +1576,7 @@ function WorkoutPanel({
           </button>
         </div>
 
+        {!checklistMode && (
         <div className={`rest-control ${restSeconds > 0 ? 'active' : ''}`}>
           <div className="rest-readout">
             <Clock3 aria-hidden="true" />
@@ -1609,6 +1615,7 @@ function WorkoutPanel({
             <Square aria-hidden="true" />
           </button>
         </div>
+        )}
       </div>
 
       <div className={`mobile-workout-tools ${mobileToolsOpen ? 'open' : ''}`}>
@@ -1628,10 +1635,12 @@ function WorkoutPanel({
               <Check aria-hidden="true" />
               <span>Complete all</span>
             </button>
-            <button className="icon-text-button" type="button" onClick={usePreviousWorkout} disabled={!hasPreviousWorkout}>
-              <RotateCcw aria-hidden="true" />
-              <span>Load last</span>
-            </button>
+            {!checklistMode && (
+              <button className="icon-text-button" type="button" onClick={usePreviousWorkout} disabled={!hasPreviousWorkout}>
+                <RotateCcw aria-hidden="true" />
+                <span>Load last</span>
+              </button>
+            )}
             <button
               className={`icon-text-button ${reorderMode ? 'active' : ''}`}
               type="button"
@@ -1913,6 +1922,7 @@ function WorkoutPanel({
                                   >
                                     <Pencil aria-hidden="true" />
                                   </button>
+                                  {!checklistMode && (
                                   <button
                                     className="exercise-collapse-button"
                                     type="button"
@@ -1929,8 +1939,9 @@ function WorkoutPanel({
                                     {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
                                     <span>{collapsed ? 'Expand' : 'Minimize'}</span>
                                   </button>
+                                  )}
                                 </span>
-                                {!collapsed && (
+                                {!collapsed && !checklistMode && (
                                   <>
                                     <span className="target-summary">
                                       <Gauge aria-hidden="true" />
@@ -1940,14 +1951,14 @@ function WorkoutPanel({
                                   </>
                                 )}
                               </div>
-                              {!collapsed && hasLocalPr && (
+                              {!collapsed && !checklistMode && hasLocalPr && (
                                 <span className="pr-chip" title="Best single-set load × reps">
                                   Set PR
                                 </span>
                               )}
                             </div>
                           )}
-                          {!collapsed && (
+                          {!collapsed && !checklistMode && (
                             <>
                               {canUseLastSets && (
                                 <button className="last-sets-button" type="button" onClick={() => useLastSets(exercise.id)}>
@@ -2078,6 +2089,7 @@ function WorkoutPanel({
               }
             />
           </label>
+          {!checklistMode && (
           <label>
             <span>PR Notes</span>
             <textarea
@@ -2093,17 +2105,20 @@ function WorkoutPanel({
               }
             />
           </label>
+          )}
         </div>
       </div>
       <div className="session-finish-bar">
         <div>
           <strong>{progress.completed}/{progress.total}</strong>
+          {!checklistMode && (
           <span>
             {loggedSets} sets · {sessionVolume.toLocaleString()} lb
             {log.startedAt ? ` · ${formatDuration(sessionDurationSeconds)}` : ''}
           </span>
+          )}
         </div>
-        {!log.startedAt && !log.finishedAt && !sessionLogged && (
+        {!checklistMode && !log.startedAt && !log.finishedAt && !sessionLogged && (
           <button
             className="icon-text-button primary"
             type="button"
@@ -2114,7 +2129,7 @@ function WorkoutPanel({
             <span>Start</span>
           </button>
         )}
-        {sessionActive && (
+        {!checklistMode && sessionActive && (
           <button
             className="icon-text-button primary"
             type="button"
@@ -2126,7 +2141,7 @@ function WorkoutPanel({
             <span>Finish</span>
           </button>
         )}
-        {sessionFinished && (
+        {!checklistMode && sessionFinished && (
           <button className="icon-text-button" type="button" onClick={reopenSession}>
             <Play aria-hidden="true" />
             <span>Reopen</span>
@@ -2413,6 +2428,7 @@ function MilestonesView({
 function LogbookView({
   logs,
   preferences,
+  setPreferences,
   todayKey,
   selectedDate,
   getExercises,
@@ -2425,6 +2441,7 @@ function LogbookView({
 }: {
   logs: LogsByDate;
   preferences: Preferences;
+  setPreferences: Dispatch<SetStateAction<Preferences>>;
   todayKey: string;
   selectedDate: string;
   getExercises: GetExercisesForDate;
@@ -2448,7 +2465,26 @@ function LogbookView({
             <p className="eyebrow">Logbook</p>
             <h1>{formatDateLabel(selectedDate)}</h1>
           </div>
-          <div className="date-pager">
+          <div className="logbook-controls">
+            <div className="exercise-family-filters" role="group" aria-label="Logbook view">
+              <button
+                type="button"
+                className={preferences.logbookView === 'log' ? 'active' : ''}
+                aria-pressed={preferences.logbookView === 'log'}
+                onClick={() => setPreferences((current) => ({ ...current, logbookView: 'log' }))}
+              >
+                Log
+              </button>
+              <button
+                type="button"
+                className={preferences.logbookView === 'checklist' ? 'active' : ''}
+                aria-pressed={preferences.logbookView === 'checklist'}
+                onClick={() => setPreferences((current) => ({ ...current, logbookView: 'checklist' }))}
+              >
+                Checklist
+              </button>
+            </div>
+            <div className="date-pager">
             <button
               className="icon-only-button"
               type="button"
@@ -2480,6 +2516,7 @@ function LogbookView({
               <Target aria-hidden="true" />
               <span>Today</span>
             </button>
+          </div>
           </div>
         </section>
 
@@ -2514,7 +2551,9 @@ function LogbookView({
               <button key={entry.date} type="button" className="recent-entry" onClick={() => setSelectedDate(entry.date)}>
                 <div>
                   <strong>{formatDateLabel(entry.date)}</strong>
-                  <small>{sets} sets · {volume.toLocaleString()} lb</small>
+                  {preferences.logbookView === 'log' && (
+                    <small>{sets} sets · {volume.toLocaleString()} lb</small>
+                  )}
                 </div>
                 <span>{progress.completed}/{progress.total}</span>
               </button>
@@ -3953,6 +3992,7 @@ export default function App() {
           <LogbookView
             logs={logs}
             preferences={preferences}
+            setPreferences={setPreferences}
             todayKey={todayKey}
             selectedDate={selectedDate}
             getExercises={getExercises}

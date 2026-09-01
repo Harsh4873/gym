@@ -14,6 +14,7 @@ import type {
   ExerciseSet,
   ExerciseTarget,
   GymBackup,
+  LogbookViewMode,
   LogsByDate,
   Preferences,
   ProgramByDay,
@@ -33,6 +34,7 @@ const PREFERENCES_SCHEMA_VERSION = 1;
 export const DEFAULT_PREFERENCES: Preferences = {
   weeklySessionGoal: 5,
   defaultRestSeconds: 90,
+  logbookView: 'log',
 };
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
@@ -751,6 +753,10 @@ export function saveProgram(program: ProgramByDay): void {
   );
 }
 
+function normalizeLogbookView(value: unknown): LogbookViewMode {
+  return value === 'checklist' ? 'checklist' : DEFAULT_PREFERENCES.logbookView;
+}
+
 export function normalizePreferences(value: unknown): Preferences {
   const source = isPlainRecord(value) ? value : {};
 
@@ -759,6 +765,7 @@ export function normalizePreferences(value: unknown): Preferences {
       normalizeInteger(source.weeklySessionGoal, 1, 7) ?? DEFAULT_PREFERENCES.weeklySessionGoal,
     defaultRestSeconds:
       normalizeInteger(source.defaultRestSeconds, 0, 1800) ?? DEFAULT_PREFERENCES.defaultRestSeconds,
+    logbookView: normalizeLogbookView(source.logbookView),
   };
 }
 

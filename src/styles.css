@@ -1146,6 +1146,17 @@ a:focus-visible {
   display: grid;
 }
 
+.workout-stage.checklist-mode .exercise-collapse-button,
+.workout-stage.checklist-mode .target-summary,
+.workout-stage.checklist-mode .pr-chip,
+.workout-stage.checklist-mode .last-sets-button,
+.workout-stage.checklist-mode .current-set-summary,
+.workout-stage.checklist-mode .set-stack,
+.workout-stage.checklist-mode .legacy-detail,
+.workout-stage.checklist-mode .rest-control {
+  display: none;
+}
+
 .exercise-row {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
@@ -1449,6 +1460,10 @@ a:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
+}
+
+.workout-stage.checklist-mode .notes-grid {
+  grid-template-columns: 1fr;
 }
 
 .notes-grid label {
@@ -1788,6 +1803,14 @@ a:focus-visible {
 
 .empty-note {
   font-size: 15px;
+}
+
+.logbook-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
 }
 
 .logbook-layout {
@@ -3638,6 +3661,18 @@ a:focus-visible {
     align-items: stretch;
     flex-direction: column;
     gap: 14px;
+  }
+
+  .logbook-controls {
+    justify-content: stretch;
+  }
+
+  .logbook-controls .exercise-family-filters {
+    width: 100%;
+  }
+
+  .logbook-controls .exercise-family-filters button {
+    flex: 1 1 0;
   }
 
   .date-pager {

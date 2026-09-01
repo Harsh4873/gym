@@ -68,9 +68,12 @@ export interface WorkoutLog {
   exerciseSnapshot?: Exercise[];
 }
 
+export type LogbookViewMode = 'log' | 'checklist';
+
 export interface Preferences {
   weeklySessionGoal: number;
   defaultRestSeconds: number;
+  logbookView: LogbookViewMode;
 }
 
 export interface GymBackup {
