@@ -147,42 +147,31 @@ export function listWorkoutSectionLabels(exercises: Array<{
 }
 
 /**
- * SHIPPED_DEFAULT_PROGRAM_V3..V9 and V12–V14 below stay populated on purpose — they
+ * SHIPPED_DEFAULT_PROGRAM_V3..V9 and V12–V15 below stay populated on purpose — they
  * are the signature tables `reconcileProgramWithDefaults` uses to recognise
  * entries that older versions shipped, so devices that already store them are
  * migrated instead of stranded.
  */
 export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
   Monday: [
-    ...buildWorkoutBlock(1, 'Chest + Tris', 1, [
+    ...buildWorkoutBlock(1, 'Chest + Abs', 1, [
       { slot: 1, name: 'Bench', target: STRENGTH_TARGET },
-    ]),
-    ...stretchBlock(2, [
-      { slot: 3, name: 'Standing Hamstring Stretch with Heel Elevated' },
-    ]),
-    ...buildWorkoutBlock(1, 'Chest + Tris', 3, [
-      { slot: 17, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
       { slot: 4, name: 'Incline DB', target: HYPERTROPHY_TARGET },
-      { slot: 30, name: 'Dips', target: STRENGTH_TARGET },
+      { slot: 37, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 38, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
+      { slot: 39, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
     ]),
   ],
   Tuesday: [
-    ...buildWorkoutBlock(1, 'Abs', 1, [
-      { slot: 2, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
-      { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 31, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
-      { slot: 32, name: 'Abs Circuit', target: HYPERTROPHY_TARGET },
-    ]),
-    ...buildWorkoutBlock(2, 'Biceps + Shoulders', 2, [
-      { slot: 24, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
-      { slot: 26, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
-      { slot: 30, name: 'Front Raises', target: HYPERTROPHY_TARGET },
-      { slot: 27, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
+    ...buildWorkoutBlock(1, 'Biceps + Triceps', 1, [
       { slot: 1, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
       { slot: 12, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
       { slot: 28, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
+      { slot: 33, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
+      { slot: 34, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
+      { slot: 35, name: 'Dips', target: STRENGTH_TARGET },
     ]),
-    ...stretchBlock(3, [
+    ...stretchBlock(2, [
       { slot: 17, name: 'Cat-Cow' },
       { slot: 18, name: 'Bird Dog' },
       { slot: 16, name: 'Hip Flexor Stretch' },
@@ -192,14 +181,13 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ]),
   ],
   Wednesday: [
-    ...buildWorkoutBlock(1, 'Chest + Tris', 1, [
-      { slot: 23, name: 'Bench', target: STRENGTH_TARGET },
-      { slot: 19, name: 'Incline DB', target: HYPERTROPHY_TARGET },
-      { slot: 35, name: 'Machine Chest', target: HYPERTROPHY_TARGET },
-      { slot: 36, name: 'Cable Fly', target: HYPERTROPHY_TARGET },
-      { slot: 37, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
-      { slot: 38, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
-      { slot: 20, name: 'Dips', target: STRENGTH_TARGET },
+    ...buildWorkoutBlock(1, 'Shoulders + Abs', 1, [
+      { slot: 1, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
+      { slot: 3, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
+      { slot: 9, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
+      { slot: 43, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 44, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
+      { slot: 45, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
     ]),
     ...stretchBlock(2, [
       { slot: 41, name: 'Cat-Cow' },
@@ -211,22 +199,15 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ]),
   ],
   Thursday: [
-    ...buildWorkoutBlock(1, 'Abs', 1, [
-      { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
-      { slot: 7, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-      { slot: 24, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
-      { slot: 34, name: 'Abs Circuit', target: HYPERTROPHY_TARGET },
+    ...buildWorkoutBlock(1, 'Back + Chest', 1, [
+      { slot: 35, name: 'Low Row', target: STRENGTH_TARGET },
+      { slot: 36, name: 'Lat Pulldown', target: STRENGTH_TARGET },
+      { slot: 27, name: 'Single Arm Row', target: HYPERTROPHY_TARGET },
+      { slot: 37, name: 'Bench', target: STRENGTH_TARGET },
+      { slot: 38, name: 'Incline DB', target: HYPERTROPHY_TARGET },
+      { slot: 39, name: 'Cable Fly', target: HYPERTROPHY_TARGET },
     ]),
-    ...buildWorkoutBlock(2, 'Biceps + Shoulders', 2, [
-      { slot: 25, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
-      { slot: 28, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
-      { slot: 14, name: 'Front Raises', target: HYPERTROPHY_TARGET },
-      { slot: 12, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
-      { slot: 31, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
-      { slot: 32, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
-      { slot: 33, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
-    ]),
-    ...stretchBlock(3, [
+    ...stretchBlock(2, [
       { slot: 16, name: 'Cat-Cow' },
       { slot: 17, name: 'Bird Dog' },
       { slot: 15, name: 'Hip Flexor Stretch' },
@@ -236,22 +217,23 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ]),
   ],
   Friday: [
-    ...buildWorkoutBlock(2, 'Legs + Back', 1, [
+    ...buildWorkoutBlock(1, 'Legs', 1, [
       { slot: 18, name: 'Hack Squat', target: LOWER_BODY_TARGET },
       { slot: 12, name: 'Leg Press', target: LOWER_BODY_TARGET },
       { slot: 20, name: 'Bulgarian Split Squat', target: LOWER_BODY_TARGET },
       { slot: 19, name: 'Leg Curl', target: LOWER_BODY_TARGET },
       { slot: 13, name: 'Hip Thrust', target: LOWER_BODY_TARGET },
       { slot: 14, name: 'Calf Raise', target: CALF_TARGET },
-      { slot: 15, name: 'Back Extension', target: HYPERTROPHY_TARGET },
     ]),
   ],
   Saturday: [
-    ...buildWorkoutBlock(1, 'Abs', 1, [
+    ...buildWorkoutBlock(1, 'Abs + Arms', 1, [
       { slot: 5, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
       { slot: 6, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
       { slot: 15, name: 'Incline Sit-Ups', target: HYPERTROPHY_TARGET },
-      { slot: 2, name: 'Abs Circuit', target: HYPERTROPHY_TARGET },
+      { slot: 16, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
+      { slot: 17, name: 'Hammer Curls', target: HYPERTROPHY_TARGET },
+      { slot: 18, name: 'Tricep Pushdown', target: HYPERTROPHY_TARGET },
     ]),
   ],
   Sunday: stretchBlock(1, [
@@ -759,6 +741,44 @@ const SHIPPED_DEFAULT_PROGRAM_V14: Record<Weekday, Record<number, string>> = {
   Sunday: {},
 };
 
+/**
+ * Slots v15 introduced for the locked weekly remap. New movements take the next
+ * unused slot; Thursday's Single Arm Row reuses slot 27 under the unhyphenated
+ * library name of the v8 Single-Arm Row.
+ */
+const SHIPPED_DEFAULT_PROGRAM_V15: Record<Weekday, Record<number, string>> = {
+  Monday: {
+    37: 'Ab Machine',
+    38: 'Leg Raises',
+    39: 'Incline Sit-Ups',
+  },
+  Tuesday: {
+    33: 'Tricep Pushdown',
+    34: 'Overhead Extension',
+    35: 'Dips',
+  },
+  Wednesday: {
+    43: 'Ab Machine',
+    44: 'Leg Raises',
+    45: 'Incline Sit-Ups',
+  },
+  Thursday: {
+    27: 'Single Arm Row',
+    35: 'Low Row',
+    36: 'Lat Pulldown',
+    37: 'Bench',
+    38: 'Incline DB',
+    39: 'Cable Fly',
+  },
+  Friday: {},
+  Saturday: {
+    16: 'Incline Curls',
+    17: 'Hammer Curls',
+    18: 'Tricep Pushdown',
+  },
+  Sunday: {},
+};
+
 const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V4,
   SHIPPED_DEFAULT_PROGRAM_V5,
@@ -769,6 +789,7 @@ const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V12,
   SHIPPED_DEFAULT_PROGRAM_V13,
   SHIPPED_DEFAULT_PROGRAM_V14,
+  SHIPPED_DEFAULT_PROGRAM_V15,
 ];
 
 /**
