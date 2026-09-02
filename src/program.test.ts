@@ -61,6 +61,12 @@ const SATURDAY_ABS_ARMS_NAMES = [
   'Nippard Superset',
   'EZ Bar Curl + Concentration Curl',
 ] as const;
+const SUNDAY_SHOULDERS_EXTRA_NAMES = [
+  'Military Press',
+  'Lateral Raises',
+  'Front Raises',
+  'Incline DB Row',
+] as const;
 const EXTRA_BY_DAY: Record<keyof typeof PROGRAM, string[]> = {
   Monday: [],
   Tuesday: ['Hammer Curl'],
@@ -73,7 +79,7 @@ const EXTRA_BY_DAY: Record<keyof typeof PROGRAM, string[]> = {
     'Nippard Superset',
     'EZ Bar Curl + Concentration Curl',
   ],
-  Sunday: [],
+  Sunday: [...SUNDAY_SHOULDERS_EXTRA_NAMES],
 };
 
 function namesForLabel(day: keyof typeof PROGRAM, label: string): string[] {
@@ -130,7 +136,7 @@ describe('weekly exercise sections', () => {
     expect(namesForLabel('Thursday', 'Back + Chest')[4]).toBe('Face Pulls');
   });
 
-  it('keeps Friday as legs only, Saturday as abs+arms, and Sunday as evening stretch', () => {
+  it('keeps Friday as legs only, Saturday as abs+arms, and Sunday as stretch then EXTRA shoulders', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Friday)).toEqual(['Legs']);
     expect(namesForLabel('Friday', 'Legs')).toEqual([...FRIDAY_LEGS_NAMES]);
     expect(namesForLabel('Friday', 'Legs')).not.toContain('Leg Extension');
@@ -141,8 +147,22 @@ describe('weekly exercise sections', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Saturday)).toEqual(['Abs + Arms']);
     expect(namesForLabel('Saturday', 'Abs + Arms')).toEqual([...SATURDAY_ABS_ARMS_NAMES]);
     expect(namesForLabel('Saturday', 'Stretch')).toEqual([]);
-    expect(listWorkoutSectionLabels(PROGRAM.Sunday)).toEqual(['Stretch']);
+    expect(listWorkoutSectionLabels(PROGRAM.Sunday)).toEqual(['Stretch', 'Shoulders']);
     expect(namesForLabel('Sunday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
+    expect(namesForLabel('Sunday', 'Shoulders')).toEqual([...SUNDAY_SHOULDERS_EXTRA_NAMES]);
+    expect(PROGRAM.Sunday.filter((exercise) => exercise.workoutLabel === 'Shoulders').every((exercise) => exercise.extra)).toBe(true);
+    expect(PROGRAM.Sunday.map((exercise) => exercise.id)).toEqual([
+      'sunday-18',
+      'sunday-22',
+      'sunday-11',
+      'sunday-23',
+      'sunday-19',
+      'sunday-12',
+      'sunday-24',
+      'sunday-25',
+      'sunday-26',
+      'sunday-27',
+    ]);
   });
 
   it('ships one lift focus per weekday, plus Stretch only on days that already had it', () => {
@@ -152,7 +172,7 @@ describe('weekly exercise sections', () => {
     expect(liftLabels('Thursday')).toEqual(['Back + Chest']);
     expect(liftLabels('Friday')).toEqual(['Legs']);
     expect(liftLabels('Saturday')).toEqual(['Abs + Arms']);
-    expect(liftLabels('Sunday')).toEqual([]);
+    expect(liftLabels('Sunday')).toEqual(['Shoulders']);
     expect(namesForLabel('Friday', 'Stretch')).toEqual([]);
     expect(namesForLabel('Saturday', 'Stretch')).toEqual([]);
   });
@@ -181,7 +201,10 @@ describe('weekly exercise sections', () => {
       for (const exercise of PROGRAM[day]) {
         expect(exercise).not.toHaveProperty('owner');
         expect(exercise.name).not.toMatch(/basketball|badminton|dead bug|ab rolls|\(sch\)|\(cursor\)/i);
-        expect(exercise.name).not.toMatch(/military press|lateral raises machine|lateral raises dumbbell/i);
+        if (day !== 'Sunday') {
+          expect(exercise.name).not.toMatch(/military press/i);
+        }
+        expect(exercise.name).not.toMatch(/lateral raises machine|lateral raises dumbbell/i);
         expect(exercise.name).not.toBe('Single-Arm Row');
         expect(exercise.name).not.toBe('EZ Bar Curls + Concentration Curls');
         expect(getWorkoutSectionKey(exercise)).toBe(
@@ -225,10 +248,10 @@ describe('weekly exercise sections', () => {
       const names = PROGRAM[day].map((exercise) => exercise.name);
       expect(new Set(names).size).toBe(names.length);
       expect(names.filter((name) => /lateral raise/i.test(name))).toHaveLength(
-        day === 'Wednesday' ? 1 : 0,
+        day === 'Wednesday' || day === 'Sunday' ? 1 : 0,
       );
       expect(names.filter((name) => /shoulder press|military press/i.test(name))).toHaveLength(
-        day === 'Wednesday' ? 1 : 0,
+        day === 'Wednesday' || day === 'Sunday' ? 1 : 0,
       );
       expect(names.filter((name) => name === 'Face Pulls')).toHaveLength(
         day === 'Thursday' ? 1 : 0,

@@ -165,6 +165,8 @@ const LIBRARY_ALIASES: Record<string, string> = {
   'incline curls': 'Alternate_Incline_Dumbbell_Curl',
   'incline bench': 'Incline_Dumbbell_Press',
   'incline db': 'Incline_Dumbbell_Press',
+  'incline db row': 'Dumbbell_Incline_Row',
+  'incline dumbbell row': 'Dumbbell_Incline_Row',
   'incline dumbbell press': 'Incline_Dumbbell_Press',
   'incline smith bench': 'Smith_Machine_Incline_Bench_Press',
   'lat pulldowns': 'Wide-Grip_Lat_Pulldown',

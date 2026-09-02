@@ -148,7 +148,7 @@ export function listWorkoutSectionLabels(exercises: Array<{
 }
 
 /**
- * SHIPPED_DEFAULT_PROGRAM_V3..V9 and V12–V15 below stay populated on purpose — they
+ * SHIPPED_DEFAULT_PROGRAM_V3..V9 and V12–V16 below stay populated on purpose — they
  * are the signature tables `reconcileProgramWithDefaults` uses to recognise
  * entries that older versions shipped, so devices that already store them are
  * migrated instead of stranded.
@@ -233,14 +233,22 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 22, name: 'EZ Bar Curl + Concentration Curl', target: HYPERTROPHY_TARGET, extra: true },
     ]),
   ],
-  Sunday: stretchBlock(1, [
-    { slot: 18, name: 'Cat-Cow' },
-    { slot: 22, name: 'Bird Dog' },
-    { slot: 11, name: 'Hip Flexor Stretch' },
-    { slot: 23, name: 'Glute Bridge' },
-    { slot: 19, name: "Child's Pose" },
-    { slot: 12, name: 'Figure-4 Glute Stretch' },
-  ]),
+  Sunday: [
+    ...stretchBlock(1, [
+      { slot: 18, name: 'Cat-Cow' },
+      { slot: 22, name: 'Bird Dog' },
+      { slot: 11, name: 'Hip Flexor Stretch' },
+      { slot: 23, name: 'Glute Bridge' },
+      { slot: 19, name: "Child's Pose" },
+      { slot: 12, name: 'Figure-4 Glute Stretch' },
+    ]),
+    ...buildWorkoutBlock(1, 'Shoulders', 2, [
+      { slot: 24, name: 'Military Press', target: HYPERTROPHY_TARGET, extra: true },
+      { slot: 25, name: 'Lateral Raises', target: HYPERTROPHY_TARGET, extra: true },
+      { slot: 26, name: 'Front Raises', target: HYPERTROPHY_TARGET, extra: true },
+      { slot: 27, name: 'Incline DB Row', target: HYPERTROPHY_TARGET, extra: true },
+    ]),
+  ],
 };
 
 /**
@@ -790,6 +798,22 @@ const SHIPPED_DEFAULT_PROGRAM_V15: Record<Weekday, Record<number, string>> = {
   Sunday: {},
 };
 
+/** Slots v16 introduced for Sunday EXTRA shoulders. New movements take unused slots. */
+const SHIPPED_DEFAULT_PROGRAM_V16: Record<Weekday, Record<number, string>> = {
+  Monday: {},
+  Tuesday: {},
+  Wednesday: {},
+  Thursday: {},
+  Friday: {},
+  Saturday: {},
+  Sunday: {
+    24: 'Military Press',
+    25: 'Lateral Raises',
+    26: 'Front Raises',
+    27: 'Incline DB Row',
+  },
+};
+
 const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V4,
   SHIPPED_DEFAULT_PROGRAM_V5,
@@ -801,6 +825,7 @@ const SHIPPED_SLOT_GROUPS: Record<Weekday, Record<number, string>>[] = [
   SHIPPED_DEFAULT_PROGRAM_V13,
   SHIPPED_DEFAULT_PROGRAM_V14,
   SHIPPED_DEFAULT_PROGRAM_V15,
+  SHIPPED_DEFAULT_PROGRAM_V16,
 ];
 
 /**
