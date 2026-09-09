@@ -10,7 +10,7 @@ import {
 
 const ABS_DAY_NAMES = ['Ab Machine', 'Leg Raises', 'Incline Sit-Ups', 'Abs Circuit'] as const;
 const ABS_EXERCISE_NAMES = [...ABS_DAY_NAMES] as const;
-const EVENING_STRETCH_NAMES = [
+const MORNING_STRETCH_NAMES = [
   'Cat-Cow',
   'Bird Dog',
   'Hip Flexor Stretch',
@@ -91,7 +91,7 @@ function extraNames(day: keyof typeof PROGRAM): string[] {
 }
 
 function liftLabels(day: keyof typeof PROGRAM): string[] {
-  return listWorkoutSectionLabels(PROGRAM[day]).filter((label) => label !== 'Stretch');
+  return listWorkoutSectionLabels(PROGRAM[day]).filter((label) => label !== 'Morning Stretch');
 }
 
 describe('weekly exercise sections', () => {
@@ -99,56 +99,56 @@ describe('weekly exercise sections', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Monday)).toEqual(['Chest + Abs']);
     expect(PROGRAM.Monday.map((exercise) => exercise.name)).toEqual([...MONDAY_CHEST_ABS_NAMES]);
     expect(namesForLabel('Monday', 'Chest + Abs')).toEqual([...MONDAY_CHEST_ABS_NAMES]);
-    expect(namesForLabel('Monday', 'Stretch')).toEqual([]);
+    expect(namesForLabel('Monday', 'Morning Stretch')).toEqual([]);
     expect(PROGRAM.Monday.some((exercise) => /hamstring/i.test(exercise.name))).toBe(false);
   });
 
-  it('keeps Wednesday as shoulders+abs then evening stretch, with Front Raises in Face Pulls’ old slot', () => {
-    expect(listWorkoutSectionLabels(PROGRAM.Wednesday)).toEqual(['Shoulders + Abs', 'Stretch']);
+  it('keeps Wednesday as morning stretch then shoulders+abs, with Front Raises in Face Pulls’ old slot', () => {
+    expect(listWorkoutSectionLabels(PROGRAM.Wednesday)).toEqual(['Morning Stretch', 'Shoulders + Abs']);
     expect(namesForLabel('Wednesday', 'Shoulders + Abs')).toEqual([...WEDNESDAY_SHOULDERS_ABS_NAMES]);
-    expect(namesForLabel('Wednesday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
+    expect(namesForLabel('Wednesday', 'Morning Stretch')).toEqual([...MORNING_STRETCH_NAMES]);
     expect(PROGRAM.Wednesday.some((exercise) => exercise.name === 'Face Pulls')).toBe(false);
     expect(PROGRAM.Wednesday.some((exercise) => exercise.extra)).toBe(false);
   });
 
-  it('keeps Tuesday as biceps+triceps then evening stretch, with Hammer Curl extra only', () => {
+  it('keeps Tuesday as morning stretch then biceps+triceps, with Hammer Curl extra only', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Tuesday)).toEqual([
+      'Morning Stretch',
       'Biceps + Triceps',
-      'Stretch',
     ]);
     expect(namesForLabel('Tuesday', 'Biceps + Triceps')).toEqual([...TUESDAY_BICEPS_TRICEPS_NAMES]);
     expect(namesForLabel('Tuesday', 'Abs')).toEqual([]);
-    expect(namesForLabel('Tuesday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
+    expect(namesForLabel('Tuesday', 'Morning Stretch')).toEqual([...MORNING_STRETCH_NAMES]);
     expect(PROGRAM.Tuesday.some((exercise) => /shoulder press|lateral raise|front raise|face pull/i.test(exercise.name))).toBe(false);
   });
 
-  it('keeps Thursday as back+chest then evening stretch, starting with Lat Pulldown and ending with Face Pulls', () => {
+  it('keeps Thursday as morning stretch then back+chest, starting with Lat Pulldown and ending with Face Pulls', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Thursday)).toEqual([
+      'Morning Stretch',
       'Back + Chest',
-      'Stretch',
     ]);
     expect(namesForLabel('Thursday', 'Back + Chest')).toEqual([...THURSDAY_BACK_CHEST_NAMES]);
     expect(namesForLabel('Thursday', 'Abs')).toEqual([]);
-    expect(namesForLabel('Thursday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
+    expect(namesForLabel('Thursday', 'Morning Stretch')).toEqual([...MORNING_STRETCH_NAMES]);
     expect(namesForLabel('Thursday', 'Back + Chest')).not.toContain('Single Arm Row');
     expect(namesForLabel('Thursday', 'Back + Chest')).not.toContain('Back Extension');
     expect(namesForLabel('Thursday', 'Back + Chest')[0]).toBe('Lat Pulldown');
     expect(namesForLabel('Thursday', 'Back + Chest')[4]).toBe('Face Pulls');
   });
 
-  it('keeps Friday as legs only, Saturday as abs+arms, and Sunday as stretch then EXTRA shoulders', () => {
+  it('keeps Friday as legs only, Saturday as abs+arms, and Sunday as morning stretch then EXTRA shoulders', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Friday)).toEqual(['Legs']);
     expect(namesForLabel('Friday', 'Legs')).toEqual([...FRIDAY_LEGS_NAMES]);
     expect(namesForLabel('Friday', 'Legs')).not.toContain('Leg Extension');
     expect(namesForLabel('Friday', 'Legs')).not.toContain('Leg Press');
     expect(namesForLabel('Friday', 'Legs')).not.toContain('Leg Curl');
     expect(namesForLabel('Friday', 'Legs')).not.toContain('Calf Raise');
-    expect(namesForLabel('Friday', 'Stretch')).toEqual([]);
+    expect(namesForLabel('Friday', 'Morning Stretch')).toEqual([]);
     expect(listWorkoutSectionLabels(PROGRAM.Saturday)).toEqual(['Abs + Arms']);
     expect(namesForLabel('Saturday', 'Abs + Arms')).toEqual([...SATURDAY_ABS_ARMS_NAMES]);
-    expect(namesForLabel('Saturday', 'Stretch')).toEqual([]);
-    expect(listWorkoutSectionLabels(PROGRAM.Sunday)).toEqual(['Stretch', 'Shoulders']);
-    expect(namesForLabel('Sunday', 'Stretch')).toEqual([...EVENING_STRETCH_NAMES]);
+    expect(namesForLabel('Saturday', 'Morning Stretch')).toEqual([]);
+    expect(listWorkoutSectionLabels(PROGRAM.Sunday)).toEqual(['Morning Stretch', 'Shoulders']);
+    expect(namesForLabel('Sunday', 'Morning Stretch')).toEqual([...MORNING_STRETCH_NAMES]);
     expect(namesForLabel('Sunday', 'Shoulders')).toEqual([...SUNDAY_SHOULDERS_EXTRA_NAMES]);
     expect(PROGRAM.Sunday.filter((exercise) => exercise.workoutLabel === 'Shoulders').every((exercise) => exercise.extra)).toBe(true);
     expect(PROGRAM.Sunday.map((exercise) => exercise.id)).toEqual([
@@ -173,8 +173,8 @@ describe('weekly exercise sections', () => {
     expect(liftLabels('Friday')).toEqual(['Legs']);
     expect(liftLabels('Saturday')).toEqual(['Abs + Arms']);
     expect(liftLabels('Sunday')).toEqual(['Shoulders']);
-    expect(namesForLabel('Friday', 'Stretch')).toEqual([]);
-    expect(namesForLabel('Saturday', 'Stretch')).toEqual([]);
+    expect(namesForLabel('Friday', 'Morning Stretch')).toEqual([]);
+    expect(namesForLabel('Saturday', 'Morning Stretch')).toEqual([]);
   });
 
   it('marks only the locked EXTRA movements and never adds extra copy on combined + names', () => {
@@ -229,13 +229,13 @@ describe('weekly exercise sections', () => {
       }
 
       const stretchKeys = PROGRAM[day]
-        .filter((exercise) => exercise.workoutLabel === 'Stretch')
+        .filter((exercise) => exercise.workoutLabel === 'Morning Stretch')
         .map((exercise) => getWorkoutSectionKey(exercise));
-      const morningKeys = PROGRAM[day]
-        .filter((exercise) => exercise.workoutLabel && exercise.workoutLabel !== 'Stretch')
+      const trainingKeys = PROGRAM[day]
+        .filter((exercise) => exercise.workoutLabel && exercise.workoutLabel !== 'Morning Stretch')
         .map((exercise) => getWorkoutSectionKey(exercise));
       for (const stretchKey of stretchKeys) {
-        expect(morningKeys).not.toContain(stretchKey);
+        expect(trainingKeys).not.toContain(stretchKey);
       }
     }
   });

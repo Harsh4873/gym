@@ -80,6 +80,7 @@ import {
   getWorkoutSectionKey,
   getWorkoutSectionOrder,
   inferExerciseKind,
+  moveStretchToMorning,
   WEEK_DAYS,
 } from './program';
 import {
@@ -964,6 +965,24 @@ function AppFooter() {
   );
 }
 
+function WorkoutBlockHeading({
+  exercise,
+  className = 'workout-block-heading',
+}: {
+  exercise: { workoutLabel?: string; blockOrder?: number; workoutBlock?: 1 | 2 };
+  className?: string;
+}) {
+  const morning = exercise.workoutLabel === 'Morning Stretch';
+  const order = getWorkoutSectionOrder(exercise);
+  return (
+    <div className={`${className}${morning ? ' morning-block' : ''}`}>
+      <span>{morning ? 'Morning · Start here' : order === 1 ? 'Start here' : `Then · Block ${order}`}</span>
+      <strong>{morning && <Sun aria-hidden="true" />}{exercise.workoutLabel}</strong>
+      {morning && <small>Your mobility routine comes first.</small>}
+    </div>
+  );
+}
+
 function WorkoutPanel({
   dateKey,
   exercises,
@@ -1761,10 +1780,7 @@ function WorkoutPanel({
                 </div>
               )}
               {startsWorkoutBlock && workoutLabel && sectionExercise && (
-                <div className="workout-block-heading">
-                  <span>{getWorkoutSectionOrder(sectionExercise) === 1 ? 'Start here' : 'Then'}</span>
-                  <strong>{workoutLabel}</strong>
-                </div>
+                <WorkoutBlockHeading exercise={sectionExercise} />
               )}
               <article
                 className={`exercise-group ${group.type} ${draggedGroupId === group.id ? 'dragging' : ''} ${
@@ -3117,10 +3133,7 @@ function SearchView({
               return (
                 <Fragment key={`saved-${guide.id}`}>
                   {startsWorkoutBlock && (
-                    <div className="exercise-search-workout-heading">
-                      <span>{getWorkoutSectionOrder(entry) === 1 ? 'Start here' : 'Then'}</span>
-                      <strong>{entry.workoutLabel}</strong>
-                    </div>
+                    <WorkoutBlockHeading exercise={entry} className="exercise-search-workout-heading" />
                   )}
                   <ExerciseGuideCard
                     guide={guide}
@@ -3544,10 +3557,7 @@ function SettingsView({
                 return (
                 <Fragment key={exercise.id}>
                 {startsWorkoutBlock && (
-                  <div className="workout-block-heading">
-                    <span>{getWorkoutSectionOrder(exercise) === 1 ? 'Start here' : 'Then'}</span>
-                    <strong>{exercise.workoutLabel}</strong>
-                  </div>
+                  <WorkoutBlockHeading exercise={exercise} />
                 )}
                 <article className="program-workout-row">
                   <div className="move-pair">
@@ -3893,7 +3903,8 @@ export default function App() {
 
   const getExercises: GetExercisesForDate = (dateKey) => {
     const snapshot = logs[dateKey]?.exerciseSnapshot;
-    return snapshot !== undefined ? snapshot : getProgramExercisesForDate(dateKey, program);
+    const exercises = snapshot !== undefined ? snapshot : getProgramExercisesForDate(dateKey, program);
+    return dateKey >= todayKey ? moveStretchToMorning(exercises) : exercises;
   };
 
   const updateExerciseOrder = (dateKey: string, exerciseIds: string[]) => {

@@ -1028,6 +1028,26 @@ a:focus-visible {
   letter-spacing: -0.025em;
 }
 
+.morning-block strong {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.morning-block strong svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.morning-block small {
+  flex-basis: 100%;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .workout-block-heading.completed-block {
   border-color: color-mix(in srgb, var(--color-success) 28%, var(--color-border));
   border-left-color: var(--color-success);

@@ -86,12 +86,7 @@ function buildWorkoutBlock(
 
 const DAILY_STRETCH_TARGET: ExerciseTarget = { sets: 1, restSeconds: 0 };
 
-/**
- * Evening stretch is its own section. It is never Workout 1 (morning stretch or
- * abs) and never the lift. Keep `workoutLabel: 'Stretch'` so the page can render
- * it under a heading distinct from 'Lower Body Stretch', 'Upper Body Stretch',
- * and 'Abs'.
- */
+/** Morning mobility stays separate from abs and lifting. */
 function stretchBlock(
   blockOrder: number,
   entries: Array<{ slot: number; name: string }>,
@@ -101,12 +96,12 @@ function stretchBlock(
     name,
     kind: 'mobility' as ExerciseKind,
     target: DAILY_STRETCH_TARGET,
-    workoutLabel: 'Stretch',
+    workoutLabel: 'Morning Stretch',
     blockOrder,
   }));
 }
 
-/** Stable section identity: evening stretch must not collapse into morning or the lift. */
+/** Keep distinct workout sections separate even when they share a block number. */
 export function getWorkoutSectionKey(exercise: {
   workoutLabel?: string;
   blockOrder?: number;
@@ -120,6 +115,22 @@ export function getWorkoutSectionOrder(exercise: {
   workoutBlock?: 1 | 2;
 }): number {
   return exercise.blockOrder ?? exercise.workoutBlock ?? 1;
+}
+
+/** Apply the morning schedule to older snapshots without replacing their exercises. */
+export function moveStretchToMorning(exercises: Exercise[]): Exercise[] {
+  const stretches = exercises.filter((exercise) => exercise.workoutLabel === 'Stretch');
+  if (stretches.length === 0) return exercises;
+
+  const remaining = exercises.filter((exercise) => exercise.workoutLabel !== 'Stretch');
+  const sectionOrders = [...new Set(remaining.map(getWorkoutSectionOrder))].sort((a, b) => a - b);
+  return [
+    ...stretches.map((exercise) => ({ ...exercise, workoutLabel: 'Morning Stretch', blockOrder: 1 })),
+    ...remaining.map((exercise) => ({
+      ...exercise,
+      blockOrder: sectionOrders.indexOf(getWorkoutSectionOrder(exercise)) + 2,
+    })),
+  ];
 }
 
 export function listWorkoutSectionLabels(exercises: Array<{
@@ -164,14 +175,7 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
     ]),
   ],
   Tuesday: [
-    ...buildWorkoutBlock(1, 'Biceps + Triceps', 1, [
-      { slot: 1, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
-      { slot: 34, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
-      { slot: 28, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
-      { slot: 35, name: 'Dips', target: STRENGTH_TARGET },
-      { slot: 12, name: 'Hammer Curl', target: HYPERTROPHY_TARGET, extra: true },
-    ]),
-    ...stretchBlock(2, [
+    ...stretchBlock(1, [
       { slot: 17, name: 'Cat-Cow' },
       { slot: 18, name: 'Bird Dog' },
       { slot: 16, name: 'Hip Flexor Stretch' },
@@ -179,17 +183,16 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 29, name: "Child's Pose" },
       { slot: 23, name: 'Figure-4 Glute Stretch' },
     ]),
+    ...buildWorkoutBlock(1, 'Biceps + Triceps', 2, [
+      { slot: 1, name: 'Incline Curls', target: HYPERTROPHY_TARGET },
+      { slot: 34, name: 'Overhead Extension', target: HYPERTROPHY_TARGET },
+      { slot: 28, name: 'Preacher Curl', target: HYPERTROPHY_TARGET },
+      { slot: 35, name: 'Dips', target: STRENGTH_TARGET },
+      { slot: 12, name: 'Hammer Curl', target: HYPERTROPHY_TARGET, extra: true },
+    ]),
   ],
   Wednesday: [
-    ...buildWorkoutBlock(1, 'Shoulders + Abs', 1, [
-      { slot: 1, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
-      { slot: 43, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
-      { slot: 3, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
-      { slot: 46, name: 'Back Extension + Incline Sit-Ups', target: HYPERTROPHY_TARGET },
-      { slot: 6, name: 'Front Raises', target: HYPERTROPHY_TARGET },
-      { slot: 44, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
-    ]),
-    ...stretchBlock(2, [
+    ...stretchBlock(1, [
       { slot: 41, name: 'Cat-Cow' },
       { slot: 42, name: 'Bird Dog' },
       { slot: 7, name: 'Hip Flexor Stretch' },
@@ -197,22 +200,30 @@ export const DEFAULT_PROGRAM: Record<Weekday, ProgramEntry[]> = {
       { slot: 39, name: "Child's Pose" },
       { slot: 8, name: 'Figure-4 Glute Stretch' },
     ]),
+    ...buildWorkoutBlock(1, 'Shoulders + Abs', 2, [
+      { slot: 1, name: 'Dumbbell Shoulder Press', target: STRENGTH_TARGET },
+      { slot: 43, name: 'Ab Machine', target: HYPERTROPHY_TARGET },
+      { slot: 3, name: 'Lateral Raises', target: HYPERTROPHY_TARGET },
+      { slot: 46, name: 'Back Extension + Incline Sit-Ups', target: HYPERTROPHY_TARGET },
+      { slot: 6, name: 'Front Raises', target: HYPERTROPHY_TARGET },
+      { slot: 44, name: 'Leg Raises', target: HYPERTROPHY_TARGET },
+    ]),
   ],
   Thursday: [
-    ...buildWorkoutBlock(1, 'Back + Chest', 1, [
-      { slot: 36, name: 'Lat Pulldown', target: STRENGTH_TARGET },
-      { slot: 40, name: 'Flat DB Bench', target: STRENGTH_TARGET },
-      { slot: 41, name: 'Incline Smith Bench', target: HYPERTROPHY_TARGET },
-      { slot: 35, name: 'Low Row', target: STRENGTH_TARGET },
-      { slot: 12, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
-    ]),
-    ...stretchBlock(2, [
+    ...stretchBlock(1, [
       { slot: 16, name: 'Cat-Cow' },
       { slot: 17, name: 'Bird Dog' },
       { slot: 15, name: 'Hip Flexor Stretch' },
       { slot: 18, name: 'Glute Bridge' },
       { slot: 30, name: "Child's Pose" },
       { slot: 22, name: 'Figure-4 Glute Stretch' },
+    ]),
+    ...buildWorkoutBlock(1, 'Back + Chest', 2, [
+      { slot: 36, name: 'Lat Pulldown', target: STRENGTH_TARGET },
+      { slot: 40, name: 'Flat DB Bench', target: STRENGTH_TARGET },
+      { slot: 41, name: 'Incline Smith Bench', target: HYPERTROPHY_TARGET },
+      { slot: 35, name: 'Low Row', target: STRENGTH_TARGET },
+      { slot: 12, name: 'Face Pulls', target: HYPERTROPHY_TARGET },
     ]),
   ],
   Friday: [
