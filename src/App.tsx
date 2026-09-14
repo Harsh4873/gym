@@ -63,14 +63,19 @@ import {
 } from './dateUtils';
 import {
   FREE_EXERCISE_DB_PROJECT_URL,
-  getCustomExerciseGuides,
+  BODY_REGIONS,
+  DISCIPLINES,
+  buildDiscoveryGuides,
+  filterExerciseGuides,
+  getGuideDiscipline,
+  type ExerciseDiscipline,
+  type BodyRegion,
+  type GuideFilters,
   getExerciseGuideFamily,
   getGuideMetaLabel,
   loadFreeExerciseLibrary,
-  matchesExerciseGuide,
   normalizeExerciseName as normalizeLibraryExerciseName,
   resolvePersonalExerciseGuide,
-  toExerciseGuide,
   type ExerciseGuide,
   type ExerciseGuideFamily,
   type FreeExerciseRecord,
@@ -2671,8 +2676,8 @@ function buildSavedExerciseLibraryEntries(
   return entries;
 }
 
-function getGuideFamilyLabel(family: ExerciseGuideFamily): string {
-  return family === 'mobility' ? 'Mobility' : 'Strength';
+function getGuideFamilyLabel(guide: ExerciseGuide): string {
+  return DISCIPLINES.find(({ id }) => id === getGuideDiscipline(guide))!.label;
 }
 
 function ExerciseGuideArtwork({
@@ -2696,7 +2701,7 @@ function ExerciseGuideArtwork({
       <img
         className={guide.source === 'custom' ? 'custom-guide-image' : ''}
         src={source}
-        alt={`${guide.name}${guide.images.length > 1 ? `, ${imageIndex === 0 ? 'start' : 'finish'} position` : ' movement sequence'}`}
+        alt={`${guide.name}${guide.images.length > 1 ? `, position ${imageIndex + 1}` : ' movement sequence'}`}
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
@@ -2707,7 +2712,10 @@ function ExerciseGuideArtwork({
   const FallbackIcon = guide.family === 'strength' ? Dumbbell : ImageIcon;
 
   return (
-    <div className={`exercise-art-fallback ${detail ? 'detail' : ''}`} aria-label="Dedicated visual guide coming soon">
+    <div
+      className={`exercise-art-fallback ${detail ? 'detail' : ''}`}
+      aria-label="Dedicated visual guide coming soon"
+    >
       <FallbackIcon aria-hidden="true" />
       <span>Visual guide coming soon</span>
     </div>
@@ -2727,18 +2735,27 @@ function ExerciseGuideCard({
   sourceLabel?: string;
   onOpen: () => void;
 }) {
-  const sourceLabel = sourceLabelOverride
-    ?? (saved ? 'Your log' : guide.source === 'custom' ? 'Gym guide' : 'Open library');
+  const sourceLabel =
+    sourceLabelOverride ??
+    (saved
+      ? 'In your Gym'
+      : guide.coaching
+        ? 'Starter guide'
+        : guide.assisted
+          ? 'Partner assisted'
+          : guide.source === 'custom'
+            ? 'Gym guide'
+            : 'Photo guide');
 
   return (
     <button className="exercise-library-card" type="button" onClick={onOpen}>
       <span className={`exercise-card-art ${guide.source}`}>
-        <ExerciseGuideArtwork guide={guide} />
+        <ExerciseGuideArtwork guide={guide} imageIndex={guide.images.length > 1 ? 1 : 0} />
         <span className="exercise-source-chip">{sourceLabel}</span>
       </span>
       <span className="exercise-card-copy">
         <span className="exercise-card-kicker">
-          {getGuideFamilyLabel(guide.family)}
+          {getGuideFamilyLabel(guide)}
           {guide.equipment ? ` · ${guide.equipment}` : ''}
         </span>
         <span className="exercise-card-name">
@@ -2746,6 +2763,12 @@ function ExerciseGuideCard({
           {extra ? <ExtraChip /> : null}
         </span>
         <small>{getGuideMetaLabel(guide)}</small>
+        {guide.coaching && (
+          <span className="exercise-card-dose">
+            <Clock3 aria-hidden="true" />
+            {guide.coaching.dose}
+          </span>
+        )}
         <span className="exercise-card-link">
           View guide
           <ChevronRight aria-hidden="true" />
@@ -2764,12 +2787,29 @@ function ExerciseGuideDialog({
   saved: boolean;
   onClose: () => void;
 }) {
+  const dialogRef = useRef<HTMLElement>(null);
   useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
+      if (event.key === 'Escape') onClose();
+      if (event.key === 'Tab') {
+        const focusable = Array.from(
+          dialogRef.current?.querySelectorAll<HTMLElement>(
+            'button, a[href], input, select, [tabindex="0"]',
+          ) ?? [],
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
       }
     };
     window.addEventListener('keydown', closeOnEscape);
@@ -2777,6 +2817,7 @@ function ExerciseGuideDialog({
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', closeOnEscape);
+      previousFocus?.focus();
     };
   }, [onClose]);
 
@@ -2797,6 +2838,7 @@ function ExerciseGuideDialog({
       }}
     >
       <section
+        ref={dialogRef}
         className="exercise-guide-dialog"
         role="dialog"
         aria-modal="true"
@@ -2808,7 +2850,12 @@ function ExerciseGuideDialog({
             <h2 id="exercise-guide-title">{guide.name}</h2>
             {guide.libraryName && <p>Visual reference: {guide.libraryName}</p>}
           </div>
-          <button className="icon-only-button" type="button" aria-label="Close exercise guide" onClick={onClose}>
+          <button
+            className="icon-only-button"
+            type="button"
+            aria-label="Close exercise guide"
+            onClick={onClose}
+          >
             <X aria-hidden="true" />
           </button>
         </header>
@@ -2818,7 +2865,7 @@ function ExerciseGuideDialog({
             <figure key={`${guide.id}-image-${index}`}>
               <ExerciseGuideArtwork guide={guide} detail imageIndex={index} />
               <figcaption>
-                {guide.images.length === 1 ? 'Movement sequence' : index === 0 ? 'Start' : 'Finish'}
+                {guide.images.length === 1 ? 'Movement reference' : `Reference ${index + 1}`}
               </figcaption>
             </figure>
           ))}
@@ -2826,10 +2873,25 @@ function ExerciseGuideDialog({
 
         <div className="exercise-guide-content">
           <div className="exercise-guide-meta">
-            <span>{getGuideFamilyLabel(guide.family)}</span>
+            <span>{getGuideFamilyLabel(guide)}</span>
             {guide.level && <span>{guide.level}</span>}
             {guide.equipment && <span>{guide.equipment}</span>}
+            {guide.assisted && <span>Requires a partner</span>}
           </div>
+
+          {guide.coaching && (
+            <div className="exercise-coaching-summary">
+              <p className="exercise-guide-dose">
+                <Clock3 aria-hidden="true" />
+                <strong>{guide.coaching.dose}</strong>
+                <span>Suggested starting dose</span>
+              </p>
+              <div>
+                <span>Where to feel it</span>
+                <p>{guide.coaching.feel}</p>
+              </div>
+            </div>
+          )}
 
           {(guide.primaryMuscles.length > 0 || guide.secondaryMuscles.length > 0) && (
             <section className="exercise-guide-section">
@@ -2859,21 +2921,46 @@ function ExerciseGuideDialog({
               <div className="exercise-guide-pending">
                 <ImageIcon aria-hidden="true" />
                 <p>
-                  This workout is saved from your log, but it does not have a dedicated form guide yet.
-                  It stays searchable while we expand the visual library.
+                  This workout is saved from your log, but it does not have a dedicated form guide yet. It
+                  stays searchable while we expand the visual library.
                 </p>
               </div>
             )}
           </section>
 
+          {guide.coaching && (
+            <div className="exercise-coaching-tips">
+              <section>
+                <h3>Keep an eye on</h3>
+                <p>{guide.coaching.avoid}</p>
+              </section>
+              <section>
+                <h3>Make it easier</h3>
+                <p>{guide.coaching.easier}</p>
+              </section>
+            </div>
+          )}
+          {['stretching', 'mobility'].includes(getGuideDiscipline(guide)) && (
+            <p className="exercise-guide-safety">
+              Move gently and breathe. Aim for mild tension, never pain; stop if you feel pinching, tingling,
+              or sharp discomfort.
+            </p>
+          )}
+
           {guide.source === 'library' && (
             <a
               className="exercise-library-credit"
-              href={FREE_EXERCISE_DB_PROJECT_URL}
+              href={
+                guide.recordId
+                  ? `${FREE_EXERCISE_DB_PROJECT_URL}/blob/main/exercises/${guide.recordId}.json`
+                  : FREE_EXERCISE_DB_PROJECT_URL
+              }
               target="_blank"
               rel="noreferrer"
             >
-              Public-domain instructions and imagery from Free Exercise DB
+              {guide.coaching
+                ? 'Photo reference: Free Exercise DB · coaching by Gym'
+                : 'Public-domain instructions and imagery from Free Exercise DB'}
               <ExternalLink aria-hidden="true" />
             </a>
           )}
@@ -2893,19 +2980,21 @@ function SearchView({
   todayKey: string;
 }) {
   const [query, setQuery] = useState('');
-  const [family, setFamily] = useState<'all' | ExerciseGuideFamily>('all');
+  const [discipline, setDiscipline] = useState<'all' | ExerciseDiscipline>('stretching');
+  const [region, setRegion] = useState<'all' | BodyRegion>('all');
+  const [equipment, setEquipment] = useState<GuideFilters['equipment']>('all');
+  const [beginner, setBeginner] = useState(false);
+  const [scope, setScope] = useState<'library' | 'saved'>('library');
   const [selectedDay, setSelectedDay] = useState<'all' | Weekday>('all');
+  const [visibleCount, setVisibleCount] = useState(18);
   const [library, setLibrary] = useState<FreeExerciseRecord[]>([]);
   const [libraryStatus, setLibraryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [libraryError, setLibraryError] = useState('');
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [selectedGuide, setSelectedGuide] = useState<{ guide: ExerciseGuide; saved: boolean } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLibraryStatus('loading');
-    setLibraryError('');
-
     loadFreeExerciseLibrary()
       .then((records) => {
         if (!cancelled) {
@@ -2913,126 +3002,140 @@ function SearchView({
           setLibraryStatus('ready');
         }
       })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          setLibraryStatus('error');
-          setLibraryError(error instanceof Error ? error.message : 'The exercise library could not load.');
-        }
+      .catch(() => {
+        if (!cancelled) setLibraryStatus('error');
       });
-
     return () => {
       cancelled = true;
     };
   }, [loadAttempt]);
 
-  const allSavedEntries = useMemo(
-    () => buildSavedExerciseLibraryEntries(program, logs),
-    [program, logs],
-  );
-  const savedEntries = useMemo(() => {
-    if (selectedDay === 'all') {
-      return allSavedEntries;
-    }
+  useEffect(() => {
+    setVisibleCount(18);
+  }, [query, discipline, region, equipment, beginner, scope, selectedDay]);
 
-    return program[selectedDay].map((exercise, index) => ({
-      name: exercise.name,
-      family: getFamilyForExerciseKind(exercise.kind),
-      order: index + 1,
-      workoutBlock: exercise.workoutBlock,
-      workoutLabel: exercise.workoutLabel,
-      blockOrder: exercise.blockOrder,
-      ...(exercise.extra ? { extra: true } : {}),
-    }));
-  }, [allSavedEntries, program, selectedDay]);
-  const savedGuideResults = useMemo(
-    () => savedEntries.map((entry) => ({
-      entry,
-      guide: resolvePersonalExerciseGuide(entry.name, library, entry.family),
-    })),
-    [library, savedEntries],
+  const allSavedEntries = useMemo(() => buildSavedExerciseLibraryEntries(program, logs), [program, logs]);
+  const savedEntries: SavedExerciseLibraryEntry[] = useMemo(
+    () =>
+      selectedDay === 'all'
+        ? allSavedEntries
+        : program[selectedDay].map((exercise, index) => ({
+            name: exercise.name,
+            family: getFamilyForExerciseKind(exercise.kind),
+            order: index + 1,
+            workoutBlock: exercise.workoutBlock,
+            workoutLabel: exercise.workoutLabel,
+            blockOrder: exercise.blockOrder,
+            extra: exercise.extra,
+          })),
+    [allSavedEntries, program, selectedDay],
   );
-  const savedNames = useMemo(
-    () => new Set(savedGuideResults.flatMap(({ guide }) => (
-      [guide.name, guide.libraryName]
-        .filter(Boolean)
-        .map((name) => normalizeLibraryExerciseName(name!))
-    ))),
-    [savedGuideResults],
+  const savedResults = useMemo(
+    () =>
+      savedEntries.map((entry) => ({
+        entry,
+        guide: resolvePersonalExerciseGuide(entry.name, library, entry.family),
+      })),
+    [savedEntries, library],
   );
-
-  const visibleSavedGuideResults = useMemo(
-    () => savedGuideResults.filter(
-      ({ guide }) =>
-        (family === 'all' || guide.family === family) &&
-        matchesExerciseGuide(guide, query),
-    ),
-    [family, query, savedGuideResults],
+  const discoveryGuides = useMemo(() => buildDiscoveryGuides(library), [library]);
+  const allSavedGuides = useMemo(
+    () => allSavedEntries.map((entry) => resolvePersonalExerciseGuide(entry.name, library, entry.family)),
+    [allSavedEntries, library],
   );
-
-  const discoveryGuides = useMemo(() => {
-    if (selectedDay !== 'all') {
-      return [];
-    }
-
-    const customGuides = getCustomExerciseGuides().filter(
-      (guide) => !savedNames.has(normalizeLibraryExerciseName(guide.name)),
+  const isSaved = (guide: ExerciseGuide) =>
+    allSavedGuides.some((saved) =>
+      guide.recordId
+        ? guide.recordId === saved.recordId
+        : normalizeLibraryExerciseName(guide.name) === normalizeLibraryExerciseName(saved.name),
     );
-    const libraryGuides = query.trim()
-      ? library
-          .map((record) => toExerciseGuide(record))
-          .filter((guide) => !savedNames.has(normalizeLibraryExerciseName(guide.name)))
-      : [];
-
-    const seen = new Set<string>();
-    return [...customGuides, ...libraryGuides]
-      .filter((guide) => {
-        const guideName = normalizeLibraryExerciseName(guide.name);
-        if (
-          seen.has(guideName) ||
-          (family !== 'all' && guide.family !== family) ||
-          !matchesExerciseGuide(guide, query)
-        ) {
-          return false;
-        }
-        seen.add(guideName);
-        return true;
-      })
-      .slice(0, query.trim() ? 24 : 4);
-  }, [family, library, query, savedNames, selectedDay]);
-
-  const hasResults = visibleSavedGuideResults.length > 0 || discoveryGuides.length > 0;
+  const sourceGuides = useMemo(
+    () => (scope === 'library' ? discoveryGuides : savedResults.map(({ guide }) => guide)),
+    [scope, discoveryGuides, savedResults],
+  );
+  const results = useMemo(
+    () => filterExerciseGuides(sourceGuides, { query, discipline, region, equipment, beginner }),
+    [sourceGuides, query, discipline, region, equipment, beginner],
+  );
+  const counts = useMemo(() => {
+    const candidates = filterExerciseGuides(sourceGuides, {
+      query,
+      discipline: 'all',
+      region,
+      equipment,
+      beginner,
+    });
+    return Object.fromEntries(
+      DISCIPLINES.map(({ id }) => [
+        id,
+        candidates.filter((guide) => getGuideDiscipline(guide) === id).length,
+      ]),
+    );
+  }, [sourceGuides, query, region, equipment, beginner]);
   const todayWeekday = getWeekday(parseDateKey(todayKey));
-  const filterOptions: Array<{ id: 'all' | ExerciseGuideFamily; label: string }> = [
-    { id: 'all', label: 'All' },
-    { id: 'strength', label: 'Strength' },
-    { id: 'mobility', label: 'Mobility' },
-  ];
+  const resetFilters = () => {
+    setQuery('');
+    setDiscipline('all');
+    setRegion('all');
+    setEquipment('all');
+    setBeginner(false);
+  };
+  const hasRefinements = query || region !== 'all' || equipment !== 'all' || beginner;
+  const currentDiscipline = DISCIPLINES.find(({ id }) => id === discipline);
+  const stretchCount = discoveryGuides.filter((guide) =>
+    ['stretching', 'mobility'].includes(getGuideDiscipline(guide)),
+  ).length;
 
   return (
     <div className="view-stack exercise-search-view">
       <section className="exercise-search-hero">
         <div>
-          <p className="eyebrow">Exercise library</p>
-          <h1>See the movement before you do it.</h1>
+          <p className="eyebrow">The movement library</p>
+          <h1>
+            A little less stiff.
+            <br />A lot more confident.
+          </h1>
           <p>
-            Your program and workout history come first. Search the open library when you want to
-            explore something that is not in your log yet.
+            Start with a stretch. See the positions, learn what to feel, and find a version that works for
+            you.
           </p>
         </div>
         <div className="exercise-search-stat">
-          <strong>{savedGuideResults.length}</strong>
-          <span>{selectedDay === 'all' ? 'from your Gym' : `on ${selectedDay}`}</span>
+          <strong>{stretchCount}</strong>
+          <span>stretch & mobility guides</span>
         </div>
       </section>
 
       <section className="exercise-search-controls" aria-label="Exercise search controls">
+        <div className="exercise-scope-switch" role="group" aria-label="Choose exercise collection">
+          <button
+            type="button"
+            aria-pressed={scope === 'library'}
+            onClick={() => {
+              setScope('library');
+              setDiscipline('stretching');
+            }}
+          >
+            <BookOpen aria-hidden="true" /> Explore library
+          </button>
+          <button
+            type="button"
+            aria-pressed={scope === 'saved'}
+            onClick={() => {
+              setScope('saved');
+              setDiscipline('all');
+            }}
+          >
+            <ClipboardList aria-hidden="true" /> My program & history
+          </button>
+        </div>
         <label className="exercise-search-input">
           <Search aria-hidden="true" />
           <span className="sr-only">Search exercises, muscles, or equipment</span>
           <input
             type="search"
             value={query}
-            placeholder="Search Cat-Cow, chest, dumbbells…"
+            placeholder="Try hip flexors, calves, shoulders…"
             onChange={(event) => setQuery(event.target.value)}
           />
           {query && (
@@ -3041,160 +3144,291 @@ function SearchView({
             </button>
           )}
         </label>
-
-        <div className="exercise-day-filter">
-          <div className="exercise-filter-label">
-            <CalendarDays aria-hidden="true" />
-            <span>Workout day</span>
-          </div>
-          <div className="exercise-day-options" role="group" aria-label="Filter exercises by workout day">
-            <button
-              type="button"
-              className={selectedDay === 'all' ? 'active' : ''}
-              aria-pressed={selectedDay === 'all'}
-              onClick={() => setSelectedDay('all')}
-            >
-              <span>All</span>
-              <small>Library</small>
-            </button>
-            {WEEK_DAYS.map((day) => (
-              <button
-                key={day}
-                type="button"
-                className={`${selectedDay === day ? 'active' : ''} ${todayWeekday === day ? 'today' : ''}`}
-                aria-label={`${day}${todayWeekday === day ? ', today' : ''}`}
-                aria-pressed={selectedDay === day}
-                onClick={() => setSelectedDay(day)}
-              >
-                <span>{day.slice(0, 3)}</span>
-                <small>{todayWeekday === day ? 'Today' : program[day].length}</small>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="exercise-family-filters" aria-label="Filter exercise type">
-          {filterOptions.map((option) => (
+        <div className="exercise-discipline-tabs" role="group" aria-label="Movement type">
+          {DISCIPLINES.map((option) => (
             <button
               key={option.id}
               type="button"
-              className={family === option.id ? 'active' : ''}
-              aria-pressed={family === option.id}
-              onClick={() => setFamily(option.id)}
+              aria-pressed={discipline === option.id}
+              onClick={() => setDiscipline(option.id)}
+            >
+              {option.label}
+              <span>{counts[option.id] ?? 0}</span>
+            </button>
+          ))}
+          <button type="button" aria-pressed={discipline === 'all'} onClick={() => setDiscipline('all')}>
+            All types
+          </button>
+        </div>
+        <p className="exercise-filter-explainer">
+          {currentDiscipline?.description ?? 'Explore every movement type.'}
+        </p>
+        <div className="exercise-region-options" role="group" aria-label="Body area">
+          <button type="button" aria-pressed={region === 'all'} onClick={() => setRegion('all')}>
+            Whole library
+          </button>
+          {BODY_REGIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              aria-pressed={region === option.id}
+              onClick={() => setRegion(option.id)}
             >
               {option.label}
             </button>
           ))}
         </div>
-
-        <div className={`exercise-library-status ${libraryStatus}`} role="status" aria-live="polite">
-          {libraryStatus === 'loading' && (
-            <>
-              <LoaderCircle className="spin" aria-hidden="true" />
-              Loading open exercise library…
-            </>
-          )}
-          {libraryStatus === 'ready' && (
-            <>
-              <Check aria-hidden="true" />
-              {library.length.toLocaleString()} open-library exercises ready
-            </>
-          )}
-          {libraryStatus === 'error' && (
-            <>
-              <CloudOff aria-hidden="true" />
-              <span>Your saved exercises still work. {libraryError}</span>
-              <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
-                Retry
-              </button>
-            </>
+        <div className="exercise-refinements">
+          <label>
+            Equipment
+            <select
+              value={equipment}
+              onChange={(event) => setEquipment(event.target.value as GuideFilters['equipment'])}
+            >
+              <option value="all">Any equipment</option>
+              <option value="body only">No equipment / mat</option>
+              <option value="support">Wall, chair, or towel</option>
+              <option value="equipment">Equipment / assisted</option>
+            </select>
+          </label>
+          <label className="exercise-beginner-toggle">
+            <input
+              type="checkbox"
+              checked={beginner}
+              onChange={(event) => setBeginner(event.target.checked)}
+            />{' '}
+            Beginner & solo
+          </label>
+          {hasRefinements && (
+            <button type="button" className="icon-text-button" onClick={resetFilters}>
+              <X aria-hidden="true" /> Reset filters
+            </button>
           )}
         </div>
+        {scope === 'saved' && (
+          <div className="exercise-day-filter">
+            <div className="exercise-filter-label">
+              <CalendarDays aria-hidden="true" />
+              <span>Workout day</span>
+            </div>
+            <div className="exercise-day-options" role="group" aria-label="Workout day">
+              <button
+                type="button"
+                className={selectedDay === 'all' ? 'active' : ''}
+                aria-pressed={selectedDay === 'all'}
+                onClick={() => setSelectedDay('all')}
+              >
+                <span>All</span>
+                <small>History too</small>
+              </button>
+              {WEEK_DAYS.map((day) => (
+                <button
+                  key={day}
+                  type="button"
+                  className={`${selectedDay === day ? 'active' : ''} ${todayWeekday === day ? 'today' : ''}`}
+                  aria-label={`${day}${todayWeekday === day ? ', today' : ''}`}
+                  aria-pressed={selectedDay === day}
+                  onClick={() => setSelectedDay(day)}
+                >
+                  <span>{day.slice(0, 3)}</span>
+                  <small>{todayWeekday === day ? 'Today' : program[day].length}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {libraryStatus !== 'ready' && (
+          <div className={`exercise-library-status ${libraryStatus}`} role="status">
+            {libraryStatus === 'loading' ? (
+              <>
+                <LoaderCircle className="spin" aria-hidden="true" /> Loading movement guides…
+              </>
+            ) : (
+              <>
+                <CloudOff aria-hidden="true" />
+                <span>
+                  The full catalog could not load. Built-in guides and saved names are still available.
+                </span>
+                <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
+                  Retry
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
-      {visibleSavedGuideResults.length > 0 && (
-        <section className="exercise-result-section">
-          <div className="exercise-result-heading">
+      {scope === 'library' &&
+        !query &&
+        region === 'all' &&
+        equipment === 'all' &&
+        !beginner &&
+        (discipline === 'stretching' || discipline === 'mobility') && (
+          <section className="exercise-start-here" aria-label="Quick starting points">
             <div>
-              <p className="eyebrow">{selectedDay === 'all' ? 'Your Gym' : selectedDay}</p>
-              <h2>{selectedDay === 'all' ? 'Your exercises' : `${selectedDay} workouts`}</h2>
+              <p className="eyebrow">Not sure where to start?</p>
+              <h2>Pick an area. Take it easy.</h2>
             </div>
-            <span>{visibleSavedGuideResults.length} shown</span>
-          </div>
-          <div className="exercise-library-grid">
-            {visibleSavedGuideResults.map(({ guide, entry }, index) => {
-              const previousEntry = visibleSavedGuideResults[index - 1]?.entry;
-              const startsWorkoutBlock = selectedDay !== 'all' && Boolean(entry.workoutLabel) && (
-                index === 0
-                || !previousEntry
-                || getWorkoutSectionKey(entry) !== getWorkoutSectionKey(previousEntry)
-              );
-
-              return (
-                <Fragment key={`saved-${guide.id}`}>
-                  {startsWorkoutBlock && (
-                    <WorkoutBlockHeading exercise={entry} className="exercise-search-workout-heading" />
-                  )}
-                  <ExerciseGuideCard
-                    guide={guide}
-                    saved
-                    extra={entry.extra}
-                    sourceLabel={selectedDay === 'all' ? undefined : `${selectedDay.slice(0, 3)} · ${entry.order}`}
-                    onOpen={() => setSelectedGuide({ guide, saved: true })}
-                  />
-                </Fragment>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {discoveryGuides.length > 0 && (
-        <section className="exercise-result-section">
-          <div className="exercise-result-heading">
-            <div>
-              <p className="eyebrow">{query.trim() ? 'Discover' : 'Mobility essential'}</p>
-              <h2>{query.trim() ? 'More from the library' : 'Learn Bird Dog'}</h2>
+            <div className="exercise-quick-picks">
+              {[
+                {
+                  label: 'Hips after sitting',
+                  detail: 'Hip flexors & glutes',
+                  region: 'hips' as const,
+                  type: 'stretching' as const,
+                },
+                {
+                  label: 'Leg-day cooldown',
+                  detail: 'Quads & hamstrings',
+                  region: 'legs' as const,
+                  type: 'stretching' as const,
+                },
+                {
+                  label: 'Upper-body reset',
+                  detail: 'Shoulders & chest',
+                  region: 'shoulders' as const,
+                  type: 'stretching' as const,
+                },
+                {
+                  label: 'Get moving',
+                  detail: 'Gentle active mobility',
+                  region: 'all' as const,
+                  type: 'mobility' as const,
+                },
+              ].map((pick) => (
+                <button
+                  key={pick.label}
+                  type="button"
+                  onClick={() => {
+                    setRegion(pick.region);
+                    setDiscipline(pick.type);
+                    setBeginner(true);
+                    setEquipment('body only');
+                  }}
+                >
+                  <span>{pick.label}</span>
+                  <small>{pick.detail}</small>
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              ))}
             </div>
-            <span>{discoveryGuides.length} shown</span>
-          </div>
-          <div className="exercise-library-grid">
-            {discoveryGuides.map((guide) => (
-              <ExerciseGuideCard
-                key={`discovery-${guide.id}`}
-                guide={guide}
-                saved={false}
-                onOpen={() => setSelectedGuide({ guide, saved: false })}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
-      {!hasResults && (
-        <section className="exercise-search-empty">
-          <Search aria-hidden="true" />
-          <h2>No exercise found</h2>
-          <p>Try a movement name, muscle group, or equipment type.</p>
-          <button
-            className="icon-text-button"
-            type="button"
-            onClick={() => {
-              setQuery('');
-              setFamily('all');
-              setSelectedDay('all');
-            }}
+      <section className="exercise-result-section" aria-label="Exercise results">
+        <div className="exercise-result-heading">
+          <div>
+            <p className="eyebrow">
+              {scope === 'library' ? 'Explore & learn' : selectedDay === 'all' ? 'Your Gym' : selectedDay}
+            </p>
+            <h2>{scope === 'saved' ? 'Your exercises' : (currentDiscipline?.label ?? 'All movements')}</h2>
+          </div>
+          <span role="status" aria-live="polite">
+            {Math.min(visibleCount, results.length)} of {results.length} shown
+          </span>
+        </div>
+        {results.length > 0 ? (
+          <>
+            <div className="exercise-library-grid">
+              {results.slice(0, visibleCount).map((guide, index) => {
+                const entry =
+                  scope === 'saved' ? savedResults.find((item) => item.guide === guide)?.entry : undefined;
+                const previousEntry =
+                  scope === 'saved' && index > 0
+                    ? savedResults.find((item) => item.guide === results[index - 1])?.entry
+                    : undefined;
+                const startsBlock =
+                  scope === 'saved' &&
+                  selectedDay !== 'all' &&
+                  entry?.workoutLabel &&
+                  (!previousEntry || getWorkoutSectionKey(entry) !== getWorkoutSectionKey(previousEntry));
+                const saved = scope === 'saved' || isSaved(guide);
+                return (
+                  <Fragment key={`${guide.id}-${index}`}>
+                    {startsBlock && entry && (
+                      <WorkoutBlockHeading exercise={entry} className="exercise-search-workout-heading" />
+                    )}
+                    <ExerciseGuideCard
+                      guide={guide}
+                      saved={saved}
+                      extra={entry?.extra}
+                      sourceLabel={
+                        scope === 'saved' && selectedDay !== 'all'
+                          ? `${selectedDay.slice(0, 3)} · ${entry?.order}`
+                          : undefined
+                      }
+                      onOpen={() => setSelectedGuide({ guide, saved })}
+                    />
+                  </Fragment>
+                );
+              })}
+            </div>
+            {visibleCount < results.length && (
+              <button
+                className="exercise-load-more"
+                type="button"
+                onClick={() => setVisibleCount((count) => count + 18)}
+              >
+                Show {Math.min(18, results.length - visibleCount)} more <ChevronDown aria-hidden="true" />
+              </button>
+            )}
+          </>
+        ) : (
+          libraryStatus !== 'loading' && (
+            <div className="exercise-search-empty">
+              <Search aria-hidden="true" />
+              <h2>No matches with these filters</h2>
+              <p>Try another body area, a shorter search, or all movement types.</p>
+              <button className="icon-text-button" type="button" onClick={resetFilters}>
+                Clear filters
+              </button>
+              {scope === 'saved' && (
+                <button
+                  className="icon-text-button"
+                  type="button"
+                  onClick={() => {
+                    setScope('library');
+                    resetFilters();
+                  }}
+                >
+                  Explore the full library
+                </button>
+              )}
+            </div>
+          )
+        )}
+      </section>
+
+      <aside className="exercise-learning-note">
+        <div>
+          <BookOpen aria-hidden="true" />
+          <h2>A good stretch is gentle.</h2>
+        </div>
+        <p>
+          Warm up with easy movement first. Ease into holds, breathe normally, and avoid bouncing. Aim for
+          mild tension; stop if it hurts. The starter doses are suggestions—use a smaller range whenever you
+          need it.
+        </p>
+        <div className="exercise-source-links">
+          <a
+            href="https://www.orthoinfo.org/staying-healthy/warm-up-cool-down-and-be-flexible"
+            target="_blank"
+            rel="noreferrer"
           >
-            Clear filters
-          </button>
-        </section>
-      )}
-
-      <p className="exercise-library-footnote">
-        Open-library movement data is public domain. Custom Cat-Cow and Bird Dog guides are stored
-        directly in Gym, so those visuals do not depend on a third-party service.
-      </p>
-
+            AAOS stretching basics <ExternalLink aria-hidden="true" />
+          </a>
+          <a
+            href="https://www.nhs.uk/live-well/exercise/how-to-stretch-after-exercising/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            NHS cooldown guide <ExternalLink aria-hidden="true" />
+          </a>
+          <a href={FREE_EXERCISE_DB_PROJECT_URL} target="_blank" rel="noreferrer">
+            Exercise & photo source <ExternalLink aria-hidden="true" />
+          </a>
+        </div>
+      </aside>
       {selectedGuide && (
         <ExerciseGuideDialog
           guide={selectedGuide.guide}

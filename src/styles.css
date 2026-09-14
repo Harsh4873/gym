@@ -4777,3 +4777,380 @@ a:focus-visible {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Movement discovery */
+.exercise-scope-switch {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+.exercise-scope-switch button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 15px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+}
+.exercise-scope-switch button[aria-pressed='true'] {
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+}
+.exercise-scope-switch svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.exercise-discipline-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.exercise-discipline-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+.exercise-discipline-tabs button span {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.75;
+}
+.exercise-discipline-tabs button[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: #151916;
+  border-color: var(--color-accent);
+}
+.exercise-filter-explainer {
+  margin: -3px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.exercise-region-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+.exercise-region-options button {
+  min-height: 40px;
+  padding: 8px 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.exercise-region-options button[aria-pressed='true'] {
+  color: var(--color-accent);
+  background: var(--color-accent-tint);
+  border-color: var(--color-accent);
+}
+.exercise-refinements {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.exercise-refinements > label {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+.exercise-refinements select {
+  min-height: 44px;
+  padding: 9px 32px 9px 12px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  font-size: 12px;
+}
+.exercise-refinements .exercise-beginner-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.exercise-beginner-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-accent);
+}
+.exercise-start-here {
+  display: grid;
+  gap: 18px;
+}
+.exercise-start-here h2 {
+  margin: 5px 0 0;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.exercise-quick-picks {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.exercise-quick-picks button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  min-height: 92px;
+  padding: 18px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: linear-gradient(120deg, var(--color-accent-tint), var(--color-surface));
+  color: var(--color-text-primary);
+  text-align: left;
+}
+.exercise-quick-picks button span {
+  font-weight: 600;
+  font-size: 13px;
+}
+.exercise-quick-picks small {
+  grid-column: 1;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.exercise-quick-picks svg {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  color: var(--color-accent);
+}
+.exercise-card-dose {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.exercise-card-dose svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.exercise-load-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.exercise-load-more svg {
+  width: 16px;
+  height: 16px;
+}
+.exercise-learning-note {
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.exercise-learning-note > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.exercise-learning-note h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.exercise-learning-note svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent);
+}
+.exercise-learning-note p {
+  max-width: 850px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.75;
+}
+.exercise-source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+}
+.exercise-source-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+  font-size: 12px;
+  min-height: 32px;
+}
+.exercise-source-links svg {
+  width: 12px;
+  height: 12px;
+}
+.exercise-coaching-summary {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-tint);
+}
+.exercise-guide-dose {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+.exercise-guide-dose svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent);
+}
+.exercise-guide-dose strong {
+  font-size: 15px;
+}
+.exercise-guide-dose > span {
+  width: 100%;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+.exercise-coaching-summary > div > span {
+  color: var(--color-accent);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.exercise-coaching-summary > div > p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.exercise-coaching-tips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.exercise-coaching-tips section {
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-strong);
+}
+.exercise-coaching-tips h3 {
+  margin: 0;
+  font-size: 13px;
+}
+.exercise-coaching-tips p,
+.exercise-guide-safety {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.exercise-guide-safety {
+  margin: 0;
+  padding: 14px 16px;
+  border-left: 2px solid var(--color-accent);
+  background: var(--color-bg);
+}
+.exercise-search-view button,
+.exercise-search-view select,
+.exercise-guide-dialog button {
+  cursor: pointer;
+}
+.exercise-search-view button:focus-visible,
+.exercise-search-view a:focus-visible,
+.exercise-search-view select:focus-visible,
+.exercise-guide-dialog button:focus-visible,
+.exercise-guide-dialog a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+@media (max-width: 900px) {
+  .exercise-quick-picks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .exercise-scope-switch {
+    width: 100%;
+  }
+  .exercise-scope-switch button {
+    flex: 1;
+    padding-inline: 8px;
+    font-size: 11px;
+  }
+  .exercise-discipline-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .exercise-discipline-tabs button {
+    justify-content: center;
+    gap: 6px;
+    padding-inline: 6px;
+    font-size: 11px;
+  }
+  .exercise-region-options {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .exercise-region-options button {
+    flex-shrink: 0;
+  }
+  .exercise-refinements {
+    gap: 10px 16px;
+  }
+  .exercise-quick-picks button {
+    padding: 13px;
+  }
+  .exercise-coaching-tips {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .exercise-learning-note {
+    padding: 18px;
+  }
+  .exercise-result-heading {
+    align-items: end;
+    gap: 12px;
+  }
+  .exercise-result-heading > span {
+    text-align: right;
+    font-size: 11px;
+  }
+}
