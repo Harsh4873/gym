@@ -9,10 +9,14 @@ import {
   matchesExerciseGuide,
   resolvePersonalExerciseGuide,
   toExerciseGuide,
+  getCustomExerciseGuides,
+  getGuideRegions,
+  isExerciseRoutinePlaceholder,
   type FreeExerciseRecord,
   type GuideFilters,
 } from './exerciseLibrary';
 import { MOBILITY_COACHING } from './mobilityCoaching';
+import stretchAdditions from './stretchAdditions.json';
 
 const library = records as FreeExerciseRecord[];
 const guides = buildDiscoveryGuides(library);
@@ -53,7 +57,7 @@ describe('movement discovery', () => {
     const results = filterExerciseGuides(guides, {
       ...base,
       discipline: 'stretching',
-      region: 'hips',
+      region: 'glutes',
       equipment: 'body only',
       beginner: true,
     });
@@ -64,7 +68,7 @@ describe('movement discovery', () => {
       filterExerciseGuides(guides, {
         ...base,
         discipline: 'stretching',
-        region: 'ankles',
+        region: 'calves',
         equipment: 'support',
       }).some((item) => item.recordId === 'Calf_Stretch_Hands_Against_Wall'),
     ).toBe(true);
@@ -126,5 +130,80 @@ describe('catalog and photo integrity', () => {
       expect(item.images.length, item.id).toBeGreaterThan(0);
       expect(item.instructions.length, item.id).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('supplemental stretches and muscle selection', () => {
+  it('adds 24 named, illustrated guides with instructions, targets, and easier options', () => {
+    expect(stretchAdditions).toHaveLength(24);
+    const custom = getCustomExerciseGuides();
+    for (const entry of stretchAdditions) {
+      const result = custom.find((item) => item.id === `custom:${entry.id}`)!;
+      expect(result, entry.name).toBeDefined();
+      expect(result.instructions).toHaveLength(3);
+      expect(result.primaryMuscles.length).toBeGreaterThan(0);
+      expect(result.coaching?.easier).toBeTruthy();
+      expect(result.coaching?.feel).toBeTruthy();
+      const svg = readFileSync(resolve('public/exercises/positions', entry.id + '.svg'), 'utf8');
+      expect(svg).toContain('viewBox="0 0 480 320"');
+      expect(svg).toContain('<title');
+      expect(svg).not.toContain('NaN');
+      expect(getGuideRegions(result).length, entry.name).toBeGreaterThan(0);
+    }
+    expect(new Set(custom.map((item) => item.id)).size).toBe(custom.length);
+  });
+
+  it('keeps the new held stretches separate from active mobility', () => {
+    const custom = getCustomExerciseGuides();
+    expect(getGuideDiscipline(custom.find((item) => item.id === 'custom:butterfly')!)).toBe('stretching');
+    expect(getGuideDiscipline(custom.find((item) => item.id === 'custom:adductor-rockback')!)).toBe(
+      'mobility',
+    );
+    expect(
+      custom.filter((item) => item.artworkLabel && getGuideDiscipline(item) === 'stretching'),
+    ).toHaveLength(21);
+  });
+
+  it('uses precise primary muscle groups instead of mixing thighs, hips, chest, and shoulders', () => {
+    const hamstrings = filterExerciseGuides(guides, {
+      ...base,
+      discipline: 'stretching',
+      region: 'hamstrings',
+    });
+    expect(hamstrings.some((item) => item.id === 'custom:half-split')).toBe(true);
+    expect(hamstrings.some((item) => item.id === 'custom:standing-quad')).toBe(false);
+    const quads = filterExerciseGuides(guides, { ...base, discipline: 'stretching', region: 'quads' });
+    expect(quads.some((item) => item.id === 'custom:standing-quad')).toBe(true);
+    expect(quads.some((item) => item.id === 'custom:half-split')).toBe(false);
+    expect(getGuideRegions(guide('Kneeling_Hip_Flexor'))).toEqual(['hip-flexors']);
+    expect(
+      filterExerciseGuides(guides, { ...base, region: 'chest' }).some(
+        (item) => item.id === 'custom:doorway-chest',
+      ),
+    ).toBe(true);
+    expect(
+      filterExerciseGuides(guides, { ...base, region: 'feet' }).some(
+        (item) => item.id === 'custom:toe-extension',
+      ),
+    ).toBe(true);
+  });
+
+  it('removes video and routine placeholders while keeping actual named exercises', () => {
+    expect(guides.some((item) => /video/i.test(item.name))).toBe(false);
+    expect(getCustomExerciseGuides().some((item) => /video/i.test(item.name))).toBe(false);
+    expect(isExerciseRoutinePlaceholder('10-Minute Stretch Video')).toBe(true);
+    expect(isExerciseRoutinePlaceholder('10 min ab workout')).toBe(true);
+    expect(isExerciseRoutinePlaceholder('Tricep Superset')).toBe(true);
+    expect(isExerciseRoutinePlaceholder('Abs Circuit')).toBe(true);
+    expect(isExerciseRoutinePlaceholder('Standing Quad Stretch')).toBe(false);
+  });
+
+  it('resolves common saved names to accurate custom positions instead of unrelated stock photos', () => {
+    expect(resolvePersonalExerciseGuide('Standing Quad Stretch', library).id).toBe('custom:standing-quad');
+    expect(resolvePersonalExerciseGuide('Doorway Chest Stretch', library).id).toBe('custom:doorway-chest');
+    expect(resolvePersonalExerciseGuide('Standing Figure 4 Glute Stretch', library).id).toBe(
+      'custom:standing-figure-four',
+    );
+    expect(resolvePersonalExerciseGuide('Lat Stretch', library).id).toBe('custom:kneeling-lat');
   });
 });

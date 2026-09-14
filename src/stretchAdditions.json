@@ -1,0 +1,569 @@
+[
+  {
+    "id": "doorway-chest",
+    "name": "Doorway Chest Stretch",
+    "primaryMuscles": [
+      "chest"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "doorway",
+    "feel": "Across the front of your chest.",
+    "avoid": "Twisting hard or letting the shoulder roll forward.",
+    "easier": "Place the elbow below shoulder height and take a smaller step.",
+    "instructions": [
+      "Stand beside a doorway. Rest one forearm against the frame, elbow slightly below shoulder height.",
+      "Step forward gently and turn your chest a little away from the supported arm.",
+      "Keep the shoulder relaxed. Hold at light tension, then change arms."
+    ],
+    "cue": "Turn gently away from the arm",
+    "pose": "doorway",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "pec stretch",
+      "pectorals"
+    ]
+  },
+  {
+    "id": "butterfly",
+    "name": "Seated Butterfly Stretch",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "body only",
+    "feel": "Along the inner thighs.",
+    "avoid": "Pushing the knees down with your hands.",
+    "easier": "Sit on a folded towel and move your feet farther from your hips.",
+    "instructions": [
+      "Sit tall and bring the soles of your feet together in front of you.",
+      "Hold your ankles and let your knees fall outward under their own weight.",
+      "If comfortable, lean slightly forward from the hips. Keep your back long and breathe."
+    ],
+    "cue": "Let the knees relax outward",
+    "pose": "butterfly",
+    "dose": "20–30 sec",
+    "mode": "stretching",
+    "aliases": [
+      "groin stretch",
+      "inner thigh stretch"
+    ]
+  },
+  {
+    "id": "standing-quad",
+    "name": "Standing Quad Stretch",
+    "primaryMuscles": [
+      "quadriceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "wall",
+    "feel": "The front of the bent-leg thigh.",
+    "avoid": "Arching the back or pulling the knee far out to the side.",
+    "easier": "Hold a wall and use a strap around the ankle if reaching the foot is difficult.",
+    "instructions": [
+      "Stand beside a wall and hold it with one hand. Bend the other knee and hold that foot behind you.",
+      "Bring your knees near one another and gently tuck your pelvis.",
+      "Ease the heel toward your buttock without pulling hard. Stay tall, then switch legs."
+    ],
+    "cue": "Knees close; keep the pelvis tucked",
+    "pose": "standing-quad",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "standing quadriceps stretch"
+    ]
+  },
+  {
+    "id": "couch",
+    "name": "Supported Couch Stretch",
+    "primaryMuscles": [
+      "quadriceps",
+      "hip flexors"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "bench",
+    "feel": "The front of the rear thigh and hip.",
+    "avoid": "Forcing your torso upright or pressing into a painful kneecap.",
+    "easier": "Use a low cushion for the rear foot, pad the knee, and keep your torso slightly forward.",
+    "instructions": [
+      "Kneel on padding in front of a low couch, facing away. Rest one foot on the seat behind you.",
+      "Step the opposite foot forward and support your hands on that thigh or a chair.",
+      "Gently tuck your pelvis. Rise only as far as comfortable while keeping the back knee padded."
+    ],
+    "cue": "Pad the knee; rise only a little",
+    "pose": "couch",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "rear foot elevated hip flexor"
+    ]
+  },
+  {
+    "id": "seated-figure-four",
+    "name": "Seated Figure-4 Stretch",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "chair",
+    "feel": "The outer hip of the crossed leg.",
+    "avoid": "Pressing on the knee or rounding the back to get lower.",
+    "easier": "Keep the crossed ankle farther forward or stay upright.",
+    "instructions": [
+      "Sit near the front of a sturdy chair with both feet down.",
+      "Place one ankle across the opposite thigh, just above the knee. Keep the crossed foot gently flexed.",
+      "Lean forward from your hips with a long back. Stop at light tension and change sides after the hold."
+    ],
+    "cue": "Hinge forward with a long back",
+    "pose": "seated-figure-four",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "chair piriformis stretch"
+    ]
+  },
+  {
+    "id": "standing-figure-four",
+    "name": "Supported Standing Figure-4",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "chair",
+    "feel": "The buttock and outer hip of the crossed leg.",
+    "avoid": "Balancing without support or pushing the crossed knee down.",
+    "easier": "Use the seated figure-4 stretch instead.",
+    "instructions": [
+      "Hold a sturdy chair or rail with both hands. Cross one ankle above the other knee.",
+      "Bend the supporting knee a little and sit your hips back.",
+      "Keep the chest lifted and the crossed foot gently flexed. Hold lightly, stand up, then switch."
+    ],
+    "cue": "Hold a support and sit back",
+    "pose": "standing-figure-four",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "standing figure 4 glute stretch"
+    ]
+  },
+  {
+    "id": "chair-hamstring",
+    "name": "Chair Hamstring Stretch",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "chair",
+    "feel": "The back of the extended thigh.",
+    "avoid": "Reaching for your toes by rounding your spine.",
+    "easier": "Bend the extended knee slightly and lean less.",
+    "instructions": [
+      "Sit near the front of a chair. Extend one leg with its heel on the floor.",
+      "Keep a soft knee and toes facing up. Rest your hands on the bent-leg thigh.",
+      "Tip forward from the hips until the back of the straight thigh gently stretches, then switch legs."
+    ],
+    "cue": "Hinge from the hips; keep a soft knee",
+    "pose": "chair-hamstring",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "seated hamstring chair"
+    ]
+  },
+  {
+    "id": "half-split",
+    "name": "Half-Split Hamstring Stretch",
+    "primaryMuscles": [
+      "hamstrings"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "The back of the front thigh.",
+    "avoid": "Locking the front knee or collapsing your chest.",
+    "easier": "Rest your hands on blocks or a chair and keep the front knee a little bent.",
+    "instructions": [
+      "Start in a half-kneeling stance with one foot in front.",
+      "Shift your hips back over the kneeling leg as the front leg lengthens. Let the front toes lift.",
+      "Lean forward a little from the hips with hands supported. Hold, then ease forward and change legs."
+    ],
+    "cue": "Hips back; front heel stays down",
+    "pose": "half-split",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "ardha hanumanasana"
+    ]
+  },
+  {
+    "id": "adductor-rockback",
+    "name": "Adductor Rock-Back",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "Along the inner thigh of the straight leg.",
+    "avoid": "Rounding your back or forcing the hips toward the heel.",
+    "easier": "Keep the sideways leg closer and make the rocking motion smaller.",
+    "instructions": [
+      "Begin on hands and knees. Extend one leg straight out to the side with the foot on the floor.",
+      "Keep a long back and slowly move your hips backward.",
+      "Pause at mild inner-thigh tension, then come forward. Repeat smoothly before switching sides."
+    ],
+    "cue": "Rock back slowly; keep the spine long",
+    "pose": "adductor-rockback",
+    "dose": "6–8 slow reps each side",
+    "mode": "mobility",
+    "aliases": []
+  },
+  {
+    "id": "frog",
+    "name": "Supported Frog Stretch",
+    "primaryMuscles": [
+      "adductors"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "Across the inner thighs.",
+    "avoid": "Spreading the knees too wide or forcing a deep position.",
+    "easier": "Bring the knees closer together and rest on your hands instead of forearms.",
+    "instructions": [
+      "Start on hands and knees on thick padding. Move your knees apart only as far as comfortable.",
+      "Bend your knees around right angles so the lower legs point backward. Support your upper body on hands or forearms.",
+      "Ease your hips backward a little. Hold at gentle tension, then bring the knees in slowly."
+    ],
+    "cue": "Pad both knees; use a small range",
+    "pose": "frog",
+    "dose": "15–20 sec",
+    "mode": "stretching",
+    "aliases": []
+  },
+  {
+    "id": "ninety-ninety-front",
+    "name": "90/90 Front-Hip Stretch",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "The outer hip of the front leg.",
+    "avoid": "Pressing the knee into the floor or twisting through knee pain.",
+    "easier": "Sit on a cushion and put your hands behind you for support.",
+    "instructions": [
+      "Sit with one leg bent in front and the other to the side, both knees near right angles.",
+      "Face the front shin. Lengthen your back and rest your hands on the floor.",
+      "Hinge toward the front thigh a little, keeping weight through the hips. Hold, then reposition to switch sides."
+    ],
+    "cue": "Lean toward the front shin",
+    "pose": "ninety-ninety-front",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "90 90 hip external rotation"
+    ]
+  },
+  {
+    "id": "ninety-ninety-switch",
+    "name": "90/90 Hip Switches",
+    "primaryMuscles": [
+      "glutes",
+      "abductors"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "Controlled rotation at both hips.",
+    "avoid": "Forcing the knees down or moving through knee pain.",
+    "easier": "Keep your hands behind you and make a smaller side-to-side movement.",
+    "instructions": [
+      "Sit with knees bent, feet wider than hip width, and hands supporting you behind.",
+      "Slowly lower both knees toward one side into a comfortable 90/90 shape.",
+      "Lift both knees through the middle and lower them to the other side. Keep the movement slow."
+    ],
+    "cue": "Move both knees gently side to side",
+    "pose": "ninety-ninety-switch",
+    "dose": "6–8 alternating reps",
+    "mode": "mobility",
+    "aliases": [
+      "hip windshield wipers"
+    ]
+  },
+  {
+    "id": "supported-pigeon",
+    "name": "Supported Pigeon Stretch",
+    "primaryMuscles": [
+      "glutes"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "The buttock of the front leg.",
+    "avoid": "Forcing the front shin parallel or feeling twisting at the knee.",
+    "easier": "Choose the lying figure-4 stretch if your knee feels uncomfortable.",
+    "instructions": [
+      "From hands and knees, slide one knee forward and bring that foot across toward the opposite hip.",
+      "Extend the other leg back. Place a firm cushion beneath the front-side hip so you can stay supported.",
+      "Keep the front foot near the opposite hip and your torso upright. Hold gently without forcing the front knee."
+    ],
+    "cue": "Support the hip; keep the foot close",
+    "pose": "supported-pigeon",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": []
+  },
+  {
+    "id": "kneeling-lat",
+    "name": "Kneeling Bench Lat Stretch",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "chair",
+    "feel": "Along the sides of your upper back and under the arms.",
+    "avoid": "Dropping into your lower back or forcing the shoulders down.",
+    "easier": "Use a higher support and keep the hips closer to it.",
+    "instructions": [
+      "Kneel in front of a stable chair or bench and place both hands on its seat.",
+      "Move your hips backward while keeping your hands supported and your back long.",
+      "Let your chest lower gently between your arms. Keep the ribs controlled and breathe."
+    ],
+    "cue": "Sit the hips back; keep ribs controlled",
+    "pose": "kneeling-lat",
+    "dose": "20–30 sec",
+    "mode": "stretching",
+    "aliases": [
+      "prayer lat stretch",
+      "lat stretch"
+    ]
+  },
+  {
+    "id": "puppy",
+    "name": "Puppy Pose",
+    "primaryMuscles": [
+      "lats",
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "Through the shoulders and upper back.",
+    "avoid": "Forcing your chest to the floor or arching your lower back.",
+    "easier": "Place your forehead on a cushion and reach less far.",
+    "instructions": [
+      "Start on hands and knees with hips above knees.",
+      "Walk your hands forward while keeping your hips near the same position.",
+      "Lower your forehead toward a support and ease the chest downward. Keep the lower back comfortable."
+    ],
+    "cue": "Hips above knees; reach forward",
+    "pose": "puppy",
+    "dose": "20–30 sec",
+    "mode": "stretching",
+    "aliases": [
+      "extended puppy pose"
+    ]
+  },
+  {
+    "id": "thread-the-needle",
+    "name": "Thread-the-Needle Stretch",
+    "primaryMuscles": [
+      "middle back",
+      "shoulders"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "Around the shoulder blade and upper back of the reaching arm.",
+    "avoid": "Resting your weight on your neck or forcing the twist.",
+    "easier": "Slide the arm a shorter distance and keep the other hand planted.",
+    "instructions": [
+      "Start on hands and knees. Slide one arm underneath your chest toward the opposite side, palm facing up.",
+      "Bend the supporting elbow a little and let the reaching shoulder lower toward the mat.",
+      "Keep hips above the knees and the head supported comfortably. Hold, return slowly, and switch arms."
+    ],
+    "cue": "Reach under; keep hips over knees",
+    "pose": "thread-the-needle",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": []
+  },
+  {
+    "id": "levator",
+    "name": "Levator Scapulae Stretch",
+    "primaryMuscles": [
+      "neck"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "chair",
+    "feel": "From the back corner of the neck toward the shoulder blade.",
+    "avoid": "Pulling on your head or lifting the shoulder.",
+    "easier": "Make the head turn and downward nod smaller.",
+    "instructions": [
+      "Sit upright and rest one hand lightly on the chair seat.",
+      "Turn your head a little away from that side, then look down toward the opposite armpit.",
+      "Let the shoulder remain heavy. Hold with no hand pressure on your head, then switch sides."
+    ],
+    "cue": "Look gently toward the opposite armpit",
+    "pose": "levator",
+    "dose": "15–20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "neck shoulder blade stretch"
+    ]
+  },
+  {
+    "id": "wrist-extensor",
+    "name": "Standing Wrist Extensor Stretch",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "body only",
+    "feel": "Along the back of the forearm.",
+    "avoid": "Pulling hard on the fingers or locking the elbow.",
+    "easier": "Bend the elbow a little and use very light hand pressure.",
+    "instructions": [
+      "Reach one arm forward at a comfortable height with the palm facing down.",
+      "Let the wrist bend so the fingers point toward the floor.",
+      "Use the other hand to guide the back of the hand gently toward you. Keep the shoulder relaxed and switch arms after the hold."
+    ],
+    "cue": "Palm down; fingers point toward floor",
+    "pose": "wrist-extensor",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "back of forearm"
+    ]
+  },
+  {
+    "id": "wrist-flexor",
+    "name": "Standing Wrist Flexor Stretch",
+    "primaryMuscles": [
+      "forearms"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "body only",
+    "feel": "Along the palm side of the forearm.",
+    "avoid": "Locking your elbow or tugging hard on individual fingers.",
+    "easier": "Keep a small bend in the elbow and reduce the pull.",
+    "instructions": [
+      "Extend one arm forward with the palm facing up.",
+      "Let the fingers angle down and use the opposite hand to support them together.",
+      "Gently draw the hand back toward you until the forearm stretches. Keep the shoulder down, then change sides."
+    ],
+    "cue": "Palm up; use only light pressure",
+    "pose": "wrist-flexor",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": []
+  },
+  {
+    "id": "wall-biceps",
+    "name": "Wall Biceps Stretch",
+    "primaryMuscles": [
+      "biceps"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "wall",
+    "feel": "The front of the upper arm.",
+    "avoid": "Turning too far or letting the shoulder slide forward.",
+    "easier": "Lower the hand and turn away only slightly.",
+    "instructions": [
+      "Stand beside a wall and rest one palm against it with the arm extended a little behind you.",
+      "Keep the elbow soft and the shoulder relaxed.",
+      "Turn your chest gently away from the wall until the front of the arm stretches. Hold and switch sides."
+    ],
+    "cue": "Soft elbow; turn the chest away",
+    "pose": "wall-biceps",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": []
+  },
+  {
+    "id": "knee-to-wall",
+    "name": "Knee-to-Wall Ankle Stretch",
+    "primaryMuscles": [
+      "calves"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "wall",
+    "feel": "The lower calf and a comfortable bend at the ankle.",
+    "avoid": "Lifting the heel or letting the knee collapse inward.",
+    "easier": "Move the toes closer to the wall.",
+    "instructions": [
+      "Face a wall with one foot a short distance from it and the other foot behind for balance.",
+      "Keeping the front heel down, bend the front knee toward the wall over the middle toes.",
+      "Pause where comfortable. Move the foot closer if the heel lifts; hold and switch ankles."
+    ],
+    "cue": "Heel down; knee follows the toes",
+    "pose": "knee-to-wall",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "ankle dorsiflexion stretch"
+    ]
+  },
+  {
+    "id": "toe-extension",
+    "name": "Seated Toe and Arch Stretch",
+    "primaryMuscles": [
+      "feet"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "chair",
+    "feel": "Under the foot through the arch.",
+    "avoid": "Yanking the toes or cramping the foot.",
+    "easier": "Keep the ankle relaxed and move the toes less.",
+    "instructions": [
+      "Sit in a chair and rest one ankle across the opposite thigh.",
+      "Support the heel with one hand and hold the toes together with the other.",
+      "Draw the toes gently back toward the shin until the arch lengthens. Hold lightly, then switch feet."
+    ],
+    "cue": "Support the heel; ease the toes back",
+    "pose": "toe-extension",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": [
+      "plantar fascia stretch"
+    ]
+  },
+  {
+    "id": "side-reach-child",
+    "name": "Child’s Pose Side Reach",
+    "primaryMuscles": [
+      "lats"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "exercise mat",
+    "feel": "Along one side of the back and ribs.",
+    "avoid": "Forcing the hips toward the heels or lifting one hip.",
+    "easier": "Rest the hips on a cushion and reach less far.",
+    "instructions": [
+      "From hands and knees, ease your hips back toward your heels and reach both hands forward.",
+      "Walk both hands a short distance to the right while keeping the hips heavy and level.",
+      "Breathe into the left side of your back. Return through the middle and reach left to stretch the other side."
+    ],
+    "cue": "Walk the hands sideways; keep hips level",
+    "pose": "side-reach-child",
+    "dose": "20 sec each side",
+    "mode": "stretching",
+    "aliases": []
+  },
+  {
+    "id": "wall-thoracic",
+    "name": "Wall Thoracic Rotation",
+    "primaryMuscles": [
+      "middle back"
+    ],
+    "secondaryMuscles": [],
+    "equipment": "wall",
+    "feel": "Easy rotation through the upper back.",
+    "avoid": "Twisting the hips or pushing into shoulder pain.",
+    "easier": "Keep the moving elbow bent and use a smaller turn.",
+    "instructions": [
+      "Stand side-on to a wall and rest the nearer hand on it at chest height.",
+      "Reach the other arm forward, then slowly open it away from the wall as your chest follows.",
+      "Keep the hips facing ahead. Return with control and repeat before changing sides."
+    ],
+    "cue": "Rotate the chest; keep hips still",
+    "pose": "wall-thoracic",
+    "dose": "6 slow reps each side",
+    "mode": "mobility",
+    "aliases": []
+  }
+]

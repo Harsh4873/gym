@@ -68,6 +68,7 @@ import {
   buildDiscoveryGuides,
   filterExerciseGuides,
   getGuideDiscipline,
+  isExerciseRoutinePlaceholder,
   type ExerciseDiscipline,
   type BodyRegion,
   type GuideFilters,
@@ -2629,7 +2630,7 @@ function buildSavedExerciseLibraryEntries(
     extra?: boolean,
   ) => {
     const trimmedName = name?.trim();
-    if (!trimmedName) {
+    if (!trimmedName || isExerciseRoutinePlaceholder(trimmedName)) {
       return;
     }
 
@@ -2740,7 +2741,7 @@ function ExerciseGuideCard({
     (saved
       ? 'In your Gym'
       : guide.coaching
-        ? 'Starter guide'
+        ? 'Step-by-step'
         : guide.assisted
           ? 'Partner assisted'
           : guide.source === 'custom'
@@ -2824,7 +2825,7 @@ function ExerciseGuideDialog({
   const sourceLabel = saved
     ? 'Saved in your Gym'
     : guide.source === 'custom'
-      ? 'Gym mobility guide'
+      ? 'Gym exercise guide'
       : 'Free Exercise DB';
 
   return (
@@ -2865,7 +2866,9 @@ function ExerciseGuideDialog({
             <figure key={`${guide.id}-image-${index}`}>
               <ExerciseGuideArtwork guide={guide} detail imageIndex={index} />
               <figcaption>
-                {guide.images.length === 1 ? 'Movement reference' : `Reference ${index + 1}`}
+                {guide.images.length === 1
+                  ? (guide.artworkLabel ?? 'Movement reference')
+                  : `Reference ${index + 1}`}
               </figcaption>
             </figure>
           ))}
@@ -2970,7 +2973,7 @@ function ExerciseGuideDialog({
   );
 }
 
-function SearchView({
+export function SearchView({
   program,
   logs,
   todayKey,
@@ -3032,10 +3035,12 @@ function SearchView({
   );
   const savedResults = useMemo(
     () =>
-      savedEntries.map((entry) => ({
-        entry,
-        guide: resolvePersonalExerciseGuide(entry.name, library, entry.family),
-      })),
+      savedEntries
+        .filter((entry) => !isExerciseRoutinePlaceholder(entry.name))
+        .map((entry) => ({
+          entry,
+          guide: resolvePersonalExerciseGuide(entry.name, library, entry.family),
+        })),
     [savedEntries, library],
   );
   const discoveryGuides = useMemo(() => buildDiscoveryGuides(library), [library]);
@@ -3057,54 +3062,22 @@ function SearchView({
     () => filterExerciseGuides(sourceGuides, { query, discipline, region, equipment, beginner }),
     [sourceGuides, query, discipline, region, equipment, beginner],
   );
-  const counts = useMemo(() => {
-    const candidates = filterExerciseGuides(sourceGuides, {
-      query,
-      discipline: 'all',
-      region,
-      equipment,
-      beginner,
-    });
-    return Object.fromEntries(
-      DISCIPLINES.map(({ id }) => [
-        id,
-        candidates.filter((guide) => getGuideDiscipline(guide) === id).length,
-      ]),
-    );
-  }, [sourceGuides, query, region, equipment, beginner]);
   const todayWeekday = getWeekday(parseDateKey(todayKey));
   const resetFilters = () => {
     setQuery('');
-    setDiscipline('all');
     setRegion('all');
     setEquipment('all');
     setBeginner(false);
   };
   const hasRefinements = query || region !== 'all' || equipment !== 'all' || beginner;
   const currentDiscipline = DISCIPLINES.find(({ id }) => id === discipline);
-  const stretchCount = discoveryGuides.filter((guide) =>
-    ['stretching', 'mobility'].includes(getGuideDiscipline(guide)),
-  ).length;
 
   return (
     <div className="view-stack exercise-search-view">
-      <section className="exercise-search-hero">
-        <div>
-          <p className="eyebrow">The movement library</p>
-          <h1>
-            A little less stiff.
-            <br />A lot more confident.
-          </h1>
-          <p>
-            Start with a stretch. See the positions, learn what to feel, and find a version that works for
-            you.
-          </p>
-        </div>
-        <div className="exercise-search-stat">
-          <strong>{stretchCount}</strong>
-          <span>stretch & mobility guides</span>
-        </div>
-      </section>
+      <header className="exercise-search-title">
+        <h1>Exercise library</h1>
+        <p>Choose a muscle. Find a stretch or movement.</p>
+      </header>
 
       <section className="exercise-search-controls" aria-label="Exercise search controls">
         <div className="exercise-scope-switch" role="group" aria-label="Choose exercise collection">
@@ -3116,7 +3089,7 @@ function SearchView({
               setDiscipline('stretching');
             }}
           >
-            <BookOpen aria-hidden="true" /> Explore library
+            <BookOpen aria-hidden="true" /> All exercises
           </button>
           <button
             type="button"
@@ -3126,7 +3099,7 @@ function SearchView({
               setDiscipline('all');
             }}
           >
-            <ClipboardList aria-hidden="true" /> My program & history
+            <ClipboardList aria-hidden="true" /> My exercises
           </button>
         </div>
         <label className="exercise-search-input">
@@ -3145,66 +3118,85 @@ function SearchView({
           )}
         </label>
         <div className="exercise-discipline-tabs" role="group" aria-label="Movement type">
-          {DISCIPLINES.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              aria-pressed={discipline === option.id}
-              onClick={() => setDiscipline(option.id)}
-            >
-              {option.label}
-              <span>{counts[option.id] ?? 0}</span>
-            </button>
-          ))}
-          <button type="button" aria-pressed={discipline === 'all'} onClick={() => setDiscipline('all')}>
-            All types
-          </button>
-        </div>
-        <p className="exercise-filter-explainer">
-          {currentDiscipline?.description ?? 'Explore every movement type.'}
-        </p>
-        <div className="exercise-region-options" role="group" aria-label="Body area">
-          <button type="button" aria-pressed={region === 'all'} onClick={() => setRegion('all')}>
-            Whole library
-          </button>
-          {BODY_REGIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              aria-pressed={region === option.id}
-              onClick={() => setRegion(option.id)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <div className="exercise-refinements">
-          <label>
-            Equipment
-            <select
-              value={equipment}
-              onChange={(event) => setEquipment(event.target.value as GuideFilters['equipment'])}
-            >
-              <option value="all">Any equipment</option>
-              <option value="body only">No equipment / mat</option>
-              <option value="support">Wall, chair, or towel</option>
-              <option value="equipment">Equipment / assisted</option>
-            </select>
-          </label>
-          <label className="exercise-beginner-toggle">
-            <input
-              type="checkbox"
-              checked={beginner}
-              onChange={(event) => setBeginner(event.target.checked)}
-            />{' '}
-            Beginner & solo
-          </label>
-          {hasRefinements && (
-            <button type="button" className="icon-text-button" onClick={resetFilters}>
-              <X aria-hidden="true" /> Reset filters
-            </button>
+          {DISCIPLINES.filter((option) => ['stretching', 'mobility', 'strength'].includes(option.id)).map(
+            (option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={discipline === option.id}
+                onClick={() => setDiscipline(option.id)}
+              >
+                {option.label}
+              </button>
+            ),
           )}
         </div>
+        <fieldset className="exercise-muscle-fieldset">
+          <legend>Choose a muscle</legend>
+          <div className="exercise-muscle-picker">
+            {BODY_REGIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={region === option.id}
+                onClick={() => setRegion(option.id)}
+              >
+                <span>{option.label}</span>
+                <small>{option.hint}</small>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <details className="exercise-extra-filters">
+          <summary>More filters{equipment !== 'all' || beginner ? ' · active' : ''}</summary>
+          <div className="exercise-refinements">
+            <label>
+              Movement type
+              <select
+                value={discipline}
+                onChange={(event) => setDiscipline(event.target.value as ExerciseDiscipline | 'all')}
+              >
+                <option value="all">All types</option>
+                {DISCIPLINES.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Equipment
+              <select
+                value={equipment}
+                onChange={(event) => setEquipment(event.target.value as GuideFilters['equipment'])}
+              >
+                <option value="all">Any equipment</option>
+                <option value="body only">No equipment / mat</option>
+                <option value="support">Wall, chair, or towel</option>
+                <option value="equipment">Equipment / assisted</option>
+              </select>
+            </label>
+            <label className="exercise-beginner-toggle">
+              <input
+                type="checkbox"
+                checked={beginner}
+                onChange={(event) => setBeginner(event.target.checked)}
+              />{' '}
+              Beginner & solo
+            </label>
+          </div>
+        </details>
+        {hasRefinements && (
+          <div className="exercise-active-filters">
+            <span>
+              {BODY_REGIONS.find((option) => option.id === region)?.label}
+              {currentDiscipline ? ` · ${currentDiscipline.label}` : ''}
+            </span>
+            <button type="button" onClick={resetFilters}>
+              Clear filters
+            </button>
+          </div>
+        )}
         {scope === 'saved' && (
           <div className="exercise-day-filter">
             <div className="exercise-filter-label">
@@ -3258,73 +3250,22 @@ function SearchView({
         )}
       </section>
 
-      {scope === 'library' &&
-        !query &&
-        region === 'all' &&
-        equipment === 'all' &&
-        !beginner &&
-        (discipline === 'stretching' || discipline === 'mobility') && (
-          <section className="exercise-start-here" aria-label="Quick starting points">
-            <div>
-              <p className="eyebrow">Not sure where to start?</p>
-              <h2>Pick an area. Take it easy.</h2>
-            </div>
-            <div className="exercise-quick-picks">
-              {[
-                {
-                  label: 'Hips after sitting',
-                  detail: 'Hip flexors & glutes',
-                  region: 'hips' as const,
-                  type: 'stretching' as const,
-                },
-                {
-                  label: 'Leg-day cooldown',
-                  detail: 'Quads & hamstrings',
-                  region: 'legs' as const,
-                  type: 'stretching' as const,
-                },
-                {
-                  label: 'Upper-body reset',
-                  detail: 'Shoulders & chest',
-                  region: 'shoulders' as const,
-                  type: 'stretching' as const,
-                },
-                {
-                  label: 'Get moving',
-                  detail: 'Gentle active mobility',
-                  region: 'all' as const,
-                  type: 'mobility' as const,
-                },
-              ].map((pick) => (
-                <button
-                  key={pick.label}
-                  type="button"
-                  onClick={() => {
-                    setRegion(pick.region);
-                    setDiscipline(pick.type);
-                    setBeginner(true);
-                    setEquipment('body only');
-                  }}
-                >
-                  <span>{pick.label}</span>
-                  <small>{pick.detail}</small>
-                  <ChevronRight aria-hidden="true" />
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
       <section className="exercise-result-section" aria-label="Exercise results">
         <div className="exercise-result-heading">
           <div>
             <p className="eyebrow">
               {scope === 'library' ? 'Explore & learn' : selectedDay === 'all' ? 'Your Gym' : selectedDay}
             </p>
-            <h2>{scope === 'saved' ? 'Your exercises' : (currentDiscipline?.label ?? 'All movements')}</h2>
+            <h2>
+              {region !== 'all'
+                ? BODY_REGIONS.find((option) => option.id === region)?.label
+                : scope === 'saved'
+                  ? 'Your exercises'
+                  : (currentDiscipline?.label ?? 'All movements')}
+            </h2>
           </div>
           <span role="status" aria-live="polite">
-            {Math.min(visibleCount, results.length)} of {results.length} shown
+            {results.length} exercises
           </span>
         </div>
         {results.length > 0 ? (

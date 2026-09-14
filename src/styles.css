@@ -5154,3 +5154,386 @@ a:focus-visible {
     font-size: 11px;
   }
 }
+
+/* Compact search layout, with every muscle visible on a phone. */
+.exercise-search-view,
+.exercise-search-controls,
+.exercise-result-section,
+.exercise-guide-content,
+.exercise-guide-section,
+.exercise-card-copy {
+  min-width: 0;
+  max-width: 100%;
+}
+.exercise-search-view {
+  gap: 24px;
+}
+.exercise-search-title h1 {
+  margin: 0 0 6px;
+  font-size: clamp(25px, 4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.exercise-search-title p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.exercise-search-controls {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.exercise-search-controls > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.exercise-scope-switch {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.exercise-scope-switch button {
+  min-width: 0;
+  white-space: normal;
+}
+.exercise-search-input input {
+  min-width: 0;
+  font-size: 16px;
+}
+.exercise-discipline-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.exercise-discipline-tabs button {
+  min-width: 0;
+  justify-content: center;
+  padding: 12px 6px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.exercise-muscle-fieldset {
+  min-inline-size: 0;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.exercise-muscle-fieldset legend {
+  padding: 0;
+  margin-bottom: 10px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 650;
+}
+.exercise-muscle-picker {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+.exercise-muscle-picker button {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 3px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 9px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.exercise-muscle-picker button > span {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+.exercise-muscle-picker button > small {
+  color: var(--color-text-tertiary);
+  font-size: 10px;
+  line-height: 1.3;
+}
+.exercise-muscle-picker button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+  color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
+}
+.exercise-muscle-picker button[aria-pressed='true'] > small {
+  color: var(--color-text-secondary);
+}
+.exercise-extra-filters {
+  border-top: 1px solid var(--color-border);
+  padding-top: 2px;
+}
+.exercise-extra-filters summary {
+  padding: 11px 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.exercise-refinements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  padding: 4px 0 10px;
+}
+.exercise-refinements > label {
+  min-width: 0;
+}
+.exercise-refinements select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 16px;
+}
+.exercise-beginner-toggle {
+  grid-column: 1 / -1;
+}
+.exercise-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.exercise-active-filters > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.exercise-active-filters button {
+  min-height: 36px;
+  padding: 4px 0;
+  background: transparent;
+  border: 0;
+  color: var(--color-accent);
+  font-size: 12px;
+}
+.exercise-result-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+}
+.exercise-result-heading > div {
+  min-width: 0;
+}
+.exercise-result-heading h2 {
+  overflow-wrap: anywhere;
+}
+.exercise-result-heading > span {
+  flex-shrink: 0;
+  max-width: 100%;
+  margin-left: auto;
+  white-space: normal;
+}
+.exercise-card-dose {
+  flex-wrap: wrap;
+  overflow-wrap: anywhere;
+}
+.exercise-card-name > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.exercise-card-kicker {
+  white-space: normal;
+  text-overflow: clip;
+  line-height: 1.5;
+}
+.exercise-source-chip {
+  max-width: calc(100% - 24px);
+  overflow-wrap: anywhere;
+}
+.exercise-guide-head > div {
+  min-width: 0;
+}
+.exercise-guide-head h2 {
+  overflow-wrap: anywhere;
+}
+.exercise-guide-head > button {
+  flex-shrink: 0;
+}
+.exercise-guide-content > *,
+.exercise-coaching-summary > *,
+.exercise-instruction-list li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.exercise-instruction-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+.exercise-guide-images figure {
+  min-width: 0;
+}
+.exercise-guide-images img {
+  max-width: 100%;
+}
+.exercise-guide-dose strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.exercise-guide-meta span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.exercise-library-credit {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.exercise-library-credit svg,
+.exercise-card-dose svg {
+  flex-shrink: 0;
+}
+@media (max-width: 900px) {
+  .exercise-muscle-picker {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .exercise-search-view {
+    gap: 18px;
+  }
+  .exercise-search-controls {
+    padding: 12px;
+    gap: 12px;
+  }
+  .exercise-scope-switch button {
+    gap: 6px;
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  .exercise-muscle-picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .exercise-muscle-picker button {
+    min-height: 48px;
+    padding: 7px;
+  }
+  .exercise-muscle-picker button > span {
+    font-size: 12px;
+  }
+  .exercise-muscle-picker button > small {
+    font-size: 10px;
+  }
+  .exercise-library-grid {
+    gap: 10px;
+  }
+  .exercise-library-card {
+    grid-template-columns: minmax(0, 32%) minmax(0, 1fr);
+    grid-template-rows: auto;
+    align-items: stretch;
+    border-radius: 12px;
+  }
+  .exercise-card-art {
+    align-self: stretch;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+    border-bottom: 0;
+    border-right: 1px solid var(--color-border);
+  }
+  .exercise-card-art img {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: contain;
+  }
+  .exercise-card-art .exercise-source-chip {
+    display: none;
+  }
+  .exercise-card-copy {
+    min-height: 126px;
+    padding: 12px;
+    gap: 5px;
+  }
+  .exercise-card-name > strong {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.3;
+    letter-spacing: -0.015em;
+  }
+  .exercise-card-copy > small {
+    font-size: 11px;
+  }
+  .exercise-card-kicker {
+    font-size: 10px;
+    letter-spacing: 0.025em;
+  }
+  .exercise-card-dose {
+    font-size: 11px;
+    gap: 4px;
+  }
+  .exercise-card-link {
+    padding-top: 4px;
+    font-size: 11px;
+  }
+  .exercise-guide-head {
+    padding: 16px;
+    gap: 12px;
+  }
+  .exercise-guide-head h2 {
+    font-size: 25px;
+    line-height: 1.1;
+  }
+  .exercise-guide-images {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .exercise-guide-images.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .exercise-guide-images figure {
+    min-height: 0;
+    aspect-ratio: 4 / 3;
+  }
+  .exercise-guide-images.single figure {
+    aspect-ratio: 3 / 2;
+  }
+  .exercise-guide-images img {
+    height: 100%;
+    object-fit: contain;
+  }
+  .exercise-guide-images figcaption {
+    font-size: 8px;
+    padding: 4px 6px;
+  }
+  .exercise-guide-content {
+    gap: 20px;
+    padding-inline: 16px;
+  }
+  .exercise-coaching-summary {
+    padding: 14px;
+  }
+  .exercise-guide-dose strong {
+    font-size: 14px;
+  }
+  .exercise-instruction-list li {
+    padding: 8px 0 8px 40px;
+    font-size: 13px;
+  }
+  .exercise-instruction-list li::before {
+    left: 0;
+    width: 28px;
+    height: 28px;
+  }
+}
+@media (max-width: 360px) {
+  .exercise-refinements {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .exercise-muscle-picker button > small {
+    display: none;
+  }
+  .exercise-muscle-picker button {
+    min-height: 44px;
+  }
+}

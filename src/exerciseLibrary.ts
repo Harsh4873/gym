@@ -1,3 +1,4 @@
+import stretchAdditions from './stretchAdditions.json';
 import { MOBILITY_COACHING, type MobilityCoaching } from './mobilityCoaching';
 import exerciseSource from '../public/data/exercise-source.json';
 
@@ -25,6 +26,8 @@ export interface ExerciseGuide {
   recordId?: string;
   coaching?: MobilityCoaching;
   assisted?: boolean;
+  aliases?: string[];
+  artworkLabel?: string;
   source: ExerciseGuideSource;
   family: ExerciseGuideFamily;
   category: string;
@@ -44,6 +47,14 @@ const FREE_EXERCISE_IMAGE_ROOT =
   `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${exerciseSource.revision}/exercises/`;
 
 const CUSTOM_GUIDES: ExerciseGuide[] = [
+  ...stretchAdditions.map((entry): ExerciseGuide => ({
+    id: `custom:${entry.id}`, name: entry.name, source: 'custom', family: 'mobility',
+    category: entry.mode, level: ['couch', 'frog', 'supported-pigeon', 'ninety-ninety-front'].includes(entry.id) ? 'intermediate' : 'beginner',
+    primaryMuscles: entry.primaryMuscles, secondaryMuscles: entry.secondaryMuscles,
+    equipment: entry.equipment, instructions: entry.instructions, aliases: entry.aliases,
+    images: [`${import.meta.env.BASE_URL}exercises/positions/${entry.id}.svg`], artworkLabel: 'Position diagram',
+    coaching: { ...entry, mode: entry.mode as 'stretching' | 'mobility', tags: entry.aliases },
+  })),
   {
     id: 'custom:cat-cow',
     name: 'Cat-Cow',
@@ -81,24 +92,6 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
     images: [`${import.meta.env.BASE_URL}exercises/bird-dog.png`],
   },
   {
-    id: 'custom:stretch-video',
-    name: '10-Minute Stretch Video',
-    source: 'custom',
-    family: 'mobility',
-    category: 'mobility',
-    level: 'beginner',
-    equipment: 'exercise mat',
-    primaryMuscles: ['hamstrings', 'hip flexors', 'lower back'],
-    secondaryMuscles: ['calves', 'glutes', 'middle back'],
-    instructions: [
-      'Set up somewhere you can follow the video with a mat and enough room to lie down.',
-      'Move at the pace of the video, but never force a position — ease into each stretch and back off from sharp pain.',
-      'Breathe slowly through every hold; long exhales are what let a stretch actually release.',
-      'Treat it as one timed round: press play, follow along to the end, and log it done.',
-    ],
-    images: [`${import.meta.env.BASE_URL}exercises/stretch-video.png`],
-  },
-  {
     id: 'custom:open-book-t-spine',
     name: 'Open-Book T-Spine Stretch',
     source: 'custom',
@@ -120,7 +113,6 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
 
 const CUSTOM_GUIDE_ALIASES: Record<string, string> = {
   'bird dogs': 'custom:bird-dog',
-  '10 min stretch video': 'custom:stretch-video',
   'open book t spine': 'custom:open-book-t-spine',
   'open book t spine stretch': 'custom:open-book-t-spine',
 };
@@ -276,7 +268,7 @@ export function toExerciseGuide(record: FreeExerciseRecord, displayName?: string
     category: coaching?.mode ?? record.category,
     level: coaching ? (record.id === 'Inchworm' ? 'intermediate' : 'beginner') : record.level,
     equipment: coaching?.equipment ?? (assisted ? 'partner assistance' : record.equipment ?? 'body only'),
-    primaryMuscles: record.primaryMuscles,
+    primaryMuscles: ['Kneeling_Hip_Flexor', 'Standing_Hip_Flexors'].includes(record.id) ? ['hip flexors'] : record.primaryMuscles,
     secondaryMuscles: record.secondaryMuscles,
     instructions: coaching?.instructions ?? record.instructions,
     images: record.images.map((image) => record.category === 'stretching'
@@ -311,6 +303,7 @@ export function resolvePersonalExerciseGuide(
   const customGuideId = CUSTOM_GUIDE_ALIASES[normalizedName];
   const customGuide = CUSTOM_GUIDES.find((guide) => (
     guide.id === customGuideId || normalizeExerciseName(guide.name) === normalizedName
+    || guide.aliases?.some((alias) => normalizeExerciseName(alias) === normalizedName)
   ));
   if (customGuide) {
     return { ...customGuide, name, images: [...customGuide.images] };
@@ -345,6 +338,7 @@ export function matchesExerciseGuide(guide: ExerciseGuide, query: string): boole
       guide.equipment,
       getGuideDiscipline(guide),
       ...(guide.coaching?.tags ?? []),
+      ...(guide.aliases ?? []),
       ...[...guide.primaryMuscles, ...guide.secondaryMuscles].flatMap((muscle) => MUSCLE_SEARCH_TERMS[muscle] ?? []),
       ...guide.primaryMuscles,
       ...guide.secondaryMuscles,
@@ -385,19 +379,28 @@ export const DISCIPLINES = [
   { id: 'stretching', label: 'Stretches', description: 'Easy holds to explore flexibility.' },
   { id: 'mobility', label: 'Mobility', description: 'Controlled movement through your range.' },
   { id: 'strength', label: 'Strength', description: 'Lifts, bodyweight work, and power training.' },
-  { id: 'recovery', label: 'Foam rolling', description: 'Self-massage with a roller or ball.' },
+  { id: 'recovery', label: 'Recovery', description: 'Self-massage with a roller or ball.' },
   { id: 'cardio', label: 'Cardio', description: 'Conditioning and endurance movements.' },
 ] as const;
 export type ExerciseDiscipline = typeof DISCIPLINES[number]['id'];
 export const BODY_REGIONS = [
-  { id: 'hips', label: 'Hips & glutes', muscles: ['glutes', 'abductors', 'adductors', 'hip flexors'] },
-  { id: 'legs', label: 'Thighs', muscles: ['hamstrings', 'quadriceps'] },
-  { id: 'ankles', label: 'Calves & ankles', muscles: ['calves'] },
-  { id: 'back', label: 'Back & spine', muscles: ['lower back', 'middle back', 'lats'] },
-  { id: 'shoulders', label: 'Shoulders & chest', muscles: ['shoulders', 'chest'] },
-  { id: 'neck', label: 'Neck & traps', muscles: ['neck', 'traps'] },
-  { id: 'arms', label: 'Arms & wrists', muscles: ['biceps', 'triceps', 'forearms'] },
-  { id: 'core', label: 'Core', muscles: ['abdominals'] },
+  { id: 'all', label: 'All muscles', hint: 'Whole body', muscles: [] },
+  { id: 'hip-flexors', label: 'Hip flexors', hint: 'Front of hips', muscles: ['hip flexors'] },
+  { id: 'glutes', label: 'Glutes', hint: 'Butt & outer hips', muscles: ['glutes', 'abductors'] },
+  { id: 'hamstrings', label: 'Hamstrings', hint: 'Back of thighs', muscles: ['hamstrings'] },
+  { id: 'quads', label: 'Quads', hint: 'Front of thighs', muscles: ['quadriceps'] },
+  { id: 'groin', label: 'Inner thighs', hint: 'Adductors', muscles: ['adductors'] },
+  { id: 'calves', label: 'Calves', hint: 'Lower legs', muscles: ['calves'] },
+  { id: 'back', label: 'Back', hint: 'Spine & mid-back', muscles: ['lower back', 'middle back'] },
+  { id: 'lats', label: 'Lats', hint: 'Sides of back', muscles: ['lats'] },
+  { id: 'chest', label: 'Chest', hint: 'Pecs', muscles: ['chest'] },
+  { id: 'shoulders', label: 'Shoulders', hint: 'Delts', muscles: ['shoulders'] },
+  { id: 'neck', label: 'Neck', hint: 'Neck & traps', muscles: ['neck', 'traps'] },
+  { id: 'forearms', label: 'Wrists', hint: 'Forearms & hands', muscles: ['forearms'] },
+  { id: 'biceps', label: 'Biceps', hint: 'Front of arms', muscles: ['biceps'] },
+  { id: 'triceps', label: 'Triceps', hint: 'Back of arms', muscles: ['triceps'] },
+  { id: 'core', label: 'Core', hint: 'Abs & side body', muscles: ['abdominals'] },
+  { id: 'feet', label: 'Feet', hint: 'Toes & arches', muscles: ['feet'] },
 ] as const;
 export type BodyRegion = typeof BODY_REGIONS[number]['id'];
 const MUSCLE_SEARCH_TERMS: Record<string, string[]> = {
@@ -437,10 +440,11 @@ export function getGuideDiscipline(guide: ExerciseGuide): ExerciseDiscipline {
 }
 
 export function getGuideRegions(guide: ExerciseGuide): BodyRegion[] {
-  const muscles = [...guide.primaryMuscles, ...guide.secondaryMuscles];
-  const tags = guide.coaching?.tags ?? [];
-  return BODY_REGIONS.filter((region) => region.muscles.some((muscle) => muscles.includes(muscle))
-    || (region.id === 'hips' && tags.includes('hip flexors'))).map((region) => region.id);
+  return BODY_REGIONS.filter((region) => region.muscles.some((muscle) => guide.primaryMuscles.includes(muscle))).map((region) => region.id);
+}
+
+export function isExerciseRoutinePlaceholder(name: string): boolean {
+  return /\bvideo\b|\bsuperset\b|\bcircuit\b|\b\d+[ -]*(min|minute)s?\b/i.test(name);
 }
 
 export interface GuideFilters {
@@ -455,7 +459,7 @@ export function filterExerciseGuides(guides: ExerciseGuide[], filters: GuideFilt
   return guides.filter((guide) => {
     const equipment = guide.equipment ?? '';
     const bodyOnly = /^(body only|exercise mat)$/.test(equipment);
-    const support = /wall|chair|strap|towel/.test(equipment);
+    const support = /wall|doorway|chair|strap|towel/.test(equipment);
     return (filters.discipline === 'all' || getGuideDiscipline(guide) === filters.discipline)
       && (filters.region === 'all' || getGuideRegions(guide).includes(filters.region))
       && (!filters.beginner || (guide.level === 'beginner' && !guide.assisted))
@@ -469,9 +473,10 @@ export function filterExerciseGuides(guides: ExerciseGuide[], filters: GuideFilt
 
 export function buildDiscoveryGuides(library: FreeExerciseRecord[]): ExerciseGuide[] {
   const custom = getCustomExerciseGuides();
-  const names = new Set(custom.map((guide) => normalizeExerciseName(guide.name)));
+  const names = new Set(custom.flatMap((guide) => [guide.name, ...(guide.aliases ?? [])]).map(normalizeExerciseName));
   return [...custom, ...library.filter((record) => record.images.length > 0 && record.instructions.length > 0)
     .map((record) => toExerciseGuide(record))
-    .filter((guide) => !names.has(normalizeExerciseName(guide.name)))]
-    .sort((a, b) => Number(Boolean(b.coaching)) - Number(Boolean(a.coaching)) || a.name.localeCompare(b.name));
+    .filter((guide) => !names.has(normalizeExerciseName(guide.name)) && !isExerciseRoutinePlaceholder(guide.name))]
+    .sort((a, b) => Number(Boolean(b.artworkLabel)) - Number(Boolean(a.artworkLabel))
+      || Number(Boolean(b.coaching)) - Number(Boolean(a.coaching)) || a.name.localeCompare(b.name));
 }
