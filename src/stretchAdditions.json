@@ -16,9 +16,8 @@
       "Keep the shoulder relaxed. Hold at light tension, then change arms."
     ],
     "cue": "Turn gently away from the arm",
-    "pose": "doorway",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "pec stretch",
       "pectorals"
@@ -41,13 +40,13 @@
       "If comfortable, lean slightly forward from the hips. Keep your back long and breathe."
     ],
     "cue": "Let the knees relax outward",
-    "pose": "butterfly",
     "dose": "20–30 sec",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "groin stretch",
       "inner thigh stretch"
-    ]
+    ],
+    "photoRecordId": "Groin_and_Back_Stretch"
   },
   {
     "id": "standing-quad",
@@ -66,9 +65,8 @@
       "Ease the heel toward your buttock without pulling hard. Stay tall, then switch legs."
     ],
     "cue": "Knees close; keep the pelvis tucked",
-    "pose": "standing-quad",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "standing quadriceps stretch"
     ]
@@ -91,12 +89,12 @@
       "Gently tuck your pelvis. Rise only as far as comfortable while keeping the back knee padded."
     ],
     "cue": "Pad the knee; rise only a little",
-    "pose": "couch",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "rear foot elevated hip flexor"
-    ]
+    ],
+    "photoRecordId": "Standing_Elevated_Quad_Stretch"
   },
   {
     "id": "seated-figure-four",
@@ -115,9 +113,8 @@
       "Lean forward from your hips with a long back. Stop at light tension and change sides after the hold."
     ],
     "cue": "Hinge forward with a long back",
-    "pose": "seated-figure-four",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "chair piriformis stretch"
     ]
@@ -139,9 +136,8 @@
       "Keep the chest lifted and the crossed foot gently flexed. Hold lightly, stand up, then switch."
     ],
     "cue": "Hold a support and sit back",
-    "pose": "standing-figure-four",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "standing figure 4 glute stretch"
     ]
@@ -163,9 +159,8 @@
       "Tip forward from the hips until the back of the straight thigh gently stretches, then switch legs."
     ],
     "cue": "Hinge from the hips; keep a soft knee",
-    "pose": "chair-hamstring",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "seated hamstring chair"
     ]
@@ -187,9 +182,8 @@
       "Lean forward a little from the hips with hands supported. Hold, then ease forward and change legs."
     ],
     "cue": "Hips back; front heel stays down",
-    "pose": "half-split",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "ardha hanumanasana"
     ]
@@ -211,9 +205,8 @@
       "Pause at mild inner-thigh tension, then come forward. Repeat smoothly before switching sides."
     ],
     "cue": "Rock back slowly; keep the spine long",
-    "pose": "adductor-rockback",
     "dose": "6–8 slow reps each side",
-    "mode": "mobility",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -233,9 +226,8 @@
       "Ease your hips backward a little. Hold at gentle tension, then bring the knees in slowly."
     ],
     "cue": "Pad both knees; use a small range",
-    "pose": "frog",
     "dose": "15–20 sec",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -255,9 +247,8 @@
       "Hinge toward the front thigh a little, keeping weight through the hips. Hold, then reposition to switch sides."
     ],
     "cue": "Lean toward the front shin",
-    "pose": "ninety-ninety-front",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "90 90 hip external rotation"
     ]
@@ -280,9 +271,8 @@
       "Lift both knees through the middle and lower them to the other side. Keep the movement slow."
     ],
     "cue": "Move both knees gently side to side",
-    "pose": "ninety-ninety-switch",
     "dose": "6–8 alternating reps",
-    "mode": "mobility",
+    "mode": "stretch",
     "aliases": [
       "hip windshield wipers"
     ]
@@ -304,9 +294,8 @@
       "Keep the front foot near the opposite hip and your torso upright. Hold gently without forcing the front knee."
     ],
     "cue": "Support the hip; keep the foot close",
-    "pose": "supported-pigeon",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -326,9 +315,8 @@
       "Let your chest lower gently between your arms. Keep the ribs controlled and breathe."
     ],
     "cue": "Sit the hips back; keep ribs controlled",
-    "pose": "kneeling-lat",
     "dose": "20–30 sec",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "prayer lat stretch",
       "lat stretch"
@@ -352,9 +340,8 @@
       "Lower your forehead toward a support and ease the chest downward. Keep the lower back comfortable."
     ],
     "cue": "Hips above knees; reach forward",
-    "pose": "puppy",
     "dose": "20–30 sec",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "extended puppy pose"
     ]
@@ -377,9 +364,8 @@
       "Keep hips above the knees and the head supported comfortably. Hold, return slowly, and switch arms."
     ],
     "cue": "Reach under; keep hips over knees",
-    "pose": "thread-the-needle",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -399,9 +385,8 @@
       "Let the shoulder remain heavy. Hold with no hand pressure on your head, then switch sides."
     ],
     "cue": "Look gently toward the opposite armpit",
-    "pose": "levator",
     "dose": "15–20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "neck shoulder blade stretch"
     ]
@@ -423,9 +408,8 @@
       "Use the other hand to guide the back of the hand gently toward you. Keep the shoulder relaxed and switch arms after the hold."
     ],
     "cue": "Palm down; fingers point toward floor",
-    "pose": "wrist-extensor",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "back of forearm"
     ]
@@ -447,9 +431,8 @@
       "Gently draw the hand back toward you until the forearm stretches. Keep the shoulder down, then change sides."
     ],
     "cue": "Palm up; use only light pressure",
-    "pose": "wrist-flexor",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -469,9 +452,8 @@
       "Turn your chest gently away from the wall until the front of the arm stretches. Hold and switch sides."
     ],
     "cue": "Soft elbow; turn the chest away",
-    "pose": "wall-biceps",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -491,9 +473,8 @@
       "Pause where comfortable. Move the foot closer if the heel lifts; hold and switch ankles."
     ],
     "cue": "Heel down; knee follows the toes",
-    "pose": "knee-to-wall",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "ankle dorsiflexion stretch"
     ]
@@ -515,9 +496,8 @@
       "Draw the toes gently back toward the shin until the arch lengthens. Hold lightly, then switch feet."
     ],
     "cue": "Support the heel; ease the toes back",
-    "pose": "toe-extension",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": [
       "plantar fascia stretch"
     ]
@@ -539,9 +519,8 @@
       "Breathe into the left side of your back. Return through the middle and reach left to stretch the other side."
     ],
     "cue": "Walk the hands sideways; keep hips level",
-    "pose": "side-reach-child",
     "dose": "20 sec each side",
-    "mode": "stretching",
+    "mode": "stretch",
     "aliases": []
   },
   {
@@ -561,9 +540,8 @@
       "Keep the hips facing ahead. Return with control and repeat before changing sides."
     ],
     "cue": "Rotate the chest; keep hips still",
-    "pose": "wall-thoracic",
     "dose": "6 slow reps each side",
-    "mode": "mobility",
+    "mode": "stretch",
     "aliases": []
   }
 ]

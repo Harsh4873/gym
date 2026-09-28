@@ -1,4 +1,4 @@
-"""Refresh the public-domain catalog and locally hosted mobility photographs."""
+"""Refresh the public-domain catalog and locally hosted stretch photographs."""
 import concurrent.futures
 import json
 from pathlib import Path

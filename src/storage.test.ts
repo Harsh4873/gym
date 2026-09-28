@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getWorkoutSectionOrder, listWorkoutSectionLabels, moveStretchToMorning, PROGRAM, WEEK_DAYS } from './program';
-import { DEFAULT_PREFERENCES, normalizePreferences, loadProgram, PROGRAM_STORAGE_KEY, STORAGE_KEY } from './storage';
+import { createGymBackup, DEFAULT_PREFERENCES, normalizeLog, normalizePreferences, normalizeProgram, loadProgram, parseGymBackup, PROGRAM_STORAGE_KEY, STORAGE_KEY } from './storage';
 import type { ProgramByDay } from './types';
 
 function eveningProgram(): ProgramByDay {
@@ -60,6 +60,42 @@ describe('morning stretch migration', () => {
       .toEqual(original.map(({ id, name, target }) => ({ id, name, target })).sort((a, b) => a.id.localeCompare(b.id)));
     expect(moveStretchToMorning(scheduled)).toBe(scheduled);
     expect(moveStretchToMorning(PROGRAM.Friday)).toBe(PROGRAM.Friday);
+  });
+});
+
+describe('legacy stretch data', () => {
+  it('normalizes saved programs, log snapshots, and backups that still say mobility', () => {
+    const program = structuredClone(PROGRAM);
+    const exercise = program.Tuesday[0];
+    (exercise as { kind: string }).kind = 'mobility';
+    const normalized = normalizeProgram(program);
+    expect(normalized.Tuesday[0]).toMatchObject({ id: exercise.id, kind: 'stretch', target: exercise.target });
+
+    const date = '2026-09-28';
+    const log = normalizeLog(date, { exerciseSnapshot: [PROGRAM.Tuesday[0]] });
+    (log.exerciseSnapshot![0] as { kind: string }).kind = 'mobility';
+    expect(normalizeLog(date, log).exerciseSnapshot![0].kind).toBe('stretch');
+
+    const backup = createGymBackup({ [date]: log }, PROGRAM, DEFAULT_PREFERENCES);
+    (backup.program.Tuesday[0] as { kind: string }).kind = 'mobility';
+    (backup.logs[date].exerciseSnapshot![0] as { kind: string }).kind = 'mobility';
+    const imported = parseGymBackup(backup);
+    expect(imported).not.toBeNull();
+    expect(imported!.program.Tuesday[0].kind).toBe('stretch');
+    expect(imported!.logs[date].exerciseSnapshot![0].kind).toBe('stretch');
+  });
+
+  it('updates the old default ankle title without changing its exercise id', () => {
+    const program = structuredClone(PROGRAM);
+    program.Sunday[0].name = 'Knee-to-Wall Ankle Mobility';
+    expect(normalizeProgram(program).Sunday[0]).toMatchObject({
+      id: program.Sunday[0].id,
+      name: 'Knee-to-Wall Ankle Stretch',
+    });
+    const log = normalizeLog('2026-09-28', {
+      details: { 'sunday-14': { exerciseName: 'Knee-to-Wall Ankle Mobility', sets: [] } },
+    });
+    expect(log.details['sunday-14'].exerciseName).toBe('Knee-to-Wall Ankle Stretch');
   });
 });
 

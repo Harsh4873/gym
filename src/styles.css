@@ -3258,10 +3258,6 @@ a:focus-visible {
   object-fit: contain;
 }
 
-.exercise-guide-images img.custom-guide-image {
-  object-fit: contain;
-}
-
 .exercise-guide-images figcaption {
   position: absolute;
   right: var(--space-3);

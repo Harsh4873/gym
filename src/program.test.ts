@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PROGRAM,
   getWorkoutSectionKey,
+  inferExerciseKind,
+  isStretchExercise,
   listWorkoutSectionLabels,
   PROGRAM,
   SHIPPED_DEFAULT_EXERCISE_NAMES,
@@ -95,6 +97,17 @@ function liftLabels(day: keyof typeof PROGRAM): string[] {
 }
 
 describe('weekly exercise sections', () => {
+  it('treats active stretch names and every morning stretch block as Stretch', () => {
+    for (const name of ['Bird Dog', '90/90 Hip Switches', 'Adductor Rock-Back', 'Wall Thoracic Rotation']) {
+      expect(isStretchExercise(name), name).toBe(true);
+      expect(inferExerciseKind(name), name).toBe('stretch');
+    }
+    for (const day of WEEK_DAYS) {
+      expect(PROGRAM[day].filter((exercise) => exercise.workoutLabel === 'Morning Stretch')
+        .every((exercise) => exercise.kind === 'stretch')).toBe(true);
+    }
+  });
+
   it('keeps Monday as chest + abs in alternating order with the combined back-extension line', () => {
     expect(listWorkoutSectionLabels(PROGRAM.Monday)).toEqual(['Chest + Abs']);
     expect(PROGRAM.Monday.map((exercise) => exercise.name)).toEqual([...MONDAY_CHEST_ABS_NAMES]);

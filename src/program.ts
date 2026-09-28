@@ -11,7 +11,7 @@ export const WEEK_DAYS: Weekday[] = [
 ];
 
 /**
- * The app tracks lifting and mobility only. Court sports used to live in the
+ * The app tracks strength and stretch exercises. Court sports used to live in the
  * program as cardio entries; the names are still recognised here so migrations
  * and log normalisation can strip them from data written by older versions.
  */
@@ -20,15 +20,15 @@ export function isRetiredCourtSport(name: string): boolean {
 }
 
 export function isStretchExercise(name: string): boolean {
-  return /stretch|fold|mobility|pose|cat-cow|warm-?up/i.test(name);
+  return /stretch|fold|mobility|pose|cat.?cow|bird.?dog|open.?book|hip switches|adductor rock.?back|thoracic rotation|warm-?up/i.test(name);
 }
 
 export function inferExerciseKind(name: string): ExerciseKind {
-  return isStretchExercise(name) ? 'mobility' : 'strength';
+  return isStretchExercise(name) ? 'stretch' : 'strength';
 }
 
 export function createDefaultExerciseTarget(name: string, kind = inferExerciseKind(name)): ExerciseTarget {
-  if (kind === 'mobility') {
+  if (kind === 'stretch') {
     return {
       sets: 2,
       restSeconds: 30,
@@ -69,7 +69,6 @@ interface ProgramEntry {
 
 const CALF_TARGET: ExerciseTarget = { sets: 2, repMin: 15, repMax: 20, restSeconds: 60 };
 const LOWER_BODY_TARGET: ExerciseTarget = { sets: 2, repMin: 10, repMax: 12, restSeconds: 90 };
-const MOBILITY_TARGET: ExerciseTarget = { sets: 1, restSeconds: 0 };
 /** Monday and Tuesday: lighter loads, more reps, short rest. */
 const HYPERTROPHY_TARGET: ExerciseTarget = { sets: 3, repMin: 10, repMax: 15, restSeconds: 60 };
 /** Wednesday to Friday: the same muscles worked heavy, with full rest. */
@@ -86,7 +85,7 @@ function buildWorkoutBlock(
 
 const DAILY_STRETCH_TARGET: ExerciseTarget = { sets: 1, restSeconds: 0 };
 
-/** Morning mobility stays separate from abs and lifting. */
+/** Morning stretch stays separate from abs and lifting. */
 function stretchBlock(
   blockOrder: number,
   entries: Array<{ slot: number; name: string }>,
@@ -94,7 +93,7 @@ function stretchBlock(
   return entries.map(({ slot, name }) => ({
     slot,
     name,
-    kind: 'mobility' as ExerciseKind,
+    kind: 'stretch' as ExerciseKind,
     target: DAILY_STRETCH_TARGET,
     workoutLabel: 'Morning Stretch',
     blockOrder,
@@ -373,7 +372,7 @@ const SHIPPED_DEFAULT_PROGRAM_V4: Record<Weekday, Record<number, string>> = {
     11: 'Standing Hip Flexor Stretch',
     12: 'Standing Figure 4 Glute Stretch',
     13: '90/90 Hip Stretch',
-    14: 'Knee-to-Wall Ankle Mobility',
+    14: 'Knee-to-Wall Ankle Stretch',
     15: 'Open-Book T-Spine Stretch',
     16: 'Forward Fold',
   },

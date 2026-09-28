@@ -533,7 +533,7 @@ function getSessionDurationSeconds(log: WorkoutLog, now = Date.now()): number {
 function getExerciseTargetSummary(exercise: Exercise): string {
   const sets = exercise.target.sets ?? 1;
   const rest = exercise.target.restSeconds ?? 0;
-  if (getExerciseKind(exercise) === 'mobility') {
+  if (getExerciseKind(exercise) === 'stretch') {
     return `${sets} ${sets === 1 ? 'round' : 'rounds'}${rest ? ` · ${rest}s reset` : ''}`;
   }
 
@@ -731,7 +731,7 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
     totalReps += reps;
     totalVolume += volume;
 
-    if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'mobility')) {
+    if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'stretch')) {
       stretchDays += 1;
     }
 
@@ -751,7 +751,7 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
     }
     totalReps += getLogReps(log);
     totalVolume += getLogVolume(log);
-    if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'mobility')) {
+    if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'stretch')) {
       stretchDays += 1;
     }
     if (log.prNote.trim()) {
@@ -984,7 +984,7 @@ function WorkoutBlockHeading({
     <div className={`${className}${morning ? ' morning-block' : ''}`}>
       <span>{morning ? 'Morning · Start here' : order === 1 ? 'Start here' : `Then · Block ${order}`}</span>
       <strong>{morning && <Sun aria-hidden="true" />}{exercise.workoutLabel}</strong>
-      {morning && <small>Your mobility routine comes first.</small>}
+      {morning && <small>Your stretch routine comes first.</small>}
     </div>
   );
 }
@@ -1856,7 +1856,7 @@ function WorkoutPanel({
                     const collapsed = collapsedExerciseIds.includes(exercise.id);
                     const detail = log.details[exercise.id] ?? createEmptyExerciseDetail();
                     const exerciseKind = getExerciseKind(exercise);
-                    const isStretch = exerciseKind === 'mobility';
+                    const isStretch = exerciseKind === 'stretch';
                     const previous = previousByExerciseId.get(exercise.id);
                     const lastSummary = previous
                       ? formatSetSummary(previous.detail.sets, isStretch ? 'stretch' : 'strength')
@@ -2410,7 +2410,7 @@ function MilestonesView({
           accent="var(--violet)"
         />
         <MetricTile icon={Check} label="Completed sessions" value={`${stats.completedSessions}`} accent="var(--green)" />
-        <MetricTile icon={Medal} label="Mobility days" value={`${stats.stretchDays}`} accent="var(--violet)" />
+        <MetricTile icon={Medal} label="Stretch days" value={`${stats.stretchDays}`} accent="var(--violet)" />
         <MetricTile icon={Activity} label="28 day volume" value={`${stats.totalVolume.toLocaleString()}`} accent="var(--coral)" />
         <MetricTile icon={Target} label="28 day reps" value={`${stats.totalReps}`} accent="var(--text-muted)" />
       </div>
@@ -2610,7 +2610,7 @@ interface SavedExerciseLibraryEntry {
 }
 
 function getFamilyForExerciseKind(kind: ExerciseKind): ExerciseGuideFamily {
-  return kind === 'mobility' ? 'mobility' : 'strength';
+  return kind;
 }
 
 function buildSavedExerciseLibraryEntries(
@@ -2678,7 +2678,7 @@ function buildSavedExerciseLibraryEntries(
 }
 
 function getGuideFamilyLabel(guide: ExerciseGuide): string {
-  return DISCIPLINES.find(({ id }) => id === getGuideDiscipline(guide))!.label;
+  return guide.family === 'stretch' ? 'Stretch' : 'Strength';
 }
 
 function ExerciseGuideArtwork({
@@ -2700,9 +2700,8 @@ function ExerciseGuideArtwork({
   if (source && !failed) {
     return (
       <img
-        className={guide.source === 'custom' ? 'custom-guide-image' : ''}
         src={source}
-        alt={`${guide.name}${guide.images.length > 1 ? `, position ${imageIndex + 1}` : ' movement sequence'}`}
+        alt={`${guide.name}${guide.images.length > 1 ? `, ${imageIndex === 0 ? 'start' : 'finish'} position` : ' movement sequence'}`}
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
@@ -2736,17 +2735,9 @@ function ExerciseGuideCard({
   sourceLabel?: string;
   onOpen: () => void;
 }) {
-  const sourceLabel =
-    sourceLabelOverride ??
-    (saved
-      ? 'In your Gym'
-      : guide.coaching
-        ? 'Step-by-step'
-        : guide.assisted
-          ? 'Partner assisted'
-          : guide.source === 'custom'
-            ? 'Gym guide'
-            : 'Photo guide');
+  const sourceLabel = sourceLabelOverride ?? (saved
+    ? 'Saved in your Gym'
+    : guide.source === 'custom' ? 'Gym guide' : 'Exercise library');
 
   return (
     <button className="exercise-library-card" type="button" onClick={onOpen}>
@@ -2779,7 +2770,7 @@ function ExerciseGuideCard({
   );
 }
 
-function ExerciseGuideDialog({
+export function ExerciseGuideDialog({
   guide,
   saved,
   onClose,
@@ -2825,8 +2816,8 @@ function ExerciseGuideDialog({
   const sourceLabel = saved
     ? 'Saved in your Gym'
     : guide.source === 'custom'
-      ? 'Gym exercise guide'
-      : 'Free Exercise DB';
+      ? 'Gym guide'
+      : 'Exercise library';
 
   return (
     <div
@@ -2861,15 +2852,13 @@ function ExerciseGuideDialog({
           </button>
         </header>
 
-        <div className={`exercise-guide-images ${guide.images.length === 1 ? 'single' : ''}`}>
+        <div className={`exercise-guide-images ${guide.images.length <= 1 ? 'single' : ''}`}>
           {(guide.images.length > 0 ? guide.images.slice(0, 2) : ['']).map((_, index) => (
             <figure key={`${guide.id}-image-${index}`}>
               <ExerciseGuideArtwork guide={guide} detail imageIndex={index} />
-              <figcaption>
-                {guide.images.length === 1
-                  ? (guide.artworkLabel ?? 'Movement reference')
-                  : `Reference ${index + 1}`}
-              </figcaption>
+              {guide.images.length > 0 && (
+                <figcaption>{guide.images.length === 1 ? 'Movement reference' : index === 0 ? 'Start' : 'Finish'}</figcaption>
+              )}
             </figure>
           ))}
         </div>
@@ -2943,25 +2932,25 @@ function ExerciseGuideDialog({
               </section>
             </div>
           )}
-          {['stretching', 'mobility'].includes(getGuideDiscipline(guide)) && (
+          {getGuideDiscipline(guide) === 'stretch' && (
             <p className="exercise-guide-safety">
               Move gently and breathe. Aim for mild tension, never pain; stop if you feel pinching, tingling,
               or sharp discomfort.
             </p>
           )}
 
-          {guide.source === 'library' && (
+          {(guide.source === 'library' || guide.photoRecordId) && (
             <a
               className="exercise-library-credit"
               href={
-                guide.recordId
-                  ? `${FREE_EXERCISE_DB_PROJECT_URL}/blob/main/exercises/${guide.recordId}.json`
+                guide.recordId || guide.photoRecordId
+                  ? `${FREE_EXERCISE_DB_PROJECT_URL}/blob/main/exercises/${guide.recordId ?? guide.photoRecordId}.json`
                   : FREE_EXERCISE_DB_PROJECT_URL
               }
               target="_blank"
               rel="noreferrer"
             >
-              {guide.coaching
+              {guide.photoRecordId || guide.coaching
                 ? 'Photo reference: Free Exercise DB · coaching by Gym'
                 : 'Public-domain instructions and imagery from Free Exercise DB'}
               <ExternalLink aria-hidden="true" />
@@ -2983,7 +2972,7 @@ export function SearchView({
   todayKey: string;
 }) {
   const [query, setQuery] = useState('');
-  const [discipline, setDiscipline] = useState<'all' | ExerciseDiscipline>('stretching');
+  const [discipline, setDiscipline] = useState<'all' | ExerciseDiscipline>('stretch');
   const [region, setRegion] = useState<'all' | BodyRegion>('all');
   const [equipment, setEquipment] = useState<GuideFilters['equipment']>('all');
   const [beginner, setBeginner] = useState(false);
@@ -3086,7 +3075,7 @@ export function SearchView({
             aria-pressed={scope === 'library'}
             onClick={() => {
               setScope('library');
-              setDiscipline('stretching');
+              setDiscipline('stretch');
             }}
           >
             <BookOpen aria-hidden="true" /> All exercises
@@ -3118,7 +3107,7 @@ export function SearchView({
           )}
         </label>
         <div className="exercise-discipline-tabs" role="group" aria-label="Movement type">
-          {DISCIPLINES.filter((option) => ['stretching', 'mobility', 'strength'].includes(option.id)).map(
+          {DISCIPLINES.map(
             (option) => (
               <button
                 key={option.id}
@@ -3711,7 +3700,7 @@ function SettingsView({
               onChange={(event) => setNewWorkoutKind(event.target.value as ExerciseKind)}
             >
               <option value="strength">Strength</option>
-              <option value="mobility">Mobility</option>
+              <option value="stretch">Stretch</option>
             </select>
             <button className="icon-text-button compact" type="submit" disabled={!newWorkoutName.trim()}>
               <Plus aria-hidden="true" />
@@ -3780,13 +3769,13 @@ function SettingsView({
                         onChange={(event) => updateWorkoutKind(exercise.id, event.target.value as ExerciseKind)}
                       >
                         <option value="strength">Strength</option>
-                        <option value="mobility">Mobility</option>
+                        <option value="stretch">Stretch</option>
                       </select>
                     </div>
 
                     <div className="prescription-grid">
                       <label>
-                        <span>{exercise.kind === 'mobility' ? 'Rounds' : 'Sets'}</span>
+                        <span>{exercise.kind === 'stretch' ? 'Rounds' : 'Sets'}</span>
                         <input
                           type="number"
                           min="1"

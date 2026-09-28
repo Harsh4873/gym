@@ -5,6 +5,7 @@ import records from '../public/data/exercises.json';
 import {
   buildDiscoveryGuides,
   filterExerciseGuides,
+  getExerciseGuideFamily,
   getGuideDiscipline,
   matchesExerciseGuide,
   resolvePersonalExerciseGuide,
@@ -15,7 +16,7 @@ import {
   type FreeExerciseRecord,
   type GuideFilters,
 } from './exerciseLibrary';
-import { MOBILITY_COACHING } from './mobilityCoaching';
+import { STRETCH_COACHING } from './stretchCoaching';
 import stretchAdditions from './stretchAdditions.json';
 
 const library = records as FreeExerciseRecord[];
@@ -27,20 +28,21 @@ const guide = (id: string) => toExerciseGuide(record(id));
 describe('movement discovery', () => {
   it('makes the entire catalog browsable with no search and no silent 24-result cap', () => {
     expect(filterExerciseGuides(guides, base)).toHaveLength(guides.length);
-    expect(filterExerciseGuides(guides, { ...base, discipline: 'stretching' }).length).toBeGreaterThan(70);
+    expect(filterExerciseGuides(guides, { ...base, discipline: 'stretch' }).length).toBeGreaterThan(70);
     expect(filterExerciseGuides(guides, { ...base, discipline: 'strength' }).length).toBeGreaterThan(500);
     expect(new Set(guides.map((item) => item.id)).size).toBe(guides.length);
     expect(guides[0].coaching).toBeDefined();
   });
 
-  it('separates held stretches, active mobility, resistance work, cardio, and rolling', () => {
-    expect(getGuideDiscipline(guide('Ankle_On_The_Knee'))).toBe('stretching');
-    expect(getGuideDiscipline(guide('Ankle_Circles'))).toBe('mobility');
+  it('puts gentle movement and recovery with stretch and resistance work with strength', () => {
+    expect(getGuideDiscipline(guide('Ankle_On_The_Knee'))).toBe('stretch');
+    expect(getGuideDiscipline(guide('Ankle_Circles'))).toBe('stretch');
     expect(getGuideDiscipline(guide('Superman'))).toBe('strength');
-    expect(getGuideDiscipline(guide('Quadriceps-SMR'))).toBe('recovery');
+    expect(getGuideDiscipline(guide('Quadriceps-SMR'))).toBe('stretch');
     expect(getGuideDiscipline(toExerciseGuide(library.find((item) => item.category === 'cardio')!))).toBe(
-      'cardio',
+      'strength',
     );
+    expect(getExerciseGuideFamily('mobility', 'Old saved exercise')).toBe('stretch');
   });
 
   it('supports common language, plural names, and common spelling mistakes', () => {
@@ -56,7 +58,7 @@ describe('movement discovery', () => {
   it('combines movement type, body area, equipment, and solo beginner filters', () => {
     const results = filterExerciseGuides(guides, {
       ...base,
-      discipline: 'stretching',
+      discipline: 'stretch',
       region: 'glutes',
       equipment: 'body only',
       beginner: true,
@@ -67,7 +69,7 @@ describe('movement discovery', () => {
     expect(
       filterExerciseGuides(guides, {
         ...base,
-        discipline: 'stretching',
+        discipline: 'stretch',
         region: 'calves',
         equipment: 'support',
       }).some((item) => item.recordId === 'Calf_Stretch_Hands_Against_Wall'),
@@ -83,7 +85,7 @@ describe('movement discovery', () => {
   });
 
   it('preserves saved names while resolving the exact curated solo demonstration', () => {
-    const saved = resolvePersonalExerciseGuide('Figure 4 Glute Stretch', library, 'mobility');
+    const saved = resolvePersonalExerciseGuide('Figure 4 Glute Stretch', library, 'stretch');
     expect(saved.name).toBe('Figure 4 Glute Stretch');
     expect(saved.recordId).toBe('Ankle_On_The_Knee');
     expect(saved.coaching).toBeDefined();
@@ -97,8 +99,8 @@ describe('movement discovery', () => {
 
 describe('catalog and photo integrity', () => {
   it('gives every starter guide a real source record, two local photos, and complete coaching', () => {
-    expect(Object.keys(MOBILITY_COACHING)).toHaveLength(28);
-    for (const [id, coaching] of Object.entries(MOBILITY_COACHING)) {
+    expect(Object.keys(STRETCH_COACHING)).toHaveLength(28);
+    for (const [id, coaching] of Object.entries(STRETCH_COACHING)) {
       expect(record(id), id).toBeDefined();
       expect(record(id).category).toBe('stretching');
       expect(guide(id).images).toHaveLength(2);
@@ -127,16 +129,19 @@ describe('catalog and photo integrity', () => {
     expect(guides.some((item) => item.recordId === 'Iron_Cross')).toBe(false);
     expect(guides.some((item) => item.recordId === 'Kettlebell_Halo')).toBe(false);
     for (const item of guides) {
-      expect(item.images.length, item.id).toBeGreaterThan(0);
+      if (item.source === 'library' || ['custom:cat-cow', 'custom:bird-dog', 'custom:open-book-t-spine'].includes(item.id)) {
+        expect(item.images.length, item.id).toBeGreaterThan(0);
+      }
       expect(item.instructions.length, item.id).toBeGreaterThan(0);
     }
   });
 });
 
 describe('supplemental stretches and muscle selection', () => {
-  it('adds 24 named, illustrated guides with instructions, targets, and easier options', () => {
+  it('adds 24 coached stretches with photos only where a matching photo pair exists', () => {
     expect(stretchAdditions).toHaveLength(24);
     const custom = getCustomExerciseGuides();
+    const photoIds = ['butterfly', 'couch'];
     for (const entry of stretchAdditions) {
       const result = custom.find((item) => item.id === `custom:${entry.id}`)!;
       expect(result, entry.name).toBeDefined();
@@ -144,35 +149,43 @@ describe('supplemental stretches and muscle selection', () => {
       expect(result.primaryMuscles.length).toBeGreaterThan(0);
       expect(result.coaching?.easier).toBeTruthy();
       expect(result.coaching?.feel).toBeTruthy();
-      const svg = readFileSync(resolve('public/exercises/positions', entry.id + '.svg'), 'utf8');
-      expect(svg).toContain('viewBox="0 0 480 320"');
-      expect(svg).toContain('<title');
-      expect(svg).not.toContain('NaN');
+      expect(result.family).toBe('stretch');
+      expect(result.coaching?.mode).toBe('stretch');
+      expect(result.images.every((image) => /\.(jpg|png)$/.test(image))).toBe(true);
+      if (photoIds.includes(entry.id)) {
+        expect(result.images).toHaveLength(2);
+        for (const image of result.images) {
+          const filename = resolve('public', image.replace(import.meta.env.BASE_URL, ''));
+          expect(existsSync(filename), image).toBe(true);
+          expect(readFileSync(filename).subarray(0, 2).toString('hex')).toBe('ffd8');
+        }
+      } else {
+        expect(result.images, entry.id).toEqual([]);
+      }
       expect(getGuideRegions(result).length, entry.name).toBeGreaterThan(0);
     }
     expect(new Set(custom.map((item) => item.id)).size).toBe(custom.length);
+    expect(custom.find((item) => item.id === 'custom:cat-cow')?.images).toEqual([`${import.meta.env.BASE_URL}exercises/cat-cow.png`]);
   });
 
-  it('keeps the new held stretches separate from active mobility', () => {
+  it('shows held and active supplemental movements together as stretches', () => {
     const custom = getCustomExerciseGuides();
-    expect(getGuideDiscipline(custom.find((item) => item.id === 'custom:butterfly')!)).toBe('stretching');
+    expect(getGuideDiscipline(custom.find((item) => item.id === 'custom:butterfly')!)).toBe('stretch');
     expect(getGuideDiscipline(custom.find((item) => item.id === 'custom:adductor-rockback')!)).toBe(
-      'mobility',
+      'stretch',
     );
-    expect(
-      custom.filter((item) => item.artworkLabel && getGuideDiscipline(item) === 'stretching'),
-    ).toHaveLength(21);
+    expect(custom.filter((item) => item.photoRecordId)).toHaveLength(2);
   });
 
   it('uses precise primary muscle groups instead of mixing thighs, hips, chest, and shoulders', () => {
     const hamstrings = filterExerciseGuides(guides, {
       ...base,
-      discipline: 'stretching',
+      discipline: 'stretch',
       region: 'hamstrings',
     });
     expect(hamstrings.some((item) => item.id === 'custom:half-split')).toBe(true);
     expect(hamstrings.some((item) => item.id === 'custom:standing-quad')).toBe(false);
-    const quads = filterExerciseGuides(guides, { ...base, discipline: 'stretching', region: 'quads' });
+    const quads = filterExerciseGuides(guides, { ...base, discipline: 'stretch', region: 'quads' });
     expect(quads.some((item) => item.id === 'custom:standing-quad')).toBe(true);
     expect(quads.some((item) => item.id === 'custom:half-split')).toBe(false);
     expect(getGuideRegions(guide('Kneeling_Hip_Flexor'))).toEqual(['hip-flexors']);
@@ -198,7 +211,7 @@ describe('supplemental stretches and muscle selection', () => {
     expect(isExerciseRoutinePlaceholder('Standing Quad Stretch')).toBe(false);
   });
 
-  it('resolves common saved names to accurate custom positions instead of unrelated stock photos', () => {
+  it('resolves common saved names to coached custom guides', () => {
     expect(resolvePersonalExerciseGuide('Standing Quad Stretch', library).id).toBe('custom:standing-quad');
     expect(resolvePersonalExerciseGuide('Doorway Chest Stretch', library).id).toBe('custom:doorway-chest');
     expect(resolvePersonalExerciseGuide('Standing Figure 4 Glute Stretch', library).id).toBe(

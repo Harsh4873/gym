@@ -1,6 +1,6 @@
-export interface MobilityCoaching {
+export interface StretchCoaching {
   name: string;
-  mode: 'stretching' | 'mobility';
+  mode: 'stretch';
   dose: string;
   feel: string;
   avoid: string;
@@ -18,10 +18,10 @@ function stretch(
   instructions: string[],
   equipment = 'body only',
   tags: string[] = [],
-): MobilityCoaching {
+): StretchCoaching {
   return {
     name,
-    mode: 'stretching',
+    mode: 'stretch',
     dose: '15–20 sec each side · 1–2 rounds',
     feel,
     avoid,
@@ -39,13 +39,13 @@ function move(
   easier: string,
   instructions: string[],
   tags: string[] = [],
-): MobilityCoaching {
-  return { name, mode: 'mobility', dose, feel, avoid, easier, instructions, equipment: 'body only', tags };
+): StretchCoaching {
+  return { name, mode: 'stretch', dose, feel, avoid, easier, instructions, equipment: 'body only', tags };
 }
 
 // Original coaching for the matching public-domain Free Exercise DB demonstrations.
 // These are starting doses, not personalized prescriptions.
-export const MOBILITY_COACHING: Record<string, MobilityCoaching> = {
+export const STRETCH_COACHING: Record<string, StretchCoaching> = {
   Ankle_On_The_Knee: stretch(
     'Lying Figure-4 Glute Stretch',
     'The buttock and outer hip of the crossed leg.',

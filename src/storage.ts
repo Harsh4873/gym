@@ -79,7 +79,7 @@ function isIntegerInRange(value: unknown, minimum: number, maximum: number): val
   return typeof value === 'number' && Number.isInteger(value) && value >= minimum && value <= maximum;
 }
 
-function isValidExerciseTarget(value: unknown, kind: ExerciseKind): value is ExerciseTarget {
+function isValidExerciseTarget(value: unknown, kind: ExerciseKind | 'mobility'): value is ExerciseTarget {
   if (!isPlainRecord(value)) {
     return false;
   }
@@ -101,13 +101,15 @@ function isValidExerciseTarget(value: unknown, kind: ExerciseKind): value is Exe
     return false;
   }
 
-  return kind === 'mobility' || (
+  return kind === 'stretch' || kind === 'mobility' || (
     isIntegerInRange(value.repMin, 1, 1000) &&
     isIntegerInRange(value.repMax, value.repMin, 1000)
   );
 }
 
-function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exercise {
+type StoredExercise = Omit<Exercise, 'kind'> & { kind: ExerciseKind | 'mobility' };
+
+function isValidExercise(value: unknown, expectedDay?: Weekday): value is StoredExercise {
   if (!isPlainRecord(value)) {
     return false;
   }
@@ -122,7 +124,7 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Exerci
     typeof day === 'string' &&
     WEEK_DAYS.includes(day as Weekday) &&
     (expectedDay === undefined || day === expectedDay) &&
-    (kind === 'strength' || kind === 'mobility') &&
+    (kind === 'strength' || kind === 'stretch' || kind === 'mobility') &&
     (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
     (value.workoutLabel === undefined || (typeof value.workoutLabel === 'string' && value.workoutLabel.trim().length > 0)) &&
     (value.blockOrder === undefined || (typeof value.blockOrder === 'number' && Number.isInteger(value.blockOrder) && value.blockOrder >= 1)) &&
@@ -251,11 +253,18 @@ function isValidWorkoutLog(date: string, value: unknown): value is WorkoutLog {
 }
 
 function normalizeExerciseKind(value: unknown, exerciseName: string): ExerciseKind {
-  if (value === 'strength' || value === 'mobility') {
+  if (value === 'mobility') {
+    return 'stretch';
+  }
+  if (value === 'strength' || value === 'stretch') {
     return value;
   }
 
   return inferExerciseKind(exerciseName);
+}
+
+function normalizeLegacyStretchName(name: string): string {
+  return name === 'Knee-to-Wall Ankle Mobility' ? 'Knee-to-Wall Ankle Stretch' : name;
 }
 
 function normalizeExerciseTarget(value: unknown, exerciseName: string, kind: ExerciseKind): ExerciseTarget {
@@ -287,7 +296,8 @@ function normalizeExercise(
     return null;
   }
 
-  const name = typeof value.name === 'string' ? value.name.trim() : '';
+  const storedName = typeof value.name === 'string' ? value.name.trim() : '';
+  const name = normalizeLegacyStretchName(storedName);
   if (!name) {
     return null;
   }
@@ -399,7 +409,7 @@ function normalizeLegacyDetail(value: Record<string, unknown>): ExerciseDetail {
   );
 
   return {
-    exerciseName: typeof value.exerciseName === 'string' ? value.exerciseName : '',
+    exerciseName: typeof value.exerciseName === 'string' ? normalizeLegacyStretchName(value.exerciseName) : '',
     sets: [set],
     legacyNote: typeof value.legacyNote === 'string' ? value.legacyNote : undefined,
   };
@@ -424,7 +434,7 @@ export function normalizeExerciseDetail(value: unknown): ExerciseDetail {
   const sets = value.sets.map((set, index) => normalizeExerciseSet(set, `set-${index + 1}`));
 
   return {
-    exerciseName: typeof value.exerciseName === 'string' ? value.exerciseName : '',
+    exerciseName: typeof value.exerciseName === 'string' ? normalizeLegacyStretchName(value.exerciseName) : '',
     sets: sets.length > 0 ? sets : [createEmptyExerciseSet()],
     legacyNote: typeof value.legacyNote === 'string' ? value.legacyNote : undefined,
   };

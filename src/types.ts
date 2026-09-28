@@ -15,7 +15,7 @@ export type DayStatus = 'completed' | 'partial' | 'planned' | 'skipped' | 'unlog
 
 export type WeightMode = 'bodyweight' | 'pounds';
 
-export type ExerciseKind = 'strength' | 'mobility';
+export type ExerciseKind = 'strength' | 'stretch';
 
 export interface ExerciseTarget {
   sets?: number;
