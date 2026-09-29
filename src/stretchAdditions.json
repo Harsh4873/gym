@@ -21,7 +21,8 @@
     "aliases": [
       "pec stretch",
       "pectorals"
-    ]
+    ],
+    "photoRecordId": "One_Arm_Against_Wall"
   },
   {
     "id": "butterfly",
@@ -69,6 +70,10 @@
     "mode": "stretch",
     "aliases": [
       "standing quadriceps stretch"
+    ],
+    "photoRecordId": "Quad_Stretch",
+    "customImages": [
+      "exercises/standing-quad.png"
     ]
   },
   {
@@ -117,6 +122,10 @@
     "mode": "stretch",
     "aliases": [
       "chair piriformis stretch"
+    ],
+    "photoRecordId": "Ankle_On_The_Knee",
+    "customImages": [
+      "exercises/seated-figure-four.png"
     ]
   },
   {
@@ -140,7 +149,8 @@
     "mode": "stretch",
     "aliases": [
       "standing figure 4 glute stretch"
-    ]
+    ],
+    "photoRecordId": "Ankle_On_The_Knee"
   },
   {
     "id": "chair-hamstring",
@@ -163,7 +173,8 @@
     "mode": "stretch",
     "aliases": [
       "seated hamstring chair"
-    ]
+    ],
+    "photoRecordId": "Chair_Leg_Extended_Stretch"
   },
   {
     "id": "half-split",
@@ -186,7 +197,8 @@
     "mode": "stretch",
     "aliases": [
       "ardha hanumanasana"
-    ]
+    ],
+    "photoRecordId": "Runners_Stretch"
   },
   {
     "id": "adductor-rockback",
@@ -207,7 +219,8 @@
     "cue": "Rock back slowly; keep the spine long",
     "dose": "6–8 slow reps each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Adductor"
   },
   {
     "id": "frog",
@@ -228,7 +241,8 @@
     "cue": "Pad both knees; use a small range",
     "dose": "15–20 sec",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Adductor"
   },
   {
     "id": "ninety-ninety-front",
@@ -251,6 +265,10 @@
     "mode": "stretch",
     "aliases": [
       "90 90 hip external rotation"
+    ],
+    "photoRecordId": "Ankle_On_The_Knee",
+    "customImages": [
+      "exercises/ninety-ninety-front.png"
     ]
   },
   {
@@ -275,7 +293,8 @@
     "mode": "stretch",
     "aliases": [
       "hip windshield wipers"
-    ]
+    ],
+    "photoRecordId": "Dancers_Stretch"
   },
   {
     "id": "supported-pigeon",
@@ -296,7 +315,8 @@
     "cue": "Support the hip; keep the foot close",
     "dose": "20 sec each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Dancers_Stretch"
   },
   {
     "id": "kneeling-lat",
@@ -320,7 +340,8 @@
     "aliases": [
       "prayer lat stretch",
       "lat stretch"
-    ]
+    ],
+    "photoRecordId": "Childs_Pose"
   },
   {
     "id": "puppy",
@@ -344,7 +365,8 @@
     "mode": "stretch",
     "aliases": [
       "extended puppy pose"
-    ]
+    ],
+    "photoRecordId": "Childs_Pose"
   },
   {
     "id": "thread-the-needle",
@@ -366,7 +388,8 @@
     "cue": "Reach under; keep hips over knees",
     "dose": "20 sec each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Iron_Crosses_stretch"
   },
   {
     "id": "levator",
@@ -389,7 +412,8 @@
     "mode": "stretch",
     "aliases": [
       "neck shoulder blade stretch"
-    ]
+    ],
+    "photoRecordId": "Side_Neck_Stretch"
   },
   {
     "id": "wrist-extensor",
@@ -412,7 +436,8 @@
     "mode": "stretch",
     "aliases": [
       "back of forearm"
-    ]
+    ],
+    "photoRecordId": "Side_Wrist_Pull"
   },
   {
     "id": "wrist-flexor",
@@ -433,7 +458,8 @@
     "cue": "Palm up; use only light pressure",
     "dose": "20 sec each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Side_Wrist_Pull"
   },
   {
     "id": "wall-biceps",
@@ -454,7 +480,8 @@
     "cue": "Soft elbow; turn the chest away",
     "dose": "20 sec each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Standing_Biceps_Stretch"
   },
   {
     "id": "knee-to-wall",
@@ -477,7 +504,8 @@
     "mode": "stretch",
     "aliases": [
       "ankle dorsiflexion stretch"
-    ]
+    ],
+    "photoRecordId": "Calf_Stretch_Hands_Against_Wall"
   },
   {
     "id": "toe-extension",
@@ -500,7 +528,8 @@
     "mode": "stretch",
     "aliases": [
       "plantar fascia stretch"
-    ]
+    ],
+    "photoRecordId": "Posterior_Tibialis_Stretch"
   },
   {
     "id": "side-reach-child",
@@ -521,7 +550,8 @@
     "cue": "Walk the hands sideways; keep hips level",
     "dose": "20 sec each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Childs_Pose"
   },
   {
     "id": "wall-thoracic",
@@ -542,6 +572,7 @@
     "cue": "Rotate the chest; keep hips still",
     "dose": "6 slow reps each side",
     "mode": "stretch",
-    "aliases": []
+    "aliases": [],
+    "photoRecordId": "Middle_Back_Stretch"
   }
 ]

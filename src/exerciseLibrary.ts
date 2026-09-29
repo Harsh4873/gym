@@ -28,6 +28,7 @@ export interface ExerciseGuide {
   assisted?: boolean;
   aliases?: string[];
   photoRecordId?: string;
+  customImages?: string[];
   source: ExerciseGuideSource;
   family: ExerciseGuideFamily;
   category: string;
@@ -46,9 +47,12 @@ export const FREE_EXERCISE_DB_PROJECT_URL = 'https://github.com/yuhonas/free-exe
 const FREE_EXERCISE_IMAGE_ROOT =
   `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${exerciseSource.revision}/exercises/`;
 
-function getSupplementalStretchImages(photoRecordId?: string): string[] {
-  return photoRecordId
-    ? [0, 1].map((index) => `${import.meta.env.BASE_URL}exercises/library/${photoRecordId}/${index}.jpg`)
+function getSupplementalStretchImages(entry: { photoRecordId?: string; customImages?: string[] }): string[] {
+  if (entry.customImages?.length) {
+    return entry.customImages.map((image) => `${import.meta.env.BASE_URL}${image}`);
+  }
+  return entry.photoRecordId
+    ? [0, 1].map((index) => `${import.meta.env.BASE_URL}exercises/library/${entry.photoRecordId}/${index}.jpg`)
     : [];
 }
 
@@ -58,7 +62,8 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
     category: entry.mode, level: ['couch', 'frog', 'supported-pigeon', 'ninety-ninety-front'].includes(entry.id) ? 'intermediate' : 'beginner',
     primaryMuscles: entry.primaryMuscles, secondaryMuscles: entry.secondaryMuscles,
     equipment: entry.equipment, instructions: entry.instructions, aliases: entry.aliases,
-    images: getSupplementalStretchImages(entry.photoRecordId), photoRecordId: entry.photoRecordId,
+    images: getSupplementalStretchImages(entry), photoRecordId: entry.photoRecordId,
+    customImages: entry.customImages,
     coaching: { ...entry, mode: 'stretch', tags: entry.aliases },
   })),
   {

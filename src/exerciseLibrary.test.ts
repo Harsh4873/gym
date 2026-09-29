@@ -138,10 +138,11 @@ describe('catalog and photo integrity', () => {
 });
 
 describe('supplemental stretches and muscle selection', () => {
-  it('adds 24 coached stretches with photos only where a matching photo pair exists', () => {
+  it('adds 24 coached stretches with local photos and gives custom PNGs priority', () => {
     expect(stretchAdditions).toHaveLength(24);
+    expect(stretchAdditions.filter((entry) => entry.photoRecordId)).toHaveLength(24);
     const custom = getCustomExerciseGuides();
-    const photoIds = ['butterfly', 'couch'];
+    const customPhotoIds = ['standing-quad', 'seated-figure-four', 'ninety-ninety-front'];
     for (const entry of stretchAdditions) {
       const result = custom.find((item) => item.id === `custom:${entry.id}`)!;
       expect(result, entry.name).toBeDefined();
@@ -152,15 +153,22 @@ describe('supplemental stretches and muscle selection', () => {
       expect(result.family).toBe('stretch');
       expect(result.coaching?.mode).toBe('stretch');
       expect(result.images.every((image) => /\.(jpg|png)$/.test(image))).toBe(true);
-      if (photoIds.includes(entry.id)) {
-        expect(result.images).toHaveLength(2);
-        for (const image of result.images) {
-          const filename = resolve('public', image.replace(import.meta.env.BASE_URL, ''));
-          expect(existsSync(filename), image).toBe(true);
-          expect(readFileSync(filename).subarray(0, 2).toString('hex')).toBe('ffd8');
-        }
+      const usesCustomPhoto = customPhotoIds.includes(entry.id);
+      expect(result.images, entry.id).toHaveLength(usesCustomPhoto ? 1 : 2);
+      if (usesCustomPhoto) {
+        expect(result.images[0]).toBe(`${import.meta.env.BASE_URL}exercises/${entry.id}.png`);
       } else {
-        expect(result.images, entry.id).toEqual([]);
+        expect(result.images).toEqual([0, 1].map((index) =>
+          `${import.meta.env.BASE_URL}exercises/library/${entry.photoRecordId}/${index}.jpg`));
+      }
+      for (const image of result.images) {
+        const filename = resolve('public', image.replace(import.meta.env.BASE_URL, ''));
+        expect(existsSync(filename), image).toBe(true);
+        const bytes = readFileSync(filename);
+        expect(bytes.length, image).toBeGreaterThan(1000);
+        expect(bytes.subarray(0, usesCustomPhoto ? 8 : 2).toString('hex'), image).toBe(
+          usesCustomPhoto ? '89504e470d0a1a0a' : 'ffd8',
+        );
       }
       expect(getGuideRegions(result).length, entry.name).toBeGreaterThan(0);
     }
@@ -174,7 +182,8 @@ describe('supplemental stretches and muscle selection', () => {
     expect(getGuideDiscipline(custom.find((item) => item.id === 'custom:adductor-rockback')!)).toBe(
       'stretch',
     );
-    expect(custom.filter((item) => item.photoRecordId)).toHaveLength(2);
+    expect(custom.filter((item) => item.photoRecordId)).toHaveLength(24);
+    expect(custom.filter((item) => item.customImages?.length)).toHaveLength(3);
   });
 
   it('uses precise primary muscle groups instead of mixing thighs, hips, chest, and shoulders', () => {

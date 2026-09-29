@@ -2939,7 +2939,7 @@ export function ExerciseGuideDialog({
             </p>
           )}
 
-          {(guide.source === 'library' || guide.photoRecordId) && (
+          {(guide.source === 'library' || (guide.photoRecordId && !guide.customImages?.length)) && (
             <a
               className="exercise-library-credit"
               href={

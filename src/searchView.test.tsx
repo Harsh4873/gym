@@ -26,12 +26,12 @@ describe('search controls', () => {
     expect(html).toContain('exercise-extra-filters');
   });
 
-  it('provides coached stretches before the larger catalog loads, with photos or an honest fallback', () => {
+  it('provides coached stretches with photos before the larger catalog loads', () => {
     const html = markup();
     expect(html).toContain('Doorway Chest Stretch');
     expect(html).toContain('Half-Split Hamstring Stretch');
     expect(html).toContain('exercises/library/Groin_and_Back_Stretch/1.jpg');
-    expect(html).toContain('Visual guide coming soon');
+    expect(html).not.toContain('Visual guide coming soon');
     expect(html).not.toContain('exercises/positions/');
     expect(html).not.toContain('10-Minute Stretch Video');
     expect(html).not.toContain('stretch-video.png');
@@ -44,13 +44,15 @@ describe('stretch guide artwork', () => {
     <ExerciseGuideDialog guide={guide(id)} saved={false} onClose={() => undefined} />,
   );
 
-  it('shows the fallback across the full image area for 90/90 without diagram chrome', () => {
+  it('shows a dedicated 90/90 photo without diagram chrome or incorrect library credit', () => {
     const html = dialog('ninety-ninety-front');
     expect(html).toContain('exercise-guide-images single');
-    expect(html).toContain('Visual guide coming soon');
+    expect(html).toContain('exercises/ninety-ninety-front.png');
+    expect(html).not.toContain('Visual guide coming soon');
     expect(html).toContain('The outer hip of the front leg.');
-    expect(html).not.toContain('<img');
-    expect(html).not.toContain('<figcaption');
+    expect(html).toContain('<img');
+    expect(html).toContain('<figcaption>Movement reference</figcaption>');
+    expect(html).not.toContain('Photo reference: Free Exercise DB');
     expect(html).not.toContain('POSITION DIAGRAM');
     expect(html).not.toContain('ANGLED VIEW');
   });
