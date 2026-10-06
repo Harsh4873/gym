@@ -1,3 +1,4 @@
+import { backupImportConfirmation } from './backup-import';
 import {
   Activity,
   ArrowDown,
@@ -4113,7 +4114,7 @@ export default function App() {
     }
 
     const confirmed = window.confirm(
-      `Replace this device's Gym data with the backup from ${new Date(backup.exportedAt).toLocaleString()}?`,
+      backupImportConfirmation(backup.exportedAt, Object.keys(logs), Object.keys(backup.logs), Boolean(sync.user)),
     );
     if (!confirmed) {
       return;
