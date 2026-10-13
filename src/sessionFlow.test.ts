@@ -4,6 +4,7 @@ import {
   canFinishSession,
   findPreviousExerciseDetail,
   formatSetSummary,
+  getDayStatus,
   getExercisePreviousBest,
   loadLogsWithCurrentPlan,
   restTimerAfterComplete,
@@ -35,6 +36,34 @@ const exercise = (id: string): Exercise => ({
   name: id,
   kind: 'strength',
   target: { sets: 3, restSeconds: 90 },
+});
+
+describe('day status', () => {
+  const exercises = [exercise('a'), exercise('b')];
+
+  it('keeps an untouched future day future, and shows work that was logged early', () => {
+    expect(getDayStatus('2026-10-14', log({ date: '2026-10-14' }), '2026-10-13', exercises)).toBe('future');
+    expect(getDayStatus(
+      '2026-10-14',
+      log({ date: '2026-10-14', completed: ['a', 'b'] }),
+      '2026-10-13',
+      exercises,
+    )).toBe('completed');
+    expect(getDayStatus(
+      '2026-10-14',
+      log({ date: '2026-10-14', completed: ['a'] }),
+      '2026-10-13',
+      exercises,
+    )).toBe('partial');
+    expect(getDayStatus(
+      '2026-10-14',
+      log({ date: '2026-10-14', daySkipped: true }),
+      '2026-10-13',
+      exercises,
+    )).toBe('skipped');
+    expect(getDayStatus('2026-10-13', log({ date: '2026-10-13' }), '2026-10-13', exercises)).toBe('planned');
+    expect(getDayStatus('2026-10-12', log({ date: '2026-10-12' }), '2026-10-13', exercises)).toBe('unlogged');
+  });
 });
 
 describe('session logging', () => {

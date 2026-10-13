@@ -376,10 +376,12 @@ function hasPlanActivity(log: WorkoutLog): boolean {
   return log.exerciseSnapshot !== undefined || log.supersets.length > 0;
 }
 
-function getDayStatus(dateKey: string, log: WorkoutLog, todayKey: string, exercises = getExercisesForDate(dateKey)): DayStatus {
+export function getDayStatus(dateKey: string, log: WorkoutLog, todayKey: string, exercises = getExercisesForDate(dateKey)): DayStatus {
   const completed = countCompleted(exercises, log);
 
-  if (dateKey > todayKey) {
+  // A future day stays "future" until someone actually trains or skips it.
+  // Logging ahead of today should read as partial, completed, or skipped.
+  if (dateKey > todayKey && completed === 0 && !log.daySkipped && !hasTrainingActivity(log)) {
     return 'future';
   }
 
@@ -2432,7 +2434,12 @@ function WeekView({
                 </li>
               ))}
             </ul>
-            <button className="icon-text-button compact" type="button" onClick={() => openLogbook(dateKey)}>
+            <button
+              className="icon-text-button compact"
+              type="button"
+              aria-label={`Open ${formatDateLabel(dateKey)}`}
+              onClick={() => openLogbook(dateKey)}
+            >
               <ClipboardList aria-hidden="true" />
               <span>Open</span>
             </button>
@@ -2976,28 +2983,39 @@ export function ExerciseGuideDialog({
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    dialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const dialog = dialogRef.current;
+    dialog?.querySelector<HTMLButtonElement>('button')?.focus();
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-      if (event.key === 'Tab') {
-        const focusable = Array.from(
-          dialogRef.current?.querySelectorAll<HTMLElement>(
-            'button, a[href], input, select, [tabindex="0"]',
-          ) ?? [],
-        );
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) {
+        return;
+      }
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [tabindex="0"]'),
+      ).filter((element) => !element.hasAttribute('disabled'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!first || !last) {
+        event.preventDefault();
+        return;
+      }
+      const active = document.activeElement;
+      if (!dialog.contains(active) || (event.shiftKey && active === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     window.addEventListener('keydown', closeOnEscape);
@@ -3007,7 +3025,7 @@ export function ExerciseGuideDialog({
       window.removeEventListener('keydown', closeOnEscape);
       previousFocus?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const sourceLabel = saved
     ? 'Saved in your Gym'
@@ -3509,7 +3527,7 @@ export function SearchView({
             </h2>
           </div>
           <span role="status" aria-live="polite">
-            {results.length} exercises
+            {results.length === 1 ? '1 exercise' : `${results.length} exercises`}
           </span>
         </div>
         {results.length > 0 ? (
@@ -3649,6 +3667,7 @@ function SettingsView({
   const [newWorkoutName, setNewWorkoutName] = useState('');
   const [newWorkoutKind, setNewWorkoutKind] = useState<ExerciseKind>('strength');
   const [programNameDrafts, setProgramNameDrafts] = useState<Record<string, string>>({});
+  const [targetDrafts, setTargetDrafts] = useState<Record<string, string>>({});
   const dayWorkouts = program[selectedProgramDay];
   const cloudImportBlocked = Boolean(sync.user && sync.status !== 'synced');
 
@@ -3672,13 +3691,58 @@ function SettingsView({
 
   const commitWorkoutName = (exerciseId: string, name: string) => {
     const key = `${selectedProgramDay}:${exerciseId}`;
-    const nextName = name.trim() || 'Untitled Workout';
     setProgramNameDrafts((current) => {
       const next = { ...current };
       delete next[key];
       return next;
     });
+    const nextName = name.trim();
+    if (!nextName) {
+      return;
+    }
     onRenameTemplate(selectedProgramDay, exerciseId, nextName);
+  };
+
+  const targetDraftKey = (exerciseId: string, key: keyof Exercise['target']) =>
+    `${selectedProgramDay}:${exerciseId}:${key}`;
+
+  const shownTarget = (exercise: Exercise, key: keyof Exercise['target']) => {
+    const draft = targetDrafts[targetDraftKey(exercise.id, key)];
+    if (draft !== undefined) {
+      return draft;
+    }
+    const stored = exercise.target[key];
+    return stored === undefined ? '' : String(stored);
+  };
+
+  const onTargetChange = (exerciseId: string, key: keyof Exercise['target'], value: string) => {
+    const draftKey = targetDraftKey(exerciseId, key);
+    if (!value.trim() || !Number.isFinite(Number(value))) {
+      setTargetDrafts((current) => ({ ...current, [draftKey]: value }));
+      return;
+    }
+
+    setTargetDrafts((current) => {
+      if (!(draftKey in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[draftKey];
+      return next;
+    });
+    updateWorkoutTarget(exerciseId, key, value);
+  };
+
+  const onTargetBlur = (exerciseId: string, key: keyof Exercise['target']) => {
+    const draftKey = targetDraftKey(exerciseId, key);
+    setTargetDrafts((current) => {
+      if (!(draftKey in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[draftKey];
+      return next;
+    });
   };
 
   const updateWorkoutKind = (exerciseId: string, kind: ExerciseKind) => {
@@ -4056,8 +4120,9 @@ function SettingsView({
                           type="number"
                           min="1"
                           max="20"
-                          value={exercise.target.sets ?? ''}
-                          onChange={(event) => updateWorkoutTarget(exercise.id, 'sets', event.target.value)}
+                          value={shownTarget(exercise, 'sets')}
+                          onChange={(event) => onTargetChange(exercise.id, 'sets', event.target.value)}
+                          onBlur={() => onTargetBlur(exercise.id, 'sets')}
                         />
                       </label>
                       {exercise.kind === 'strength' && (
@@ -4067,8 +4132,9 @@ function SettingsView({
                             <input
                               type="number"
                               min="1"
-                              value={exercise.target.repMin ?? ''}
-                              onChange={(event) => updateWorkoutTarget(exercise.id, 'repMin', event.target.value)}
+                              value={shownTarget(exercise, 'repMin')}
+                              onChange={(event) => onTargetChange(exercise.id, 'repMin', event.target.value)}
+                              onBlur={() => onTargetBlur(exercise.id, 'repMin')}
                             />
                           </label>
                           <label>
@@ -4076,8 +4142,9 @@ function SettingsView({
                             <input
                               type="number"
                               min="1"
-                              value={exercise.target.repMax ?? ''}
-                              onChange={(event) => updateWorkoutTarget(exercise.id, 'repMax', event.target.value)}
+                              value={shownTarget(exercise, 'repMax')}
+                              onChange={(event) => onTargetChange(exercise.id, 'repMax', event.target.value)}
+                              onBlur={() => onTargetBlur(exercise.id, 'repMax')}
                             />
                           </label>
                         </>
@@ -4088,8 +4155,9 @@ function SettingsView({
                           type="number"
                           min="0"
                           max="1800"
-                          value={exercise.target.restSeconds ?? ''}
-                          onChange={(event) => updateWorkoutTarget(exercise.id, 'restSeconds', event.target.value)}
+                          value={shownTarget(exercise, 'restSeconds')}
+                          onChange={(event) => onTargetChange(exercise.id, 'restSeconds', event.target.value)}
+                          onBlur={() => onTargetBlur(exercise.id, 'restSeconds')}
                         />
                       </label>
                     </div>
