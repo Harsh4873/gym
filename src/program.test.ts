@@ -5,7 +5,9 @@ import {
   inferExerciseKind,
   isStretchExercise,
   listWorkoutSectionLabels,
+  orderExercisesForSession,
   PROGRAM,
+  sectionFieldsForAddedExercise,
   SHIPPED_DEFAULT_EXERCISE_NAMES,
   WEEK_DAYS,
 } from './program';
@@ -274,5 +276,46 @@ describe('weekly exercise sections', () => {
         expect(SHIPPED_DEFAULT_EXERCISE_NAMES.get(exercise.id)?.has(exercise.name)).toBe(true);
       }
     }
+  });
+
+  it('keeps a logged reorder and sinks finished work inside its own section', () => {
+    const tuesday = PROGRAM.Tuesday;
+    const lift = tuesday.find((exercise) => exercise.name === 'Incline Curls')!;
+    const stretch = tuesday.find((exercise) => exercise.name === 'Cat-Cow')!;
+    const reordered = [lift, stretch, ...tuesday.filter((exercise) => exercise !== lift && exercise !== stretch)];
+    expect(orderExercisesForSession(reordered, new Set()).map((exercise) => exercise.id)).toEqual(
+      reordered.map((exercise) => exercise.id),
+    );
+
+    const catCow = tuesday.find((exercise) => exercise.name === 'Cat-Cow')!;
+    const sunk = orderExercisesForSession(tuesday, new Set([catCow.id])).map((exercise) => exercise.name);
+    const liftsStart = sunk.indexOf('Incline Curls');
+    expect(sunk.slice(0, liftsStart)).toEqual([
+      'Bird Dog',
+      'Hip Flexor Stretch',
+      'Glute Bridge',
+      "Child's Pose",
+      'Figure-4 Glute Stretch',
+      'Cat-Cow',
+    ]);
+    expect(sunk.slice(liftsStart)).toEqual([...TUESDAY_BICEPS_TRICEPS_NAMES]);
+  });
+
+  it('files an added exercise under the last block on that day', () => {
+    expect(sectionFieldsForAddedExercise(PROGRAM.Tuesday, 'strength')).toMatchObject({
+      workoutLabel: 'Biceps + Triceps',
+      blockOrder: 2,
+    });
+    expect(sectionFieldsForAddedExercise(PROGRAM.Monday, 'strength').workoutLabel).toBe('Chest + Abs');
+    expect(sectionFieldsForAddedExercise([], 'strength')).toEqual({});
+    const morning = PROGRAM.Tuesday.filter((exercise) => exercise.workoutLabel === 'Morning Stretch');
+    expect(sectionFieldsForAddedExercise(morning, 'strength')).toMatchObject({
+      workoutLabel: 'Strength',
+      blockOrder: 2,
+    });
+    expect(sectionFieldsForAddedExercise(morning, 'stretch')).toMatchObject({
+      workoutLabel: 'Morning Stretch',
+      blockOrder: 1,
+    });
   });
 });

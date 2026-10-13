@@ -412,6 +412,22 @@ export const STRETCH_COACHING: Record<string, StretchCoaching> = {
     ],
     ['wrists', 'hands', 'forearms', 'desk', 'warm up'],
   ),
+  Butt_Lift_Bridge: {
+    ...stretch(
+      'Glute Bridge',
+      'The glutes and the back of the hips. A little work in the hamstrings is normal.',
+      'Pushing the ribs up, craning the neck, or letting the knees cave in.',
+      'Lift the hips only a short way and keep the feet closer to your seat.',
+      [
+        'Lie on your back with knees bent, feet flat about hip-width apart, and arms resting by your sides.',
+        'Press through your heels and squeeze your glutes to lift your hips until your shoulders, hips, and knees make a straight line.',
+        'Hold that height without arching your lower back. Lower with control, then repeat.',
+      ],
+      'exercise mat',
+      ['glutes', 'hips', 'morning', 'cool down'],
+    ),
+    dose: '15–20 sec · 1–2 rounds',
+  },
   Inchworm: move(
     'Inchworm Walkout',
     '3–5 slow reps',

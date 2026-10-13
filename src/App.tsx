@@ -75,7 +75,9 @@ import {
   type GuideFilters,
   getExerciseGuideFamily,
   getGuideMetaLabel,
-  loadFreeExerciseLibrary,
+  loadStrengthExerciseLibrary,
+  loadStretchExerciseLibrary,
+  recordsForDiscovery,
   normalizeExerciseName as normalizeLibraryExerciseName,
   resolvePersonalExerciseGuide,
   type ExerciseGuide,
@@ -88,6 +90,8 @@ import {
   getWorkoutSectionOrder,
   inferExerciseKind,
   moveStretchToMorning,
+  orderExercisesForSession,
+  sectionFieldsForAddedExercise,
   WEEK_DAYS,
 } from './program';
 import {
@@ -328,6 +332,29 @@ function hasRecordedExerciseWork(log: WorkoutLog): boolean {
   );
 }
 
+/** A started session that was fully skipped can still be closed. Skip marks stay. */
+export function canFinishSession(log: WorkoutLog, exercises: Exercise[]): boolean {
+  if (hasRecordedExerciseWork(log)) return true;
+  return Boolean(log.startedAt)
+    && exercises.length > 0
+    && exercises.every((exercise) => log.skipped.includes(exercise.id));
+}
+
+function finishedExerciseIds(exercises: Exercise[], log: WorkoutLog): string[] {
+  const ids = new Set(exercises.map((exercise) => exercise.id));
+  return uniqueList([...log.completed, ...log.skipped].filter((id) => ids.has(id)));
+}
+
+/** Leave a running countdown alone when the exercise that was just checked has no rest. */
+export function restTimerAfterComplete(current: RestTimerState, restSeconds: number, now: number): RestTimerState {
+  if (!(restSeconds > 0)) return current;
+  return {
+    dateKey: current.dateKey,
+    remainingSeconds: restSeconds,
+    endsAt: now + restSeconds * 1000,
+  };
+}
+
 function hasTrainingActivity(log: WorkoutLog): boolean {
   return (
     Boolean(log.startedAt) ||
@@ -339,9 +366,7 @@ function hasTrainingActivity(log: WorkoutLog): boolean {
     Object.values(log.details).some((detail) => {
       return Boolean(
         detail.legacyNote?.trim() ||
-          detail.sets.some((set) => {
-            return Boolean(set.reps.trim() || set.pounds.trim());
-          }),
+          detail.sets.some((set) => isSetFilled(set)),
       );
     })
   );
@@ -446,26 +471,7 @@ function buildExerciseGroups(exercises: Exercise[], supersets: SupersetPair[]): 
   return groups;
 }
 
-function orderExercisesForLog(exercises: Exercise[], log: WorkoutLog): Exercise[] {
-  const originalIndexes = new Map(exercises.map((exercise, index) => [exercise.id, index]));
-  const isFinished = (exerciseId: string) =>
-    log.completed.includes(exerciseId) || log.skipped.includes(exerciseId);
-
-  return [...exercises].sort((left, right) => {
-    const leftFinished = isFinished(left.id) ? 1 : 0;
-    const rightFinished = isFinished(right.id) ? 1 : 0;
-    if (leftFinished !== rightFinished) {
-      return leftFinished - rightFinished;
-    }
-
-    const sectionOrderDifference = getWorkoutSectionOrder(left) - getWorkoutSectionOrder(right);
-    if (sectionOrderDifference !== 0) {
-      return sectionOrderDifference;
-    }
-
-    return (originalIndexes.get(left.id) ?? 0) - (originalIndexes.get(right.id) ?? 0);
-  });
-}
+const FINISHED_ROW_SETTLE_MS = 400;
 
 function getProgressMeta(exercises: Exercise[], log: WorkoutLog) {
   const completed = countCompleted(exercises, log);
@@ -492,7 +498,11 @@ function exerciseNamesMatch(leftName: string | undefined, rightName: string): bo
 }
 
 function isSetFilled(set: ExerciseSet): boolean {
-  return Boolean(set.reps.trim() || (set.weightMode === 'pounds' && set.pounds.trim()));
+  return Boolean(
+    set.reps.trim()
+    || (set.holdSeconds ?? '').trim()
+    || (set.weightMode === 'pounds' && set.pounds.trim()),
+  );
 }
 
 function isExerciseDetailEmpty(detail?: ReturnType<typeof createEmptyExerciseDetail>): boolean {
@@ -552,7 +562,15 @@ function ExtraChip() {
   return <span className="extra-chip">EXTRA</span>;
 }
 
-function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay): LogsByDate {
+function sameIdOrder(left: Array<{ id: string }> | undefined, right: Array<{ id: string }>): boolean {
+  if (!left || left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((item, index) => item.id === right[index]?.id);
+}
+
+export function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay): LogsByDate {
   const loadedLogs = loadLogs();
 
   try {
@@ -560,37 +578,60 @@ function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay): LogsB
       return loadedLogs;
     }
 
+    const markRollout = () => {
+      window.localStorage.setItem(WEEKLY_PLAN_ROLLOUT_STORAGE_KEY, todayKey);
+    };
+
     // A device with no stored logs has nothing to migrate. Writing a log for
     // today anyway would stamp a brand-new install with the current time, and
     // that freshly stamped empty day can beat the real one in the account on
-    // the next sign-in. Mark the rollout done and leave storage untouched.
-    if (Object.keys(loadedLogs).length === 0) {
-      window.localStorage.setItem(WEEKLY_PLAN_ROLLOUT_STORAGE_KEY, todayKey);
+    // the next sign-in. The same is true when other days exist but today was
+    // never stored on this device. Mark the rollout done and leave storage untouched.
+    const storedToday = loadedLogs[todayKey];
+    if (Object.keys(loadedLogs).length === 0 || !storedToday) {
+      markRollout();
       return loadedLogs;
     }
 
-    const currentLog = normalizeLog(todayKey, loadedLogs[todayKey]);
+    const currentLog = normalizeLog(todayKey, storedToday);
     const todayExercises = cloneExercises(getProgramExercisesForDate(todayKey, program));
     const validExerciseIds = new Set(todayExercises.map((exercise) => exercise.id));
+    const completed = currentLog.completed.filter((id) => validExerciseIds.has(id));
+    const skipped = currentLog.skipped.filter((id) => validExerciseIds.has(id));
+    const supersets = getValidSupersets(todayExercises, currentLog.supersets);
+    const snapshotMatches = sameIdOrder(currentLog.exerciseSnapshot, todayExercises);
+    const completedMatches = completed.length === currentLog.completed.length;
+    const skippedMatches = skipped.length === currentLog.skipped.length;
+    const supersetsMatch = sameIdOrder(currentLog.supersets, supersets)
+      && currentLog.supersets.every((pair, index) =>
+        pair.exerciseIds[0] === supersets[index]?.exerciseIds[0]
+        && pair.exerciseIds[1] === supersets[index]?.exerciseIds[1],
+      );
+
+    if (snapshotMatches && completedMatches && skippedMatches && supersetsMatch) {
+      markRollout();
+      return loadedLogs;
+    }
+
     const migratedLog: WorkoutLog = {
       ...currentLog,
-      completed: currentLog.completed.filter((id) => validExerciseIds.has(id)),
-      skipped: currentLog.skipped.filter((id) => validExerciseIds.has(id)),
-      supersets: getValidSupersets(todayExercises, currentLog.supersets),
+      completed,
+      skipped,
+      supersets,
       exerciseSnapshot: todayExercises,
-      updatedAt: new Date().toISOString(),
+      updatedAt: currentLog.updatedAt,
     };
 
     const migratedLogs = { ...loadedLogs, [todayKey]: migratedLog };
     saveLogs(migratedLogs);
-    window.localStorage.setItem(WEEKLY_PLAN_ROLLOUT_STORAGE_KEY, todayKey);
+    markRollout();
     return migratedLogs;
   } catch {
     return loadedLogs;
   }
 }
 
-function formatSetSummary(sets: ExerciseSet[], kind: 'stretch' | 'strength' = 'strength'): string {
+export function formatSetSummary(sets: ExerciseSet[], kind: 'stretch' | 'strength' = 'strength'): string {
   const filledSets = sets.filter(isSetFilled);
   if (filledSets.length === 0) {
     return '';
@@ -599,7 +640,8 @@ function formatSetSummary(sets: ExerciseSet[], kind: 'stretch' | 'strength' = 's
   const summary = filledSets.slice(0, 3).map((set) => {
     const reps = set.reps.trim();
     if (kind === 'stretch') {
-      return reps ? `${reps} reps` : 'Done';
+      const seconds = (set.holdSeconds ?? '').trim() || reps;
+      return seconds ? `${seconds} sec` : 'Done';
     }
 
     if (set.weightMode === 'pounds' && set.pounds.trim()) {
@@ -614,6 +656,10 @@ function formatSetSummary(sets: ExerciseSet[], kind: 'stretch' | 'strength' = 's
 }
 
 function getSetVolume(set: ExerciseSet): number {
+  if ((set.holdSeconds ?? '').trim()) {
+    return 0;
+  }
+
   const reps = Number(set.reps);
   const pounds = Number(set.pounds);
   if (!Number.isFinite(reps) || reps <= 0) {
@@ -628,6 +674,10 @@ function getSetVolume(set: ExerciseSet): number {
 }
 
 function getSetReps(set: ExerciseSet): number {
+  if ((set.holdSeconds ?? '').trim()) {
+    return 0;
+  }
+
   const reps = Number(set.reps);
   return Number.isFinite(reps) && reps > 0 ? reps : 0;
 }
@@ -648,54 +698,132 @@ function getLogVolume(log: WorkoutLog): number {
   }, 0);
 }
 
-function findPreviousExerciseDetail(
+/** Skipped days stay on the calendar as skipped and do not add pounds or reps to the totals. */
+export function trainingCreditForLog(log: WorkoutLog): { reps: number; volume: number; prNote: string } {
+  if (log.daySkipped) {
+    return { reps: 0, volume: 0, prNote: '' };
+  }
+
+  return {
+    reps: getLogReps(log),
+    volume: getLogVolume(log),
+    prNote: log.prNote.trim(),
+  };
+}
+
+function previousDetailOnLog(log: WorkoutLog, exercise: Exercise) {
+  const detailById = log.details[exercise.id];
+  if (detailById && !isExerciseDetailEmpty(detailById)) {
+    return detailById;
+  }
+
+  return Object.values(log.details).find((candidate) => {
+    return exerciseNamesMatch(candidate.exerciseName, exercise.name) && !isExerciseDetailEmpty(candidate);
+  }) ?? null;
+}
+
+function volumesForExercise(log: WorkoutLog, exercise: Exercise): number[] {
+  const detailById = log.details[exercise.id];
+  if (detailById && !isExerciseDetailEmpty(detailById)) {
+    return detailById.sets.map(getSetVolume);
+  }
+
+  return Object.values(log.details)
+    .filter((detail) => exerciseNamesMatch(detail.exerciseName, exercise.name))
+    .flatMap((detail) => detail.sets.map(getSetVolume));
+}
+
+function earlierLogs(dateKey: string, logs: LogsByDate): Array<{ dateKey: string; log: WorkoutLog }> {
+  return Object.keys(logs)
+    .filter((logDate) => logDate < dateKey)
+    .sort((a, b) => b.localeCompare(a))
+    .map((previousDate) => ({ dateKey: previousDate, log: normalizeLog(previousDate, logs[previousDate]) }));
+}
+
+export function findPreviousExerciseDetail(
   exercise: Exercise,
   dateKey: string,
   logs: LogsByDate,
 ) {
-  const previousDates = Object.keys(logs)
-    .filter((logDate) => logDate < dateKey)
-    .sort((a, b) => b.localeCompare(a));
-
-  for (const previousDate of previousDates) {
-    const previousLog = normalizeLog(previousDate, logs[previousDate]);
-    const detailById = previousLog.details[exercise.id];
-    if (detailById && !isExerciseDetailEmpty(detailById)) {
-      return { dateKey: previousDate, detail: detailById };
+  for (const previous of earlierLogs(dateKey, logs)) {
+    if (previous.log.daySkipped) {
+      continue;
     }
 
-    const detail = Object.values(previousLog.details).find((candidate) => {
-      return exerciseNamesMatch(candidate.exerciseName, exercise.name) && !isExerciseDetailEmpty(candidate);
-    });
-    if (detail && !isExerciseDetailEmpty(detail)) {
-      return { dateKey: previousDate, detail };
+    const detail = previousDetailOnLog(previous.log, exercise);
+    if (detail) {
+      return { dateKey: previous.dateKey, detail };
     }
   }
 
   return null;
 }
 
-function getExercisePreviousBest(
+export function getExercisePreviousBest(
   exercise: Exercise,
   dateKey: string,
   logs: LogsByDate,
 ): number {
-  return Object.keys(logs).reduce((best, logDate) => {
-    if (logDate >= dateKey) {
+  return earlierLogs(dateKey, logs).reduce((best, previous) => {
+    if (previous.log.daySkipped) {
       return best;
     }
 
-    const previousLog = normalizeLog(logDate, logs[logDate]);
-    const detailById = previousLog.details[exercise.id];
-    if (detailById && !isExerciseDetailEmpty(detailById)) {
-      return Math.max(best, ...detailById.sets.map(getSetVolume));
+    return volumesForExercise(previous.log, exercise).reduce((max, volume) => Math.max(max, volume), best);
+  }, 0);
+}
+
+export function buildExerciseHistory(exercises: Exercise[], dateKey: string, logs: LogsByDate) {
+  const normalized = earlierLogs(dateKey, logs);
+  const previous = new Map<string, { dateKey: string; detail: WorkoutLog['details'][string] } | null>();
+  const best = new Map<string, number>();
+
+  for (const exercise of exercises) {
+    let found: { dateKey: string; detail: WorkoutLog['details'][string] } | null = null;
+    let bestVolume = 0;
+    for (const entry of normalized) {
+      if (entry.log.daySkipped) {
+        continue;
+      }
+
+      if (!found) {
+        const detail = previousDetailOnLog(entry.log, exercise);
+        if (detail) {
+          found = { dateKey: entry.dateKey, detail };
+        }
+      }
+
+      for (const volume of volumesForExercise(entry.log, exercise)) {
+        bestVolume = Math.max(bestVolume, volume);
+      }
     }
 
-    const matchingDetails = Object.values(previousLog.details).filter((detail) =>
-      exerciseNamesMatch(detail.exerciseName, exercise.name),
-    );
-    return Math.max(best, ...matchingDetails.flatMap((detail) => detail.sets.map(getSetVolume)));
-  }, 0);
+    previous.set(exercise.id, found);
+    best.set(exercise.id, bestVolume);
+  }
+
+  return { previous, best };
+}
+
+/** True when every log from before `dateKey` is the same object as last time. */
+export function samePastLogRefs(
+  logs: LogsByDate,
+  dateKey: string,
+  previous: ReadonlyMap<string, WorkoutLog>,
+): boolean {
+  let count = 0;
+  for (const key of Object.keys(logs)) {
+    if (key >= dateKey) {
+      continue;
+    }
+
+    count += 1;
+    if (previous.get(key) !== logs[key]) {
+      return false;
+    }
+  }
+
+  return count === previous.size;
 }
 
 function isFinishedSession(log: WorkoutLog, exercises: Exercise[]): boolean {
@@ -722,8 +850,9 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
     const log = normalizeLog(dateKey, logs[dateKey]);
     const exercises = getExercises(dateKey);
     const progress = getProgressMeta(exercises, log);
-    const volume = getLogVolume(log);
-    const reps = getLogReps(log);
+    const credit = trainingCreditForLog(log);
+    const volume = credit.volume;
+    const reps = credit.reps;
 
     if (isFinishedSession(log, exercises)) {
       completedSessions += 1;
@@ -732,12 +861,12 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
     totalReps += reps;
     totalVolume += volume;
 
-    if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'stretch')) {
+    if (!log.daySkipped && exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'stretch')) {
       stretchDays += 1;
     }
 
-    if (log.prNote.trim()) {
-      prNotes.push({ dateKey, note: log.prNote.trim() });
+    if (credit.prNote) {
+      prNotes.push({ dateKey, note: credit.prNote });
     }
 
     return { dateKey, volume, reps, completed: progress.completed, total: progress.total };
@@ -746,17 +875,17 @@ function buildTrainingStats(logs: LogsByDate, todayKey: string, getExercises: Ge
   recentDates.slice(0, -7).forEach((dateKey) => {
     const log = normalizeLog(dateKey, logs[dateKey]);
     const exercises = getExercises(dateKey);
-    const progress = getProgressMeta(exercises, log);
+    const credit = trainingCreditForLog(log);
     if (isFinishedSession(log, exercises)) {
       completedSessions += 1;
     }
-    totalReps += getLogReps(log);
-    totalVolume += getLogVolume(log);
-    if (exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'stretch')) {
+    totalReps += credit.reps;
+    totalVolume += credit.volume;
+    if (!log.daySkipped && exercises.some((exercise) => log.completed.includes(exercise.id) && getExerciseKind(exercise) === 'stretch')) {
       stretchDays += 1;
     }
-    if (log.prNote.trim()) {
-      prNotes.push({ dateKey, note: log.prNote.trim() });
+    if (credit.prNote) {
+      prNotes.push({ dateKey, note: credit.prNote });
     }
   });
 
@@ -1025,7 +1154,15 @@ function WorkoutPanel({
   const [supersetToolsOpen, setSupersetToolsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
-  const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<string[]>(() => [...log.completed]);
+  const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<string[]>(() => finishedExerciseIds(exercises, log));
+  const [settledFinishedIds, setSettledFinishedIds] = useState<string[]>(() => finishedExerciseIds(exercises, log));
+  const [trackedDateKey, setTrackedDateKey] = useState(dateKey);
+  if (trackedDateKey !== dateKey) {
+    const finishedIds = finishedExerciseIds(exercises, log);
+    setTrackedDateKey(dateKey);
+    setSettledFinishedIds(finishedIds);
+    setCollapsedExerciseIds(finishedIds);
+  }
   const [editingExerciseId, setEditingExerciseId] = useState<string | null>(null);
   const [exerciseNameDraft, setExerciseNameDraft] = useState('');
   const [clockNow, setClockNow] = useState(() => Date.now());
@@ -1044,7 +1181,7 @@ function WorkoutPanel({
   const supersetExerciseCount = activeSupersets.length * 2;
   const loggedSets = getLogSetCount(log);
   const sessionVolume = getLogVolume(log);
-  const hasSessionWork = hasRecordedExerciseWork(log);
+  const canFinish = canFinishSession(log, exercises);
   const hasSavedLog = hasTrainingActivity(log) || hasPlanActivity(log);
   const sessionActive = Boolean(log.startedAt && !log.finishedAt);
   const sessionFinished = Boolean(log.finishedAt);
@@ -1052,17 +1189,30 @@ function WorkoutPanel({
   const sessionDurationSeconds = getSessionDurationSeconds(log, clockNow);
   const pairedIds = new Set(activeSupersets.flatMap((pair) => pair.exerciseIds));
   const unpairedExercises = exercises.filter((exercise) => !pairedIds.has(exercise.id));
-  const groups = buildExerciseGroups(orderExercisesForLog(exercises, log), activeSupersets);
-  const previousByExerciseId = useMemo(() => {
-    return new Map(
-      exercises.map((exercise) => [exercise.id, findPreviousExerciseDetail(exercise, dateKey, logs)]),
-    );
-  }, [dateKey, exerciseSignature, logs]);
-  const previousBestByExerciseId = useMemo(() => {
-    return new Map(
-      exercises.map((exercise) => [exercise.id, getExercisePreviousBest(exercise, dateKey, logs)]),
-    );
-  }, [dateKey, exerciseSignature, logs]);
+  const groups = buildExerciseGroups(
+    orderExercisesForSession(exercises, new Set(settledFinishedIds)),
+    activeSupersets,
+  );
+  const pastLogRefs = useRef<Map<string, WorkoutLog>>(new Map());
+  const historyRevision = useRef(0);
+  if (!samePastLogRefs(logs, dateKey, pastLogRefs.current)) {
+    const nextPast = new Map<string, WorkoutLog>();
+    for (const key of Object.keys(logs)) {
+      if (key < dateKey) {
+        nextPast.set(key, logs[key]);
+      }
+    }
+    pastLogRefs.current = nextPast;
+    historyRevision.current += 1;
+  }
+  const historyToken = historyRevision.current;
+  // A keystroke replaces today's log object and leaves earlier days in place.
+  const exerciseHistory = useMemo(
+    () => buildExerciseHistory(exercises, dateKey, logs),
+    [dateKey, exerciseSignature, historyToken],
+  );
+  const previousByExerciseId = exerciseHistory.previous;
+  const previousBestByExerciseId = exerciseHistory.best;
   const hasPreviousWorkout = exercises.some((exercise) => Boolean(previousByExerciseId.get(exercise.id)));
 
   useEffect(() => {
@@ -1075,14 +1225,31 @@ function WorkoutPanel({
     setEditingExerciseId(null);
     setExerciseNameDraft('');
     setSupersetToolsOpen(false);
-    setCollapsedExerciseIds((current) => {
-      const finishedIds = new Set([...log.completed, ...log.skipped]);
-      return uniqueList([
-        ...current.filter((id) => exercises.some((exercise) => exercise.id === id) && !finishedIds.has(id)),
-        ...exercises.filter((exercise) => finishedIds.has(exercise.id)).map((exercise) => exercise.id),
-      ]);
-    });
-  }, [dateKey, exerciseSignature, finishedExerciseSignature]);
+  }, [dateKey, exerciseSignature]);
+
+  useEffect(() => {
+    const finishedIds = finishedExerciseIds(exercises, log);
+    const previouslySettled = new Set(settledFinishedIds);
+    const timer = window.setTimeout(() => {
+      setSettledFinishedIds(finishedIds);
+      setCollapsedExerciseIds((current) => {
+        const finished = new Set(finishedIds);
+        const newlyFinished = finishedIds.filter((id) => !previouslySettled.has(id));
+        return uniqueList([
+          ...current.filter((id) => {
+            if (!exercises.some((exercise) => exercise.id === id)) {
+              return false;
+            }
+
+            // Unchecking opens that row again. A row the user already expanded stays open.
+            return !(previouslySettled.has(id) && !finished.has(id));
+          }),
+          ...newlyFinished,
+        ]);
+      });
+    }, FINISHED_ROW_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [exerciseSignature, finishedExerciseSignature]);
 
   useEffect(() => {
     setRestTimer(loadRestTimer(dateKey));
@@ -1135,17 +1302,10 @@ function WorkoutPanel({
 
   const toggleComplete = (exerciseId: string) => {
     const wasCompleted = log.completed.includes(exerciseId);
-    setCollapsedExerciseIds((current) =>
-      wasCompleted ? current.filter((id) => id !== exerciseId) : uniqueList([...current, exerciseId]),
-    );
     const exercise = exercises.find((candidate) => candidate.id === exerciseId);
     if (!wasCompleted && exercise && !checklistMode) {
       const nextRestSeconds = exercise.target.restSeconds ?? preferences.defaultRestSeconds;
-      setRestTimer({
-        dateKey,
-        remainingSeconds: nextRestSeconds,
-        ...(nextRestSeconds > 0 ? { endsAt: Date.now() + nextRestSeconds * 1000 } : {}),
-      });
+      setRestTimer((current) => restTimerAfterComplete(current, nextRestSeconds, Date.now()));
     }
 
     onUpdate((current) => {
@@ -1193,10 +1353,6 @@ function WorkoutPanel({
   };
 
   const toggleSkip = (exerciseId: string) => {
-    const wasSkipped = log.skipped.includes(exerciseId);
-    setCollapsedExerciseIds((current) =>
-      wasSkipped ? current.filter((id) => id !== exerciseId) : uniqueList([...current, exerciseId]),
-    );
     onUpdate((current) => {
       const skipped = current.skipped.includes(exerciseId)
         ? current.skipped.filter((id) => id !== exerciseId)
@@ -1292,8 +1448,31 @@ function WorkoutPanel({
     });
   };
 
+  const displayedExerciseIds = (list: Exercise[]) =>
+    buildExerciseGroups(orderExercisesForSession(list, new Set(settledFinishedIds)), activeSupersets)
+      .flatMap((group) => group.exercises.map((exercise) => exercise.id));
+
   const reorderGroups = (nextGroups: ExerciseGroup[]) => {
-    onReorder(nextGroups.flatMap((group) => group.exercises.map((exercise) => exercise.id)));
+    const nextIds = displayedExerciseIds(nextGroups.flatMap((group) => group.exercises));
+    const currentIds = groups.flatMap((group) => group.exercises.map((exercise) => exercise.id));
+    if (nextIds.join('|') === currentIds.join('|')) {
+      return;
+    }
+
+    onReorder(nextIds);
+  };
+
+  const canMoveGroup = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= groups.length) {
+      return false;
+    }
+
+    const nextGroups = [...groups];
+    [nextGroups[index], nextGroups[nextIndex]] = [nextGroups[nextIndex], nextGroups[index]];
+    const nextIds = displayedExerciseIds(nextGroups.flatMap((group) => group.exercises));
+    const currentIds = groups.flatMap((group) => group.exercises.map((exercise) => exercise.id));
+    return nextIds.join('|') !== currentIds.join('|');
   };
 
   const moveGroup = (groupId: string, direction: -1 | 1) => {
@@ -1411,7 +1590,7 @@ function WorkoutPanel({
   };
 
   const finishSession = () => {
-    if (!hasSessionWork) {
+    if (!canFinish) {
       return;
     }
 
@@ -1568,8 +1747,8 @@ function WorkoutPanel({
               className="icon-text-button primary session-primary-action"
               type="button"
               onClick={finishSession}
-              disabled={!hasSessionWork}
-              title={!hasSessionWork ? 'Log at least one exercise before finishing' : undefined}
+              disabled={!canFinish}
+              title={!canFinish ? 'Log at least one exercise before finishing' : undefined}
             >
               <Square aria-hidden="true" />
               <span>Finish session</span>
@@ -1762,17 +1941,8 @@ function WorkoutPanel({
               : group.exercises[0]?.name ?? 'exercise';
           const sectionExercise = group.exercises[0];
           const previousSectionExercise = groups[groupIndex - 1]?.exercises[0];
-          const groupFinished = group.exercises.every((exercise) => (
-            log.completed.includes(exercise.id) || log.skipped.includes(exercise.id)
-          ));
-          const previousGroup = groups[groupIndex - 1];
-          const previousGroupFinished = previousGroup?.exercises.every((exercise) => (
-            log.completed.includes(exercise.id) || log.skipped.includes(exercise.id)
-          )) ?? false;
-          const startsFinishedSection = groupFinished && !previousGroupFinished;
-          const startsWorkoutBlock = !groupFinished && Boolean(sectionExercise?.workoutLabel) && (
+          const startsWorkoutBlock = Boolean(sectionExercise?.workoutLabel) && (
             groupIndex === 0
-            || previousGroupFinished
             || !previousSectionExercise
             || getWorkoutSectionKey(sectionExercise) !== getWorkoutSectionKey(previousSectionExercise)
           );
@@ -1780,12 +1950,6 @@ function WorkoutPanel({
 
           return (
             <Fragment key={group.id}>
-              {startsFinishedSection && (
-                <div className="workout-block-heading completed-block">
-                  <span>Finished items</span>
-                  <strong>Completed</strong>
-                </div>
-              )}
               {startsWorkoutBlock && workoutLabel && sectionExercise && (
                 <WorkoutBlockHeading exercise={sectionExercise} />
               )}
@@ -1834,7 +1998,7 @@ function WorkoutPanel({
                       type="button"
                       aria-label={`Move ${groupLabel} up`}
                       onClick={() => moveGroup(group.id, -1)}
-                      disabled={groupIndex === 0}
+                      disabled={!canMoveGroup(groupIndex, -1)}
                     >
                       <ArrowUp aria-hidden="true" />
                     </button>
@@ -1843,7 +2007,7 @@ function WorkoutPanel({
                       type="button"
                       aria-label={`Move ${groupLabel} down`}
                       onClick={() => moveGroup(group.id, 1)}
-                      disabled={groupIndex === groups.length - 1}
+                      disabled={!canMoveGroup(groupIndex, 1)}
                     >
                       <ArrowDown aria-hidden="true" />
                     </button>
@@ -2034,15 +2198,21 @@ function WorkoutPanel({
                                         </label>
                                       )}
                                       <label>
-                                        <span>{isStretch ? 'Reps / Hold' : 'Reps'}</span>
+                                        <span>{isStretch ? 'Hold (sec)' : 'Reps'}</span>
                                         <input
                                           type="number"
                                           min="0"
                                           max="1000"
                                           step="1"
                                           inputMode="numeric"
-                                          value={set.reps}
-                                          onChange={(event) => updateExerciseSet(exercise.id, set.id, { reps: event.target.value })}
+                                          value={isStretch ? (set.holdSeconds ?? set.reps) : set.reps}
+                                          onChange={(event) => updateExerciseSet(
+                                            exercise.id,
+                                            set.id,
+                                            isStretch
+                                              ? { holdSeconds: event.target.value, reps: '' }
+                                              : { reps: event.target.value },
+                                          )}
                                         />
                                       </label>
                                       {detail.sets.length > 1 && (
@@ -2111,7 +2281,6 @@ function WorkoutPanel({
                   touchLog({
                     ...current,
                     notes: event.target.value,
-                    daySkipped: false,
                   }),
                 )
               }
@@ -2127,7 +2296,6 @@ function WorkoutPanel({
                   touchLog({
                     ...current,
                     prNote: event.target.value,
-                    daySkipped: false,
                   }),
                 )
               }
@@ -2162,8 +2330,8 @@ function WorkoutPanel({
             className="icon-text-button primary"
             type="button"
             onClick={finishSession}
-            disabled={!hasSessionWork}
-            title={!hasSessionWork ? 'Log at least one exercise before finishing' : undefined}
+            disabled={!canFinish}
+            title={!canFinish ? 'Log at least one exercise before finishing' : undefined}
           >
             <Square aria-hidden="true" />
             <span>Finish</span>
@@ -2223,7 +2391,7 @@ function WeekView({
           >
             <ChevronLeft aria-hidden="true" />
           </button>
-          <button className="icon-text-button" type="button" onClick={() => openLogbook(todayKey)}>
+          <button className="icon-text-button" type="button" onClick={() => setSelectedDate(todayKey)}>
             <Target aria-hidden="true" />
             <span>Today</span>
           </button>
@@ -2324,7 +2492,7 @@ function CalendarView({
           >
             <ChevronLeft aria-hidden="true" />
           </button>
-          <button className="icon-text-button" type="button" onClick={() => openLogbook(todayKey)}>
+          <button className="icon-text-button" type="button" onClick={() => setSelectedDate(todayKey)}>
             <Target aria-hidden="true" />
             <span>Today</span>
           </button>
@@ -2578,14 +2746,15 @@ function LogbookView({
           recentEntries.map((entry) => {
             const exercises = getExercises(entry.date);
             const progress = getProgressMeta(exercises, entry);
-            const sets = getLogSetCount(entry);
-            const volume = getLogVolume(entry);
+            const credit = trainingCreditForLog(entry);
+            const sets = entry.daySkipped ? 0 : getLogSetCount(entry);
+            const volume = credit.volume;
             return (
               <button key={entry.date} type="button" className="recent-entry" onClick={() => setSelectedDate(entry.date)}>
                 <div>
                   <strong>{formatDateLabel(entry.date)}</strong>
                   {preferences.logbookView === 'log' && (
-                    <small>{sets} sets · {volume.toLocaleString()} lb</small>
+                    <small>{entry.daySkipped ? 'Skipped' : `${sets} sets · ${volume.toLocaleString()} lb`}</small>
                   )}
                 </div>
                 <span>{progress.completed}/{progress.total}</span>
@@ -2771,6 +2940,32 @@ function ExerciseGuideCard({
   );
 }
 
+function GuidePhotoFrames({
+  guide,
+  images,
+  label,
+}: {
+  guide: ExerciseGuide;
+  images: string[];
+  label: string;
+}) {
+  const artwork = label === guide.name && images === guide.images ? guide : { ...guide, name: label, images };
+  return (
+    <div className={`exercise-guide-images ${images.length <= 1 ? 'single' : ''}`}>
+      {(images.length > 0 ? images.slice(0, 2) : ['']).map((_, index) => (
+        <figure key={`${guide.id}-${label}-image-${index}`}>
+          <ExerciseGuideArtwork guide={artwork} detail imageIndex={index} />
+          {images.length > 0 && (
+            <figcaption>
+              {images.length === 1 ? 'Movement reference' : index === 0 ? 'Start' : 'Finish'}
+            </figcaption>
+          )}
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 export function ExerciseGuideDialog({
   guide,
   saved,
@@ -2853,16 +3048,16 @@ export function ExerciseGuideDialog({
           </button>
         </header>
 
-        <div className={`exercise-guide-images ${guide.images.length <= 1 ? 'single' : ''}`}>
-          {(guide.images.length > 0 ? guide.images.slice(0, 2) : ['']).map((_, index) => (
-            <figure key={`${guide.id}-image-${index}`}>
-              <ExerciseGuideArtwork guide={guide} detail imageIndex={index} />
-              {guide.images.length > 0 && (
-                <figcaption>{guide.images.length === 1 ? 'Movement reference' : index === 0 ? 'Start' : 'Finish'}</figcaption>
-              )}
-            </figure>
-          ))}
-        </div>
+        {guide.segments && guide.segments.length > 1 ? (
+          guide.segments.map((segment) => (
+            <section key={segment.name} className="exercise-guide-segment">
+              <h3 className="exercise-guide-segment-title">{segment.name}</h3>
+              <GuidePhotoFrames guide={guide} images={segment.images} label={segment.name} />
+            </section>
+          ))
+        ) : (
+          <GuidePhotoFrames guide={guide} images={guide.images} label={guide.name} />
+        )}
 
         <div className="exercise-guide-content">
           <div className="exercise-guide-meta">
@@ -2902,24 +3097,37 @@ export function ExerciseGuideDialog({
             </section>
           )}
 
-          <section className="exercise-guide-section">
-            <h3>How to do it</h3>
-            {guide.instructions.length > 0 ? (
-              <ol className="exercise-instruction-list">
-                {guide.instructions.map((instruction, index) => (
-                  <li key={`${guide.id}-instruction-${index}`}>{instruction}</li>
-                ))}
-              </ol>
-            ) : (
-              <div className="exercise-guide-pending">
-                <ImageIcon aria-hidden="true" />
-                <p>
-                  This workout is saved from your log, but it does not have a dedicated form guide yet. It
-                  stays searchable while we expand the visual library.
-                </p>
-              </div>
-            )}
-          </section>
+          {guide.segments && guide.segments.length > 1 ? (
+            guide.segments.map((segment) => (
+              <section key={`${segment.name}-steps`} className="exercise-guide-section">
+                <h3>{segment.name}</h3>
+                <ol className="exercise-instruction-list">
+                  {segment.instructions.map((instruction, index) => (
+                    <li key={`${guide.id}-${segment.name}-instruction-${index}`}>{instruction}</li>
+                  ))}
+                </ol>
+              </section>
+            ))
+          ) : (
+            <section className="exercise-guide-section">
+              <h3>How to do it</h3>
+              {guide.instructions.length > 0 ? (
+                <ol className="exercise-instruction-list">
+                  {guide.instructions.map((instruction, index) => (
+                    <li key={`${guide.id}-instruction-${index}`}>{instruction}</li>
+                  ))}
+                </ol>
+              ) : (
+                <div className="exercise-guide-pending">
+                  <ImageIcon aria-hidden="true" />
+                  <p>
+                    This workout is saved from your log, but it does not have a dedicated form guide yet. It
+                    stays searchable while we expand the visual library.
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
 
           {guide.coaching && (
             <div className="exercise-coaching-tips">
@@ -2982,18 +3190,41 @@ export function SearchView({
   const [visibleCount, setVisibleCount] = useState(18);
   const [library, setLibrary] = useState<FreeExerciseRecord[]>([]);
   const [libraryStatus, setLibraryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [strengthCatalogReady, setStrengthCatalogReady] = useState(false);
+  const [strengthCatalogError, setStrengthCatalogError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [selectedGuide, setSelectedGuide] = useState<{ guide: ExerciseGuide; saved: boolean } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setLibraryStatus('loading');
-    loadFreeExerciseLibrary()
+    setStrengthCatalogReady(false);
+    setStrengthCatalogError(false);
+    loadStretchExerciseLibrary()
       .then((records) => {
-        if (!cancelled) {
-          setLibrary(records);
-          setLibraryStatus('ready');
+        if (cancelled) {
+          return;
         }
+        setLibrary(records);
+        setLibraryStatus('ready');
+        window.setTimeout(() => {
+          loadStrengthExerciseLibrary()
+            .then((strength) => {
+              if (cancelled) {
+                return;
+              }
+              setLibrary((current) => {
+                const seen = new Set(current.map((record) => record.id));
+                return [...current, ...strength.filter((record) => !seen.has(record.id))];
+              });
+              setStrengthCatalogReady(true);
+            })
+            .catch(() => {
+              if (!cancelled) {
+                setStrengthCatalogError(true);
+              }
+            });
+        }, 0);
       })
       .catch(() => {
         if (!cancelled) setLibraryStatus('error');
@@ -3033,7 +3264,13 @@ export function SearchView({
         })),
     [savedEntries, library],
   );
-  const discoveryGuides = useMemo(() => buildDiscoveryGuides(library), [library]);
+  const discoveryLibrary = useMemo(() => {
+    if (!strengthCatalogReady && (discipline === 'strength' || discipline === 'all')) {
+      return [];
+    }
+    return recordsForDiscovery(library, discipline);
+  }, [discipline, library, strengthCatalogReady]);
+  const discoveryGuides = useMemo(() => buildDiscoveryGuides(discoveryLibrary), [discoveryLibrary]);
   const allSavedGuides = useMemo(
     () => allSavedEntries.map((entry) => resolvePersonalExerciseGuide(entry.name, library, entry.family)),
     [allSavedEntries, library],
@@ -3219,6 +3456,23 @@ export function SearchView({
             </div>
           </div>
         )}
+        {scope === 'library' && (discipline === 'strength' || discipline === 'all') && !strengthCatalogReady && libraryStatus === 'ready' && (
+          <div className={`exercise-library-status ${strengthCatalogError ? 'error' : 'loading'}`} role="status">
+            {strengthCatalogError ? (
+              <>
+                <CloudOff aria-hidden="true" />
+                <span>Strength guides could not load.</span>
+                <button type="button" onClick={() => setLoadAttempt((current) => current + 1)}>
+                  Retry
+                </button>
+              </>
+            ) : (
+              <>
+                <LoaderCircle className="spin" aria-hidden="true" /> Loading strength guides…
+              </>
+            )}
+          </div>
+        )}
         {libraryStatus !== 'ready' && (
           <div className={`exercise-library-status ${libraryStatus}`} role="status">
             {libraryStatus === 'loading' ? (
@@ -3391,11 +3645,30 @@ function SettingsView({
   onImport: (file: File) => Promise<void>;
 }) {
   const [selectedProgramDay, setSelectedProgramDay] = useState<Weekday>(() => getWeekday(new Date()));
+  const selectedProgramDayRef = useRef<HTMLButtonElement>(null);
   const [newWorkoutName, setNewWorkoutName] = useState('');
   const [newWorkoutKind, setNewWorkoutKind] = useState<ExerciseKind>('strength');
   const [programNameDrafts, setProgramNameDrafts] = useState<Record<string, string>>({});
   const dayWorkouts = program[selectedProgramDay];
   const cloudImportBlocked = Boolean(sync.user && sync.status !== 'synced');
+
+  useEffect(() => {
+    const button = selectedProgramDayRef.current;
+    const tabs = button?.parentElement;
+    if (!button || !tabs) {
+      return;
+    }
+
+    const buttonStart = button.offsetLeft;
+    const buttonEnd = buttonStart + button.offsetWidth;
+    const viewStart = tabs.scrollLeft;
+    const viewEnd = viewStart + tabs.clientWidth;
+    if (buttonStart < viewStart) {
+      tabs.scrollLeft = buttonStart;
+    } else if (buttonEnd > viewEnd) {
+      tabs.scrollLeft = buttonEnd - tabs.clientWidth;
+    }
+  }, [selectedProgramDay]);
 
   const commitWorkoutName = (exerciseId: string, name: string) => {
     const key = `${selectedProgramDay}:${exerciseId}`;
@@ -3475,6 +3748,7 @@ function SettingsView({
           name,
           kind: newWorkoutKind,
           target: createDefaultExerciseTarget(name, newWorkoutKind),
+          ...sectionFieldsForAddedExercise(current[selectedProgramDay], newWorkoutKind),
         },
       ],
     }));
@@ -3653,6 +3927,7 @@ function SettingsView({
             {WEEK_DAYS.map((day) => (
               <button
                 key={day}
+                ref={day === selectedProgramDay ? selectedProgramDayRef : undefined}
                 className={`program-day-button ${day === selectedProgramDay ? 'active' : ''}`}
                 type="button"
                 aria-pressed={day === selectedProgramDay}

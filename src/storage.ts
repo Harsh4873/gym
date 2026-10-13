@@ -389,12 +389,83 @@ function normalizeExerciseSet(value: unknown, fallbackId: string): ExerciseSet {
 
   const weightMode = normalizeWeightMode(value.weightMode);
 
+  const holdSeconds = readHoldSeconds(value.holdSeconds);
+
   return {
     id: typeof value.id === 'string' && value.id.trim() ? value.id : fallbackId,
     weightMode,
     pounds: weightMode === 'pounds' && typeof value.pounds === 'string' ? value.pounds : '',
     reps: typeof value.reps === 'string' ? value.reps : '',
+    ...(holdSeconds ? { holdSeconds } : {}),
   };
+}
+
+function readHoldSeconds(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return String(Math.round(value));
+  }
+
+  return '';
+}
+
+/** A stretch entry is a hold in seconds. Logs written earlier stored that number as reps. */
+function asStretchHold(set: ExerciseSet): ExerciseSet {
+  const seconds = (set.holdSeconds ?? '').trim() || set.reps.trim();
+  if (!seconds) {
+    return {
+      id: set.id,
+      weightMode: 'bodyweight',
+      pounds: '',
+      reps: '',
+    };
+  }
+
+  return {
+    id: set.id,
+    weightMode: 'bodyweight',
+    pounds: '',
+    reps: '',
+    holdSeconds: seconds,
+  };
+}
+
+function storeStretchHolds(
+  details: WorkoutLog['details'],
+  snapshot: Exercise[] | undefined,
+): WorkoutLog['details'] {
+  const kindById = new Map((snapshot ?? []).map((exercise) => [exercise.id, exercise.kind]));
+  let changed = false;
+  const next: WorkoutLog['details'] = {};
+
+  for (const [exerciseId, detail] of Object.entries(details)) {
+    const snapshotKind = kindById.get(exerciseId);
+    const namedKind = detail.exerciseName?.trim() ? inferExerciseKind(detail.exerciseName) : undefined;
+    if ((snapshotKind ?? namedKind) !== 'stretch') {
+      next[exerciseId] = detail;
+      continue;
+    }
+
+    const sets = detail.sets.map(asStretchHold);
+    const same = sets.length === detail.sets.length && sets.every((set, index) => {
+      const current = detail.sets[index];
+      return current?.reps === set.reps
+        && (current.holdSeconds ?? '') === (set.holdSeconds ?? '')
+        && current.pounds === set.pounds
+        && current.weightMode === set.weightMode;
+    });
+    if (!same) {
+      changed = true;
+      next[exerciseId] = { ...detail, sets };
+    } else {
+      next[exerciseId] = detail;
+    }
+  }
+
+  return changed ? next : details;
 }
 
 function normalizeLegacyDetail(value: Record<string, unknown>): ExerciseDetail {
@@ -522,8 +593,11 @@ export function normalizeLog(date: string, log?: Partial<WorkoutLog>): WorkoutLo
   const exerciseSnapshot = normalizeExerciseSnapshot(source.exerciseSnapshot);
   const startedAt = normalizeTimestamp(source.startedAt);
   const finishedAt = normalizeTimestamp(source.finishedAt);
-  const details = Object.fromEntries(
-    Object.entries(normalizeDetails(source.details)).filter(([exerciseId]) => !courtIds.has(exerciseId)),
+  const details = storeStretchHolds(
+    Object.fromEntries(
+      Object.entries(normalizeDetails(source.details)).filter(([exerciseId]) => !courtIds.has(exerciseId)),
+    ),
+    exerciseSnapshot,
   );
 
   return {

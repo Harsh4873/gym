@@ -1,6 +1,5 @@
 import stretchAdditions from './stretchAdditions.json';
 import { STRETCH_COACHING, type StretchCoaching } from './stretchCoaching';
-import exerciseSource from '../public/data/exercise-source.json';
 
 export type ExerciseGuideSource = 'custom' | 'library' | 'saved';
 export type ExerciseGuideFamily = 'strength' | 'stretch';
@@ -17,6 +16,12 @@ export interface FreeExerciseRecord {
   instructions: string[];
   category: string;
   images: string[];
+}
+
+export interface ExerciseGuideSegment {
+  name: string;
+  images: string[];
+  instructions: string[];
 }
 
 export interface ExerciseGuide {
@@ -38,14 +43,21 @@ export interface ExerciseGuide {
   secondaryMuscles: string[];
   instructions: string[];
   images: string[];
+  /** Photographic demonstrations when a saved name covers more than one movement. */
+  segments?: ExerciseGuideSegment[];
 }
 
 export const FREE_EXERCISE_DB_URL =
   `${import.meta.env.BASE_URL}data/exercises.json`;
+export const STRETCH_EXERCISE_DB_URL =
+  `${import.meta.env.BASE_URL}data/exercises-stretch.json`;
+export const STRENGTH_EXERCISE_DB_URL =
+  `${import.meta.env.BASE_URL}data/exercises-strength.json`;
 export const FREE_EXERCISE_DB_PROJECT_URL = 'https://github.com/yuhonas/free-exercise-db';
 
-const FREE_EXERCISE_IMAGE_ROOT =
-  `https://raw.githubusercontent.com/yuhonas/free-exercise-db/${exerciseSource.revision}/exercises/`;
+function exercisePhotoUrls(record: FreeExerciseRecord): string[] {
+  return record.images.map((image) => `${import.meta.env.BASE_URL}exercises/library/${image}`);
+}
 
 function getSupplementalStretchImages(entry: { photoRecordId?: string; customImages?: string[] }): string[] {
   if (entry.customImages?.length) {
@@ -82,7 +94,7 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
       'Inhale and open your chest while tipping your pelvis. Keep the movement smooth and avoid cranking into your lower back.',
       'Move slowly between the two positions for the planned rounds. Stop if the motion causes sharp or radiating pain.',
     ],
-    images: [`${import.meta.env.BASE_URL}exercises/cat-cow.png`],
+    images: [`${import.meta.env.BASE_URL}exercises/cat-cow.jpg`],
   },
   {
     id: 'custom:bird-dog',
@@ -100,7 +112,7 @@ const CUSTOM_GUIDES: ExerciseGuide[] = [
       'Pause while keeping a long line from the fingertips through the heel, then return with control.',
       'Alternate sides. Make the range smaller if you cannot keep your torso still or if your back feels pinched.',
     ],
-    images: [`${import.meta.env.BASE_URL}exercises/bird-dog.png`],
+    images: [`${import.meta.env.BASE_URL}exercises/bird-dog.jpg`],
   },
   {
     id: 'custom:open-book-t-spine',
@@ -129,14 +141,9 @@ const CUSTOM_GUIDE_ALIASES: Record<string, string> = {
 };
 
 const LIBRARY_ALIASES: Record<string, string> = {
-  '10 min ab workout': '3_4_Sit-Up',
-  '10 minute ab workout': '3_4_Sit-Up',
   'ab machine': 'Ab_Crunch_Machine',
   'ab rolls': 'Ab_Roller',
-  'abs circuit': 'Air_Bike',
   'back extension': 'Hyperextensions_Back_Extensions',
-  'back extension incline sit ups': 'Hyperextensions_Back_Extensions',
-  'back extensions incline sit ups': 'Hyperextensions_Back_Extensions',
   'incline sit ups': 'Sit-Up',
   bench: 'Barbell_Bench_Press_-_Medium_Grip',
   'bicep stretch': 'Standing_Biceps_Stretch',
@@ -153,8 +160,6 @@ const LIBRARY_ALIASES: Record<string, string> = {
   'dumbbell shoulder press': 'Dumbbell_Shoulder_Press',
   'doorway chest stretch': 'Dynamic_Chest_Stretch',
   'dynamic warm up': 'Worlds_Greatest_Stretch',
-  'ez bar curl concentration curl': 'EZ-Bar_Curl',
-  'ez bar curls concentration curls': 'EZ-Bar_Curl',
   'face away cable curls': 'High_Cable_Curls',
   'face pulls': 'Face_Pull',
   'flat bench': 'Barbell_Bench_Press_-_Medium_Grip',
@@ -219,14 +224,11 @@ const LIBRARY_ALIASES: Record<string, string> = {
   'lateral band walks': 'Monster_Walk',
   'leg curl': 'Seated_Leg_Curl',
   'leg extension': 'Leg_Extensions',
-  'nippard superset': 'EZ-Bar_Curl',
   'bulgarian split squat': 'Split_Squat_with_Dumbbells',
   'standing quad stretch': 'Quad_Stretch',
-  'tibialis raise': 'Posterior_Tibialis_Stretch',
   'tibialis stretch': 'Posterior_Tibialis_Stretch',
   'trap stretch': 'Upper_Back_Stretch',
   'tricep pushdown': 'Triceps_Pushdown',
-  'tricep superset': 'EZ-Bar_Skullcrusher',
   'triceps 7x7': 'EZ-Bar_Skullcrusher',
   'zottman curls': 'Zottman_Curl',
   'zottman curl': 'Zottman_Curl',
@@ -275,16 +277,18 @@ export function toExerciseGuide(record: FreeExerciseRecord, displayName?: string
     name,
     libraryName: normalizeExerciseName(name) === normalizeExerciseName(record.name) ? undefined : record.name,
     source: 'library',
-    family: STRENGTH_RECORDS.has(record.id) ? 'strength' : getExerciseGuideFamily(record.category, name),
+    family: STRENGTH_RECORDS.has(record.id)
+      ? 'strength'
+      : coaching?.mode === 'stretch'
+        ? 'stretch'
+        : getExerciseGuideFamily(record.category, name),
     category: coaching?.mode ?? record.category,
     level: coaching ? (record.id === 'Inchworm' ? 'intermediate' : 'beginner') : record.level,
     equipment: coaching?.equipment ?? (assisted ? 'partner assistance' : record.equipment ?? 'body only'),
     primaryMuscles: ['Kneeling_Hip_Flexor', 'Standing_Hip_Flexors'].includes(record.id) ? ['hip flexors'] : record.primaryMuscles,
     secondaryMuscles: record.secondaryMuscles,
     instructions: coaching?.instructions ?? record.instructions,
-    images: record.images.map((image) => record.category === 'stretching'
-      ? `${import.meta.env.BASE_URL}exercises/library/${image}`
-      : `${FREE_EXERCISE_IMAGE_ROOT}${image}`),
+    images: exercisePhotoUrls(record),
     coaching,
     assisted,
   };
@@ -305,6 +309,56 @@ function getFallbackGuide(name: string, family?: ExerciseGuideFamily): ExerciseG
   };
 }
 
+const COMBINED_LIBRARY_IDS: Record<string, readonly string[]> = {
+  'back extension incline sit ups': ['Hyperextensions_Back_Extensions', 'Sit-Up'],
+  'back extensions incline sit ups': ['Hyperextensions_Back_Extensions', 'Sit-Up'],
+  'ez bar curl concentration curl': ['EZ-Bar_Curl', 'Concentration_Curls'],
+  'ez bar curls concentration curls': ['EZ-Bar_Curl', 'Concentration_Curls'],
+};
+
+function uniqueStrings(values: Array<string | undefined>): string[] {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+/** A programmed stretch keeps the Stretch family even when the photo record is filed under strength. */
+function withSavedFamily(guide: ExerciseGuide, family?: ExerciseGuideFamily): ExerciseGuide {
+  if (family === 'stretch' && guide.family !== 'stretch') {
+    return { ...guide, family: 'stretch' };
+  }
+  return guide;
+}
+
+function toCombinedExerciseGuide(
+  name: string,
+  records: FreeExerciseRecord[],
+  family?: ExerciseGuideFamily,
+): ExerciseGuide {
+  const parts = records.map((record) => toExerciseGuide(record));
+  const first = parts[0];
+  const primaryMuscles = uniqueStrings(parts.flatMap((part) => part.primaryMuscles));
+  return {
+    id: `library:combined:${normalizeExerciseName(name)}`,
+    name,
+    libraryName: parts.map((part) => part.name).join(' + '),
+    source: 'library',
+    family: family ?? 'strength',
+    category: first.category,
+    level: first.level,
+    equipment: uniqueStrings(parts.map((part) => part.equipment)).join(', '),
+    primaryMuscles,
+    secondaryMuscles: uniqueStrings(parts.flatMap((part) => part.secondaryMuscles)).filter(
+      (muscle) => !primaryMuscles.includes(muscle),
+    ),
+    instructions: parts.flatMap((part) => part.instructions),
+    images: parts.flatMap((part) => part.images),
+    segments: parts.map((part) => ({
+      name: part.name,
+      images: [...part.images],
+      instructions: [...part.instructions],
+    })),
+  };
+}
+
 export function resolvePersonalExerciseGuide(
   name: string,
   library: FreeExerciseRecord[],
@@ -317,21 +371,35 @@ export function resolvePersonalExerciseGuide(
     || guide.aliases?.some((alias) => normalizeExerciseName(alias) === normalizedName)
   ));
   if (customGuide) {
-    return { ...customGuide, name, images: [...customGuide.images] };
+    return withSavedFamily({ ...customGuide, name, images: [...customGuide.images] }, family);
+  }
+
+  if (isExerciseRoutinePlaceholder(name)) {
+    return getFallbackGuide(name, family);
   }
 
   const byId = new Map(library.map((record) => [record.id, record]));
+  const combinedIds = COMBINED_LIBRARY_IDS[normalizedName];
+  if (combinedIds) {
+    const combinedRecords = combinedIds.map((id) => byId.get(id));
+    if (combinedRecords.every((record): record is FreeExerciseRecord => Boolean(record))) {
+      return withSavedFamily(toCombinedExerciseGuide(name, combinedRecords, family), family);
+    }
+  }
+
   const aliasId = LIBRARY_ALIASES[normalizedName];
   const aliasedRecord = aliasId ? byId.get(aliasId) : undefined;
   if (aliasedRecord) {
-    return toExerciseGuide(aliasedRecord, name);
+    return withSavedFamily(toExerciseGuide(aliasedRecord, name), family);
   }
 
   const exactRecord = library.find(
     (record) => normalizeExerciseName(record.name) === normalizedName
       || normalizeExerciseName(STRETCH_COACHING[record.id]?.name ?? '') === normalizedName,
   );
-  return exactRecord ? toExerciseGuide(exactRecord, name) : getFallbackGuide(name, family);
+  return exactRecord
+    ? withSavedFamily(toExerciseGuide(exactRecord, name), family)
+    : getFallbackGuide(name, family);
 }
 
 export function matchesExerciseGuide(guide: ExerciseGuide, query: string): boolean {
@@ -368,15 +436,47 @@ export function getGuideMetaLabel(guide: ExerciseGuide): string {
   return guide.family === 'stretch' ? 'Stretch guide' : 'Saved workout';
 }
 
+function fetchExerciseRecords(url: string): Promise<FreeExerciseRecord[]> {
+  return fetch(url).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Exercise library returned ${response.status}`);
+    }
+    return response.json() as Promise<FreeExerciseRecord[]>;
+  });
+}
+
+let stretchExerciseLibraryPromise: Promise<FreeExerciseRecord[]> | undefined;
+let strengthExerciseLibraryPromise: Promise<FreeExerciseRecord[]> | undefined;
+
+export function loadStretchExerciseLibrary(): Promise<FreeExerciseRecord[]> {
+  if (!stretchExerciseLibraryPromise) {
+    stretchExerciseLibraryPromise = fetchExerciseRecords(STRETCH_EXERCISE_DB_URL).catch((error) => {
+      stretchExerciseLibraryPromise = undefined;
+      throw error;
+    });
+  }
+
+  return stretchExerciseLibraryPromise;
+}
+
+export function loadStrengthExerciseLibrary(): Promise<FreeExerciseRecord[]> {
+  if (!strengthExerciseLibraryPromise) {
+    strengthExerciseLibraryPromise = fetchExerciseRecords(STRENGTH_EXERCISE_DB_URL).catch((error) => {
+      strengthExerciseLibraryPromise = undefined;
+      throw error;
+    });
+  }
+
+  return strengthExerciseLibraryPromise;
+}
+
 export function loadFreeExerciseLibrary(): Promise<FreeExerciseRecord[]> {
   if (!freeExerciseLibraryPromise) {
-    freeExerciseLibraryPromise = fetch(FREE_EXERCISE_DB_URL)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Exercise library returned ${response.status}`);
-        }
-        return response.json() as Promise<FreeExerciseRecord[]>;
-      })
+    freeExerciseLibraryPromise = Promise.all([
+      loadStretchExerciseLibrary(),
+      loadStrengthExerciseLibrary(),
+    ])
+      .then(([stretch, strength]) => [...stretch, ...strength])
       .catch((error) => {
         freeExerciseLibraryPromise = undefined;
         throw error;
@@ -463,6 +563,24 @@ export function filterExerciseGuides(guides: ExerciseGuide[], filters: GuideFilt
         || (filters.equipment === 'equipment' && !bodyOnly && !support))
       && matchesExerciseGuide(guide, filters.query);
   });
+}
+
+export function recordsForDiscovery(
+  library: FreeExerciseRecord[],
+  discipline: 'all' | ExerciseDiscipline,
+): FreeExerciseRecord[] {
+  if (discipline === 'all') {
+    return library;
+  }
+
+  const coachedStretch = new Set(Object.keys(STRETCH_COACHING));
+  if (discipline === 'stretch') {
+    return library.filter((record) => record.category === 'stretching' || coachedStretch.has(record.id));
+  }
+
+  return library.filter((record) =>
+    (record.category !== 'stretching' || STRENGTH_RECORDS.has(record.id)) && !coachedStretch.has(record.id),
+  );
 }
 
 export function buildDiscoveryGuides(library: FreeExerciseRecord[]): ExerciseGuide[] {

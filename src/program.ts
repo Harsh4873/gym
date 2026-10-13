@@ -116,6 +116,60 @@ export function getWorkoutSectionOrder(exercise: {
   return exercise.blockOrder ?? exercise.workoutBlock ?? 1;
 }
 
+/**
+ * Session order follows the stored list. Finished work sinks inside its own
+ * section, so a completed morning stretch stays under that heading.
+ */
+export function orderExercisesForSession(exercises: Exercise[], finishedIds: ReadonlySet<string>): Exercise[] {
+  const sections: Exercise[][] = [];
+  for (const exercise of exercises) {
+    const section = sections[sections.length - 1];
+    const lead = section?.[0];
+    if (section && lead && getWorkoutSectionKey(exercise) === getWorkoutSectionKey(lead)) {
+      section.push(exercise);
+    } else {
+      sections.push([exercise]);
+    }
+  }
+
+  return sections.flatMap((section) => {
+    const pending: Exercise[] = [];
+    const finished: Exercise[] = [];
+    for (const exercise of section) {
+      if (finishedIds.has(exercise.id)) finished.push(exercise);
+      else pending.push(exercise);
+    }
+    return [...pending, ...finished];
+  });
+}
+
+/** An exercise added at the end of a day joins that day's last block, not Morning Stretch. */
+export function sectionFieldsForAddedExercise(
+  dayExercises: Exercise[],
+  kind: ExerciseKind,
+): Pick<Exercise, 'workoutBlock' | 'workoutLabel' | 'blockOrder'> {
+  const last = dayExercises[dayExercises.length - 1];
+  if (!last) return {};
+
+  if (last.workoutLabel === 'Morning Stretch' && kind !== 'stretch') {
+    return {
+      workoutBlock: last.workoutBlock ?? 1,
+      workoutLabel: 'Strength',
+      blockOrder: getWorkoutSectionOrder(last) + 1,
+    };
+  }
+
+  if (!last.workoutLabel && last.blockOrder === undefined && last.workoutBlock === undefined) {
+    return {};
+  }
+
+  return {
+    ...(last.workoutBlock ? { workoutBlock: last.workoutBlock } : {}),
+    ...(last.workoutLabel ? { workoutLabel: last.workoutLabel } : {}),
+    blockOrder: getWorkoutSectionOrder(last),
+  };
+}
+
 /** Apply the morning schedule to older snapshots without replacing their exercises. */
 export function moveStretchToMorning(exercises: Exercise[]): Exercise[] {
   const stretches = exercises.filter((exercise) => exercise.workoutLabel === 'Stretch');

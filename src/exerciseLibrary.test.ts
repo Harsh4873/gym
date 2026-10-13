@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import records from '../public/data/exercises.json';
+import stretchCatalog from '../public/data/exercises-stretch.json';
+import strengthCatalog from '../public/data/exercises-strength.json';
 import {
   buildDiscoveryGuides,
   filterExerciseGuides,
   getExerciseGuideFamily,
   getGuideDiscipline,
   matchesExerciseGuide,
+  recordsForDiscovery,
   resolvePersonalExerciseGuide,
   toExerciseGuide,
   getCustomExerciseGuides,
@@ -99,15 +102,37 @@ describe('movement discovery', () => {
 
 describe('catalog and photo integrity', () => {
   it('gives every starter guide a real source record, two local photos, and complete coaching', () => {
-    expect(Object.keys(STRETCH_COACHING)).toHaveLength(28);
+    expect(Object.keys(STRETCH_COACHING)).toHaveLength(29);
     for (const [id, coaching] of Object.entries(STRETCH_COACHING)) {
       expect(record(id), id).toBeDefined();
-      expect(record(id).category).toBe('stretching');
+      expect(record(id).category).toBe(id === 'Butt_Lift_Bridge' ? 'strength' : 'stretching');
+      expect(guide(id).family).toBe('stretch');
+      expect(guide(id).coaching?.instructions[0]).toBeTruthy();
       expect(guide(id).images).toHaveLength(2);
       expect(coaching.instructions.length).toBeGreaterThanOrEqual(3);
       for (const field of ['dose', 'feel', 'avoid', 'easier'] as const)
         expect(coaching[field].length).toBeGreaterThan(10);
     }
+  });
+
+  it('ships every catalog photograph locally and can load stretch without the strength file', () => {
+    const stretch = stretchCatalog as FreeExerciseRecord[];
+    const strength = strengthCatalog as FreeExerciseRecord[];
+    expect(stretch.length + strength.length).toBe(library.length);
+    expect(new Set([...stretch, ...strength].map((item) => item.id)).size).toBe(library.length);
+    expect(stretch.some((item) => item.id === 'Butt_Lift_Bridge')).toBe(true);
+    expect(strength.some((item) => item.id === 'Butt_Lift_Bridge')).toBe(false);
+    expect(recordsForDiscovery(strength, 'stretch')).toEqual([]);
+    expect(recordsForDiscovery(library, 'strength').some((item) => item.id === 'Dumbbell_Bench_Press')).toBe(true);
+    expect(recordsForDiscovery(library, 'strength').some((item) => item.id === 'Butt_Lift_Bridge')).toBe(false);
+    for (const item of library) {
+      for (const image of item.images) {
+        expect(existsSync(resolve('public/exercises/library', image)), image).toBe(true);
+      }
+    }
+    const bench = toExerciseGuide(record('Dumbbell_Bench_Press'));
+    expect(bench.images.every((image) => image.includes('/exercises/library/') && !image.startsWith('https:'))).toBe(true);
+    expect(readFileSync(resolve('public/exercises/library', 'Dumbbell_Bench_Press/0.jpg')).subarray(0, 2).toString('hex')).toBe('ffd8');
   });
 
   it('ships every stretch source photograph locally as a valid JPEG', () => {
@@ -138,7 +163,7 @@ describe('catalog and photo integrity', () => {
 });
 
 describe('supplemental stretches and muscle selection', () => {
-  it('adds 24 coached stretches with local photos and gives custom PNGs priority', () => {
+  it('adds 24 coached stretches with local photos and gives custom photos priority', () => {
     expect(stretchAdditions).toHaveLength(24);
     expect(stretchAdditions.filter((entry) => entry.photoRecordId)).toHaveLength(24);
     const custom = getCustomExerciseGuides();
@@ -156,7 +181,7 @@ describe('supplemental stretches and muscle selection', () => {
       const usesCustomPhoto = customPhotoIds.includes(entry.id);
       expect(result.images, entry.id).toHaveLength(usesCustomPhoto ? 1 : 2);
       if (usesCustomPhoto) {
-        expect(result.images[0]).toBe(`${import.meta.env.BASE_URL}exercises/${entry.id}.png`);
+        expect(result.images[0]).toBe(`${import.meta.env.BASE_URL}exercises/${entry.id}.jpg`);
       } else {
         expect(result.images).toEqual([0, 1].map((index) =>
           `${import.meta.env.BASE_URL}exercises/library/${entry.photoRecordId}/${index}.jpg`));
@@ -166,14 +191,15 @@ describe('supplemental stretches and muscle selection', () => {
         expect(existsSync(filename), image).toBe(true);
         const bytes = readFileSync(filename);
         expect(bytes.length, image).toBeGreaterThan(1000);
-        expect(bytes.subarray(0, usesCustomPhoto ? 8 : 2).toString('hex'), image).toBe(
-          usesCustomPhoto ? '89504e470d0a1a0a' : 'ffd8',
-        );
+        expect(bytes.subarray(0, 2).toString('hex'), image).toBe('ffd8');
+        if (usesCustomPhoto) {
+          expect(bytes.length, image).toBeLessThan(300_000);
+        }
       }
       expect(getGuideRegions(result).length, entry.name).toBeGreaterThan(0);
     }
     expect(new Set(custom.map((item) => item.id)).size).toBe(custom.length);
-    expect(custom.find((item) => item.id === 'custom:cat-cow')?.images).toEqual([`${import.meta.env.BASE_URL}exercises/cat-cow.png`]);
+    expect(custom.find((item) => item.id === 'custom:cat-cow')?.images).toEqual([`${import.meta.env.BASE_URL}exercises/cat-cow.jpg`]);
   });
 
   it('shows held and active supplemental movements together as stretches', () => {
@@ -227,5 +253,47 @@ describe('supplemental stretches and muscle selection', () => {
       'custom:standing-figure-four',
     );
     expect(resolvePersonalExerciseGuide('Lat Stretch', library).id).toBe('custom:kneeling-lat');
+  });
+
+  it('points programmed names at the photographed movement', () => {
+    const bridge = resolvePersonalExerciseGuide('Glute Bridge', library, 'stretch');
+    expect(bridge.recordId).toBe('Butt_Lift_Bridge');
+    expect(bridge.family).toBe('stretch');
+    expect(bridge.images).toHaveLength(2);
+    expect(bridge.images.every((image) => image.includes('/exercises/library/Butt_Lift_Bridge/'))).toBe(true);
+    expect(bridge.images.every((image) => !image.startsWith('https:'))).toBe(true);
+    expect(bridge.coaching?.instructions.some((step) => step.includes('squeeze your glutes'))).toBe(true);
+    expect(bridge.instructions.join(' ')).not.toContain('Lie flat on the floor');
+    for (const image of bridge.images) {
+      const filename = resolve('public', image.replace(import.meta.env.BASE_URL, ''));
+      const bytes = readFileSync(filename);
+      expect(bytes.subarray(0, 2).toString('hex'), image).toBe('ffd8');
+    }
+
+    const raise = resolvePersonalExerciseGuide('Tibialis Raise', library, 'strength');
+    expect(raise.name).toBe('Tibialis Raise');
+    expect(raise.family).toBe('strength');
+    expect(raise.recordId).toBeUndefined();
+    expect(resolvePersonalExerciseGuide('Tibialis Stretch', library, 'stretch').recordId).toBe(
+      'Posterior_Tibialis_Stretch',
+    );
+
+    const routine = resolvePersonalExerciseGuide('10 min ab workout', library, 'strength');
+    expect(routine.recordId).toBeUndefined();
+    expect(routine.images).toEqual([]);
+    expect(resolvePersonalExerciseGuide('Nippard Superset', library).recordId).toBeUndefined();
+
+    const back = resolvePersonalExerciseGuide('Back Extension + Incline Sit-Ups', library, 'strength');
+    expect(back.segments?.map((segment) => segment.name)).toEqual([
+      'Hyperextensions (Back Extensions)',
+      'Sit-Up',
+    ]);
+    expect(back.images.some((image) => image.includes('Hyperextensions_Back_Extensions/0.jpg'))).toBe(true);
+    expect(back.images.some((image) => image.includes('Sit-Up/0.jpg'))).toBe(true);
+
+    const curls = resolvePersonalExerciseGuide('EZ Bar Curl + Concentration Curl', library, 'strength');
+    expect(curls.segments?.map((segment) => segment.name)).toEqual(['EZ-Bar Curl', 'Concentration Curls']);
+    expect(curls.images.some((image) => image.includes('EZ-Bar_Curl/0.jpg'))).toBe(true);
+    expect(curls.images.some((image) => image.includes('Concentration_Curls/0.jpg'))).toBe(true);
   });
 });

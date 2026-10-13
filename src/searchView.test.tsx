@@ -2,7 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ExerciseGuideDialog, SearchView } from './App';
 import { PROGRAM } from './program';
-import { BODY_REGIONS, getCustomExerciseGuides } from './exerciseLibrary';
+import { BODY_REGIONS, getCustomExerciseGuides, resolvePersonalExerciseGuide, type FreeExerciseRecord } from './exerciseLibrary';
+import records from '../public/data/exercises.json';
 
 // Source-render checks only: the repository does not permit browser previews.
 const markup = () => renderToStaticMarkup(<SearchView program={PROGRAM} logs={{}} todayKey="2026-09-14" />);
@@ -47,7 +48,7 @@ describe('stretch guide artwork', () => {
   it('shows a dedicated 90/90 photo without diagram chrome or incorrect library credit', () => {
     const html = dialog('ninety-ninety-front');
     expect(html).toContain('exercise-guide-images single');
-    expect(html).toContain('exercises/ninety-ninety-front.png');
+    expect(html).toContain('exercises/ninety-ninety-front.jpg');
     expect(html).not.toContain('Visual guide coming soon');
     expect(html).toContain('The outer hip of the front leg.');
     expect(html).toContain('<img');
@@ -67,6 +68,30 @@ describe('stretch guide artwork', () => {
   });
 
   it('keeps the custom Cat-Cow photo guide', () => {
-    expect(dialog('cat-cow')).toContain('exercises/cat-cow.png');
+    expect(dialog('cat-cow')).toContain('exercises/cat-cow.jpg');
+  });
+
+  it('shows both photographed halves of a combined movement and the stretch safety line', () => {
+    const library = records as FreeExerciseRecord[];
+    const combined = resolvePersonalExerciseGuide('Back Extension + Incline Sit-Ups', library, 'strength');
+    const combinedHtml = renderToStaticMarkup(
+      <ExerciseGuideDialog guide={combined} saved onClose={() => undefined} />,
+    );
+    expect(combinedHtml).toContain('Hyperextensions (Back Extensions)');
+    expect(combinedHtml).toContain('Sit-Up');
+    expect(combinedHtml).toContain('Hyperextensions_Back_Extensions/0.jpg');
+    expect(combinedHtml).toContain('Sit-Up/1.jpg');
+    expect(combinedHtml).not.toContain('Visual guide coming soon');
+
+    const bridge = resolvePersonalExerciseGuide('Glute Bridge', library, 'stretch');
+    const bridgeHtml = renderToStaticMarkup(
+      <ExerciseGuideDialog guide={bridge} saved onClose={() => undefined} />,
+    );
+    expect(bridgeHtml).toContain('>Stretch<');
+    expect(bridgeHtml).toContain('exercises/library/Butt_Lift_Bridge/0.jpg');
+    expect(bridgeHtml).toContain('Move gently and breathe');
+    expect(bridgeHtml).toContain('squeeze your glutes');
+    expect(bridgeHtml).not.toContain('raw.githubusercontent.com');
+    expect(bridgeHtml).not.toContain('Lie flat on the floor');
   });
 });

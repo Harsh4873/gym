@@ -975,6 +975,8 @@ a:focus-visible {
 .set-row input:focus,
 .notes-grid textarea:focus {
   border-color: var(--color-accent);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
@@ -1706,35 +1708,73 @@ a:focus-visible {
   background: transparent;
 }
 
-.calendar-cell.completed i,
+.calendar-cell i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1.5px var(--color-border-strong);
+}
+
 .legend-item.completed i {
   background: var(--color-accent);
 }
 
-.calendar-cell.partial i,
+.calendar-cell.completed i {
+  background: var(--color-accent);
+  box-shadow: none;
+}
+
 .legend-item.partial i {
   background: var(--chart-4);
 }
 
-.calendar-cell.planned i,
+.calendar-cell.partial i {
+  background: linear-gradient(90deg, var(--chart-4) 50%, transparent 50%);
+  box-shadow: inset 0 0 0 1.5px var(--chart-4);
+}
+
 .legend-item.planned i {
   background: var(--chart-5);
 }
 
-.calendar-cell.skipped i,
+.calendar-cell.planned i {
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--chart-5);
+}
+
 .legend-item.skipped i {
   background: var(--color-text-tertiary);
 }
 
-.calendar-cell.unlogged i,
+.calendar-cell.skipped i {
+  height: 3px;
+  border-radius: 0;
+  background: var(--color-text-secondary);
+  box-shadow: none;
+}
+
 .legend-item.unlogged i {
   border: 1px solid var(--color-border-strong);
   background: transparent;
 }
 
-.calendar-cell.future i,
+.calendar-cell.unlogged i {
+  background: transparent;
+}
+
 .legend-item.future i {
   background: var(--chart-2);
+}
+
+.calendar-cell.future i {
+  width: 0;
+  height: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border-right: 5px solid transparent;
+  border-bottom: 9px solid var(--chart-2);
+  border-left: 5px solid transparent;
 }
 
 .calendar-cell small {
@@ -2391,9 +2431,9 @@ a:focus-visible {
   margin-top: 5px;
   color: var(--color-text-tertiary);
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -2435,7 +2475,7 @@ a:focus-visible {
   border-radius: 0;
   color: var(--color-text-tertiary);
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 760;
   letter-spacing: 0.04em;
   text-align: center;
@@ -2547,6 +2587,12 @@ a:focus-visible {
   border-color: color-mix(in srgb, var(--color-accent) 52%, var(--color-border-strong));
   background: var(--color-surface-hover);
   transform: translateY(-1px);
+}
+
+@media (min-width: 981px) {
+  .settings-shortcut {
+    display: none;
+  }
 }
 
 .app-main {
@@ -3258,6 +3304,18 @@ a:focus-visible {
   object-fit: contain;
 }
 
+.exercise-guide-segment + .exercise-guide-segment {
+  border-top: 1px solid var(--color-border);
+}
+
+.exercise-guide-segment-title {
+  margin: 0;
+  padding: 16px 16px 8px;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
 .exercise-guide-images figcaption {
   position: absolute;
   right: var(--space-3);
@@ -3267,9 +3325,9 @@ a:focus-visible {
   color: #fff;
   background: rgba(16, 19, 17, 0.76);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   backdrop-filter: blur(8px);
 }
@@ -3407,7 +3465,7 @@ a:focus-visible {
   .desktop-nav .tab-button {
     gap: var(--space-1);
     padding-inline: var(--space-2);
-    font-size: 10px;
+    font-size: 12px;
   }
 
   .sync-status.compact {
@@ -4405,9 +4463,8 @@ a:focus-visible {
   }
 
   .calendar-shell {
-    grid-template-columns: repeat(7, minmax(44px, 1fr));
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    overflow-x: hidden;
   }
 
   .calendar-label {
@@ -4421,7 +4478,9 @@ a:focus-visible {
   }
 
   .calendar-cell small {
-    display: none;
+    display: block;
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .calendar-cell.today span {
@@ -4482,12 +4541,12 @@ a:focus-visible {
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
   }
 
   .program-day-tabs::-webkit-scrollbar {
-    display: none;
+    height: 8px;
   }
 
   .program-day-button {
@@ -4833,7 +4892,7 @@ a:focus-visible {
 }
 .exercise-discipline-tabs button[aria-pressed='true'] {
   background: var(--color-accent);
-  color: #151916;
+  color: var(--color-text-on-accent);
   border-color: var(--color-accent);
 }
 .exercise-filter-explainer {
@@ -5111,7 +5170,7 @@ a:focus-visible {
   }
   .exercise-discipline-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
   }
   .exercise-discipline-tabs button {
@@ -5199,7 +5258,7 @@ a:focus-visible {
 }
 .exercise-discipline-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .exercise-discipline-tabs button {
   min-width: 0;
@@ -5499,8 +5558,8 @@ a:focus-visible {
     object-fit: contain;
   }
   .exercise-guide-images figcaption {
-    font-size: 8px;
-    padding: 4px 6px;
+    font-size: 12px;
+    padding: 4px 8px;
   }
   .exercise-guide-content {
     gap: 20px;
@@ -5531,5 +5590,60 @@ a:focus-visible {
   }
   .exercise-muscle-picker button {
     min-height: 44px;
+  }
+}
+
+/* Later max-width rules above put a side thumbnail and a two-up photo pair back on small screens. */
+@media (max-width: 720px) {
+  .exercise-guide-images {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exercise-guide-images.single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .exercise-guide-images figcaption {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+}
+
+@media (max-width: 520px) {
+  .exercise-library-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .exercise-card-art {
+    align-self: auto;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 16 / 10;
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .exercise-card-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .exercise-card-copy {
+    min-height: 0;
+  }
+
+  .exercise-family-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .exercise-family-filters button {
+    min-width: 0;
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 13px;
   }
 }

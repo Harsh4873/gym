@@ -46,6 +46,8 @@ export interface ExerciseSet {
   weightMode: WeightMode;
   pounds: string;
   reps: string;
+  /** Stretch holds. Older logs kept this number in `reps`. */
+  holdSeconds?: string;
 }
 
 export interface ExerciseDetail {
