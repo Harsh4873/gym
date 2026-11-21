@@ -191,14 +191,68 @@ function getStoredTheme(): ThemeMode {
   }
 }
 
-function getTabFromHash(): TabId {
-  const rawHash = window.location.hash.slice(1);
-  if (rawHash === 'today') {
-    return 'logbook';
+export function parseAppHash(hash: string): { tab: TabId; searchQuery: string } {
+  const raw = (hash.startsWith('#') ? hash.slice(1) : hash).trim();
+  const queryStart = raw.indexOf('?');
+  const path = (queryStart === -1 ? raw : raw.slice(0, queryStart)).trim();
+  const queryString = queryStart === -1 ? '' : raw.slice(queryStart + 1);
+  const normalizedPath = path === 'today' ? 'logbook' : path;
+  const tab = TABS.some((item) => item.id === normalizedPath) ? (normalizedPath as TabId) : 'logbook';
+  if (tab !== 'search' || !queryString) {
+    return { tab, searchQuery: '' };
   }
 
-  const hash = rawHash as TabId;
-  return TABS.some((tab) => tab.id === hash) ? hash : 'logbook';
+  return { tab, searchQuery: (new URLSearchParams(queryString).get('q') ?? '').trim() };
+}
+
+function getTabFromHash(): TabId {
+  return parseAppHash(window.location.hash).tab;
+}
+
+export function exerciseSearchHash(name: string): string {
+  const query = name.trim();
+  return query ? `#search?q=${encodeURIComponent(query)}` : '#search';
+}
+
+export function guideForPrefill(name: string, library: FreeExerciseRecord[] = []): ExerciseGuide | null {
+  const query = name.trim();
+  if (!query) {
+    return null;
+  }
+
+  const guide = resolvePersonalExerciseGuide(query, library);
+  return guide.images.length > 0 ? guide : null;
+}
+
+export function isolateExerciseRowActivation(event: { stopPropagation: () => void }): void {
+  event.stopPropagation();
+}
+
+export function ExerciseVisualButton({
+  name,
+  onOpen,
+}: {
+  name: string;
+  onOpen: (name: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="exercise-visual-button"
+      aria-label={`View guide for ${name}`}
+      onClick={(event) => {
+        isolateExerciseRowActivation(event);
+        onOpen(name);
+      }}
+      onPointerDown={isolateExerciseRowActivation}
+      onMouseDown={isolateExerciseRowActivation}
+      onKeyDown={isolateExerciseRowActivation}
+      onKeyUp={isolateExerciseRowActivation}
+    >
+      <Search aria-hidden="true" />
+      <span>Guide</span>
+    </button>
+  );
 }
 
 interface RestTimerState {
@@ -1130,7 +1184,7 @@ function WorkoutBlockHeading({
   );
 }
 
-function WorkoutPanel({
+export function WorkoutPanel({
   dateKey,
   exercises,
   log,
@@ -1143,6 +1197,7 @@ function WorkoutPanel({
   canRenameTemplate,
   onUpdate,
   onClear,
+  onOpenExerciseGuide,
 }: {
   dateKey: string;
   exercises: Exercise[];
@@ -1156,6 +1211,7 @@ function WorkoutPanel({
   canRenameTemplate: (exerciseId: string) => boolean;
   onUpdate: (updater: (log: WorkoutLog) => WorkoutLog) => void;
   onClear: () => void;
+  onOpenExerciseGuide: (name: string) => void;
 }) {
   const [firstSupersetId, setFirstSupersetId] = useState(exercises[0]?.id ?? '');
   const [secondSupersetId, setSecondSupersetId] = useState(exercises[1]?.id ?? '');
@@ -2116,34 +2172,37 @@ function WorkoutPanel({
                             <div className="exercise-title-row">
                               <div>
                                 <span className="exercise-name-line">
-                                  <strong>{exercise.name}</strong>
-                                  {exercise.extra ? <ExtraChip /> : null}
-                                  <button
-                                    className="rename-exercise-button"
-                                    type="button"
-                                    aria-label={`Rename ${exercise.name}`}
-                                    onClick={() => beginRenameExercise(exercise)}
-                                  >
-                                    <Pencil aria-hidden="true" />
-                                  </button>
-                                  {!checklistMode && (
-                                  <button
-                                    className="exercise-collapse-button"
-                                    type="button"
-                                    aria-label={`${collapsed ? 'Expand' : 'Minimize'} ${exercise.name}`}
-                                    aria-expanded={!collapsed}
-                                    onClick={() =>
-                                      setCollapsedExerciseIds((current) =>
-                                        collapsed
-                                          ? current.filter((id) => id !== exercise.id)
-                                          : uniqueList([...current, exercise.id]),
-                                      )
-                                    }
-                                  >
-                                    {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
-                                    <span>{collapsed ? 'Expand' : 'Minimize'}</span>
-                                  </button>
-                                  )}
+                                  <span className="exercise-name-text">
+                                    <strong>{exercise.name}</strong>
+                                    {exercise.extra ? <ExtraChip /> : null}
+                                    <button
+                                      className="rename-exercise-button"
+                                      type="button"
+                                      aria-label={`Rename ${exercise.name}`}
+                                      onClick={() => beginRenameExercise(exercise)}
+                                    >
+                                      <Pencil aria-hidden="true" />
+                                    </button>
+                                    {!checklistMode && (
+                                    <button
+                                      className="exercise-collapse-button"
+                                      type="button"
+                                      aria-label={`${collapsed ? 'Expand' : 'Minimize'} ${exercise.name}`}
+                                      aria-expanded={!collapsed}
+                                      onClick={() =>
+                                        setCollapsedExerciseIds((current) =>
+                                          collapsed
+                                            ? current.filter((id) => id !== exercise.id)
+                                            : uniqueList([...current, exercise.id]),
+                                        )
+                                      }
+                                    >
+                                      {collapsed ? <ChevronRight aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+                                      <span>{collapsed ? 'Expand' : 'Minimize'}</span>
+                                    </button>
+                                    )}
+                                  </span>
+                                  <ExerciseVisualButton name={exercise.name} onOpen={onOpenExerciseGuide} />
                                 </span>
                                 {!collapsed && !checklistMode && (
                                   <>
@@ -2657,6 +2716,7 @@ function LogbookView({
   canRenameTemplate,
   updateLog,
   clearLog,
+  onOpenExerciseGuide,
 }: {
   logs: LogsByDate;
   preferences: Preferences;
@@ -2670,6 +2730,7 @@ function LogbookView({
   canRenameTemplate: CanRenameTemplateForDate;
   updateLog: (dateKey: string, updater: (log: WorkoutLog) => WorkoutLog) => void;
   clearLog: (dateKey: string) => void;
+  onOpenExerciseGuide: (name: string) => void;
 }) {
   const recentEntries = Object.values(logs)
     .filter((log) => hasTrainingActivity(log) || hasPlanActivity(log))
@@ -2752,6 +2813,7 @@ function LogbookView({
           canRenameTemplate={(exerciseId) => canRenameTemplate(selectedDate, exerciseId)}
           onUpdate={(updater) => updateLog(selectedDate, updater)}
           onClear={() => clearLog(selectedDate)}
+          onOpenExerciseGuide={onOpenExerciseGuide}
         />
       </div>
 
@@ -3204,17 +3266,20 @@ export function SearchView({
   program,
   logs,
   todayKey,
+  initialQuery = '',
 }: {
   program: ProgramByDay;
   logs: LogsByDate;
   todayKey: string;
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState('');
-  const [discipline, setDiscipline] = useState<'all' | ExerciseDiscipline>('stretch');
+  const prefillQuery = initialQuery.trim();
+  const [query, setQuery] = useState(prefillQuery);
+  const [discipline, setDiscipline] = useState<'all' | ExerciseDiscipline>(prefillQuery ? 'all' : 'stretch');
   const [region, setRegion] = useState<'all' | BodyRegion>('all');
   const [equipment, setEquipment] = useState<GuideFilters['equipment']>('all');
   const [beginner, setBeginner] = useState(false);
-  const [scope, setScope] = useState<'library' | 'saved'>('library');
+  const [scope, setScope] = useState<'library' | 'saved'>(prefillQuery ? 'saved' : 'library');
   const [selectedDay, setSelectedDay] = useState<'all' | SessionId>('all');
   const [visibleCount, setVisibleCount] = useState(18);
   const [library, setLibrary] = useState<FreeExerciseRecord[]>([]);
@@ -3222,7 +3287,11 @@ export function SearchView({
   const [strengthCatalogReady, setStrengthCatalogReady] = useState(false);
   const [strengthCatalogError, setStrengthCatalogError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [selectedGuide, setSelectedGuide] = useState<{ guide: ExerciseGuide; saved: boolean } | null>(null);
+  const [selectedGuide, setSelectedGuide] = useState<{ guide: ExerciseGuide; saved: boolean } | null>(() => {
+    const guide = guideForPrefill(prefillQuery);
+    return guide ? { guide, saved: true } : null;
+  });
+  const openedPrefill = useRef<string | null>(guideForPrefill(prefillQuery) ? prefillQuery : null);
 
   useEffect(() => {
     let cancelled = false;
@@ -3318,6 +3387,27 @@ export function SearchView({
     () => filterExerciseGuides(sourceGuides, { query, discipline, region, equipment, beginner }),
     [sourceGuides, query, discipline, region, equipment, beginner],
   );
+
+  useEffect(() => {
+    if (!prefillQuery || openedPrefill.current === prefillQuery) {
+      return;
+    }
+
+    const guide = guideForPrefill(prefillQuery, library);
+    if (guide) {
+      openedPrefill.current = prefillQuery;
+      setSelectedGuide({ guide, saved: isSaved(guide) });
+      return;
+    }
+
+    const librarySettled =
+      libraryStatus === 'error'
+      || (libraryStatus === 'ready' && (strengthCatalogReady || strengthCatalogError));
+    if (librarySettled) {
+      openedPrefill.current = prefillQuery;
+    }
+  }, [prefillQuery, library, libraryStatus, strengthCatalogReady, strengthCatalogError, allSavedGuides]);
+
   const todaySession = getSessionForDate(todayKey);
   const resetFilters = () => {
     setQuery('');
@@ -4198,6 +4288,7 @@ function SettingsView({
 export default function App() {
   const [todayKey, setTodayKey] = useState(() => getTodayDateKey());
   const [activeTab, setActiveTab] = useState<TabId>(() => getTabFromHash());
+  const [searchQuery, setSearchQuery] = useState(() => parseAppHash(window.location.hash).searchQuery);
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [program, setProgram] = useState<ProgramByDay>(() => loadProgram());
   const [logs, setLogs] = useState<LogsByDate>(() => loadLogsWithCurrentPlan(todayKey, program));
@@ -4213,7 +4304,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const syncHash = () => setActiveTab(getTabFromHash());
+    const syncHash = () => {
+      const next = parseAppHash(window.location.hash);
+      setActiveTab(next.tab);
+      setSearchQuery(next.searchQuery);
+    };
     window.addEventListener('hashchange', syncHash);
     return () => window.removeEventListener('hashchange', syncHash);
   }, []);
@@ -4256,9 +4351,20 @@ export default function App() {
 
   const navigate = (tab: TabId) => {
     setActiveTab(tab);
+    setSearchQuery('');
     const nextHash = `#${tab}`;
     if (window.location.hash !== nextHash) {
       window.location.hash = tab;
+    }
+  };
+
+  const openExerciseGuide = (name: string) => {
+    const query = name.trim();
+    const nextHash = exerciseSearchHash(query);
+    setSearchQuery(query);
+    setActiveTab('search');
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
     }
   };
 
@@ -4556,9 +4662,18 @@ export default function App() {
             canRenameTemplate={canRenameTemplateForDate}
             updateLog={updateLog}
             clearLog={clearLog}
+            onOpenExerciseGuide={openExerciseGuide}
           />
         )}
-        {activeTab === 'search' && <SearchView program={program} logs={logs} todayKey={todayKey} />}
+        {activeTab === 'search' && (
+          <SearchView
+            key={searchQuery}
+            program={program}
+            logs={logs}
+            todayKey={todayKey}
+            initialQuery={searchQuery}
+          />
+        )}
         {activeTab === 'settings' && (
           <SettingsView
             program={program}

@@ -1258,9 +1258,54 @@ a:focus-visible {
 
 .exercise-name-line {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+  width: 100%;
+}
+
+.exercise-name-text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.exercise-name-text > strong {
+  min-width: 0;
+}
+
+.exercise-visual-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-tertiary);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.exercise-visual-button:hover {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  background: var(--color-accent-tint);
+}
+
+.exercise-visual-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .rename-exercise-button {
@@ -3691,6 +3736,11 @@ a:focus-visible {
     padding-inline: 8px;
   }
 
+  .exercise-visual-button {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
   body:has(.workout-stage :is(input, textarea, select):focus) .session-finish-bar,
   body:has(.workout-stage :is(input, textarea, select):focus) .bottom-tabs {
     display: none;
@@ -4817,6 +4867,9 @@ a:focus-visible {
     padding-inline: 8px;
   }
 
+  .exercise-visual-button span {
+    display: none;
+  }
 }
 
 @keyframes complete-pulse {
