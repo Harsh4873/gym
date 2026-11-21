@@ -1610,6 +1610,23 @@ a:focus-visible {
   font-weight: 500;
 }
 
+.week-day-head small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.program-notes {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .week-day ul {
   display: grid;
   gap: var(--space-2);
@@ -2840,7 +2857,7 @@ a:focus-visible {
 
 .exercise-day-options {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   gap: 6px;
 }
 

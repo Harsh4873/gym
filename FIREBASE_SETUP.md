@@ -7,7 +7,7 @@ Gym continues to work from local browser storage when Firebase is unavailable or
 1. Create or select a Firebase project and register a Web app.
 2. Create a Cloud Firestore database in Native mode.
 3. Enable the Google provider in Firebase Authentication and choose a support email.
-4. Add the GitHub Pages hostname (`harsh4873.github.io`, unless the Pages host changes) to Authentication's authorized domains.
+4. Add the owner's GitHub Pages hostname to Authentication's authorized domains.
 5. Deploy `firestore.rules` to the same project. `firebase.json` intentionally configures Firestore only; it does not move hosting away from GitHub Pages.
 
 With the Firebase CLI authenticated and pointed at the project, the rules-only deploy is:

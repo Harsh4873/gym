@@ -7,6 +7,20 @@ export type Weekday =
   | 'Saturday'
   | 'Sunday';
 
+/** One day in the 8-day CBL/SARMS cycle. Calendar weekdays are not sessions. */
+export type SessionId =
+  | 'CBL R1'
+  | 'SARMS R1'
+  | 'CBL R2'
+  | 'SARMS R2'
+  | 'CBL R3'
+  | 'SARMS R3'
+  | 'CBL R4'
+  | 'SARMS R4';
+
+/** Live program days are sessions. Historical log snapshots may still name a weekday. */
+export type ProgramDay = SessionId | Weekday;
+
 export type TabId = 'week' | 'calendar' | 'milestones' | 'logbook' | 'search' | 'settings';
 
 export type ThemeMode = 'dark' | 'light';
@@ -26,7 +40,7 @@ export interface ExerciseTarget {
 
 export interface Exercise {
   id: string;
-  day: Weekday;
+  day: ProgramDay;
   name: string;
   kind: ExerciseKind;
   target: ExerciseTarget;
@@ -89,6 +103,6 @@ export interface GymBackup {
 
 export type LogsByDate = Record<string, WorkoutLog>;
 
-export type ExerciseOrderByDay = Record<Weekday, string[]>;
+export type ExerciseOrderByDay = Record<SessionId, string[]>;
 
-export type ProgramByDay = Record<Weekday, Exercise[]>;
+export type ProgramByDay = Record<SessionId, Exercise[]>;

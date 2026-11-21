@@ -1,10 +1,11 @@
 # Gym
 
-Gym is a private, local-first strength-training log published at `harsh.bet/gym/`. This repository is the standalone source for the app and its GitHub Pages deployment.
+Gym is a private, local-first strength-training log published at `harsh.bet/gym/`. This repository is the standalone source for the app and its GitHub Pages deployment. The shipped program is the owner's 8-day CBL/SARMS cycle.
 
 ## Product model
 
-- Reusable programs built from exercises, sets, reps, and supersets
+- An 8-day CBL/SARMS rotation (no rest days), anchored to a calendar date in America/Chicago rather than to weekdays
+- Reusable session templates built from exercises, sets, reps, and supersets
 - Fast per-set logging with weight, reps, and rest during a live session
 - Calendar of past sessions with weekly volume and progress trends
 - Personal records and milestone tracking per exercise

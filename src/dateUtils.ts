@@ -1,4 +1,4 @@
-import { PROGRAM, WEEK_DAYS } from './program';
+import { getSessionForDate, PROGRAM, PROGRAM_TIME_ZONE, WEEK_DAYS } from './program';
 import type { Exercise, Weekday } from './types';
 
 export function toDateKey(date: Date): string {
@@ -6,6 +6,19 @@ export function toDateKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+/** Civil date in America/Chicago, used as the app's 'today' for the 8-day cycle. */
+export function getTodayDateKey(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: PROGRAM_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+  return `${value('year')}-${value('month')}-${value('day')}`;
 }
 
 export function parseDateKey(dateKey: string): Date {
@@ -39,7 +52,7 @@ export function getWeekday(date: Date): Weekday {
 }
 
 export function getExercisesForDate(dateKey: string): Exercise[] {
-  return PROGRAM[getWeekday(parseDateKey(dateKey))];
+  return PROGRAM[getSessionForDate(dateKey)];
 }
 
 export function formatDateLabel(dateKey: string): string {

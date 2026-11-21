@@ -1,7 +1,10 @@
 import {
   createDefaultExerciseTarget,
   inferExerciseKind,
+  isProgramDay,
   isRetiredCourtSport,
+  programDaySlug,
+  SESSION_IDS,
   SHIPPED_DEFAULT_EXERCISE_NAMES,
   PROGRAM,
   WEEK_DAYS,
@@ -18,7 +21,8 @@ import type {
   LogsByDate,
   Preferences,
   ProgramByDay,
-  Weekday,
+  ProgramDay,
+  SessionId,
   WeightMode,
   WorkoutLog,
 } from './types';
@@ -28,7 +32,7 @@ export const EXERCISE_ORDER_STORAGE_KEY = 'harsh-gym-exercise-order-v1';
 export const PROGRAM_STORAGE_KEY = 'harsh-gym-program-v1';
 export const PREFERENCES_STORAGE_KEY = 'harsh-gym-preferences-v1';
 export const GYM_BACKUP_VERSION = 1 as const;
-const PROGRAM_SCHEMA_VERSION = 17;
+const PROGRAM_SCHEMA_VERSION = 18;
 const PREFERENCES_SCHEMA_VERSION = 1;
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -109,7 +113,7 @@ function isValidExerciseTarget(value: unknown, kind: ExerciseKind | 'mobility'):
 
 type StoredExercise = Omit<Exercise, 'kind'> & { kind: ExerciseKind | 'mobility' };
 
-function isValidExercise(value: unknown, expectedDay?: Weekday): value is StoredExercise {
+function isValidExercise(value: unknown, expectedDay?: ProgramDay): value is StoredExercise {
   if (!isPlainRecord(value)) {
     return false;
   }
@@ -122,7 +126,7 @@ function isValidExercise(value: unknown, expectedDay?: Weekday): value is Stored
     typeof value.name === 'string' &&
     value.name.trim().length > 0 &&
     typeof day === 'string' &&
-    WEEK_DAYS.includes(day as Weekday) &&
+    isProgramDay(day) &&
     (expectedDay === undefined || day === expectedDay) &&
     (kind === 'strength' || kind === 'stretch' || kind === 'mobility') &&
     (value.workoutBlock === undefined || value.workoutBlock === 1 || value.workoutBlock === 2) &&
@@ -289,7 +293,7 @@ function normalizeExerciseTarget(value: unknown, exerciseName: string, kind: Exe
 
 function normalizeExercise(
   value: unknown,
-  fallbackDay: Weekday | undefined,
+  fallbackDay: ProgramDay | undefined,
   fallbackIndex: number,
 ): Exercise | null {
   if (!isPlainRecord(value)) {
@@ -309,8 +313,8 @@ function normalizeExercise(
     return null;
   }
 
-  const storedDay = typeof value.day === 'string' && WEEK_DAYS.includes(value.day as Weekday)
-    ? (value.day as Weekday)
+  const storedDay = typeof value.day === 'string' && isProgramDay(value.day)
+    ? value.day
     : undefined;
   const day = fallbackDay ?? storedDay;
   if (!day) {
@@ -331,7 +335,7 @@ function normalizeExercise(
   const extra = value.extra === true;
 
   return {
-    id: typeof value.id === 'string' && value.id.trim() ? value.id : `${day.toLowerCase()}-custom-${fallbackIndex + 1}`,
+    id: typeof value.id === 'string' && value.id.trim() ? value.id : `${programDaySlug(day)}-custom-${fallbackIndex + 1}`,
     day,
     name,
     kind,
@@ -617,13 +621,13 @@ export function normalizeLog(date: string, log?: Partial<WorkoutLog>): WorkoutLo
 }
 
 function getDefaultExerciseOrder(): ExerciseOrderByDay {
-  return WEEK_DAYS.reduce((order, day) => {
+  return SESSION_IDS.reduce((order, day) => {
     order[day] = PROGRAM[day].map((exercise) => exercise.id);
     return order;
   }, {} as ExerciseOrderByDay);
 }
 
-function normalizeDayOrder(day: Weekday, value: unknown): string[] {
+function normalizeDayOrder(day: SessionId, value: unknown): string[] {
   const defaultIds = PROGRAM[day].map((exercise) => exercise.id);
   const validIds = new Set(defaultIds);
   const orderedIds = Array.isArray(value) ? value : [];
@@ -641,7 +645,7 @@ function normalizeDayOrder(day: Weekday, value: unknown): string[] {
 export function normalizeExerciseOrder(value: unknown): ExerciseOrderByDay {
   const source = isPlainRecord(value) ? value : {};
 
-  return WEEK_DAYS.reduce((order, day) => {
+  return SESSION_IDS.reduce((order, day) => {
     order[day] = normalizeDayOrder(day, source[day]);
     return order;
   }, {} as ExerciseOrderByDay);
@@ -677,7 +681,7 @@ export function saveExerciseOrder(order: ExerciseOrderByDay): void {
 }
 
 function getDefaultProgram(): ProgramByDay {
-  return WEEK_DAYS.reduce((program, day) => {
+  return SESSION_IDS.reduce((program, day) => {
     program[day] = PROGRAM[day].map((exercise) => ({
       ...exercise,
       target: { ...exercise.target },
@@ -686,7 +690,7 @@ function getDefaultProgram(): ProgramByDay {
   }, {} as ProgramByDay);
 }
 
-function normalizeProgramExercise(day: Weekday, value: unknown, fallbackIndex: number): ProgramByDay[Weekday][number] | null {
+function normalizeProgramExercise(day: SessionId, value: unknown, fallbackIndex: number): ProgramByDay[SessionId][number] | null {
   return normalizeExercise(value, day, fallbackIndex);
 }
 
@@ -694,7 +698,7 @@ export function normalizeProgram(value: unknown): ProgramByDay {
   const source = isPlainRecord(value) ? value : {};
   const defaultProgram = getDefaultProgram();
 
-  return WEEK_DAYS.reduce((program, day) => {
+  return SESSION_IDS.reduce((program, day) => {
     const sourceExercises = source[day];
 
     if (!Array.isArray(sourceExercises)) {
@@ -705,7 +709,7 @@ export function normalizeProgram(value: unknown): ProgramByDay {
     const seenIds = new Set<string>();
     const exercises = sourceExercises
       .map((exercise, index) => normalizeProgramExercise(day, exercise, index))
-      .filter((exercise): exercise is ProgramByDay[Weekday][number] => {
+      .filter((exercise): exercise is ProgramByDay[SessionId][number] => {
         if (!exercise || seenIds.has(exercise.id)) {
           return false;
         }
@@ -752,7 +756,7 @@ function reconcileProgramWithDefaults(
 ): ProgramByDay {
   const defaultProgram = getDefaultProgram();
 
-  return WEEK_DAYS.reduce((program, day) => {
+  return SESSION_IDS.reduce((program, day) => {
     const storedById = new Map(storedProgram[day].map((exercise) => [exercise.id, exercise]));
     const defaultIds = new Set(defaultProgram[day].map((exercise) => exercise.id));
 
@@ -819,8 +823,9 @@ export function loadProgram(): ProgramByDay {
           return storedProgram;
         }
 
-        // v7 and v9 full resets; v10–v17 preserve personal additions while syncing untouched defaults.
-        const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 9);
+        // v7 and v9 full resets; v10–v17 preserved weekday additions. v18 replaces
+        // the weekday split with the date-anchored CBL/SARMS cycle.
+        const migratedProgram = reconcileProgramWithDefaults(storedProgram, storedVersion < 18);
         saveProgram(migratedProgram);
         return migratedProgram;
       }
@@ -1012,15 +1017,22 @@ export function parseGymBackup(payload: unknown): GymBackup | null {
     return null;
   }
 
-  if (!WEEK_DAYS.every((day) => Array.isArray(backupProgram[day]))) {
+  const backupDays = SESSION_IDS.every((day) => Array.isArray(backupProgram[day]))
+    ? SESSION_IDS
+    : WEEK_DAYS.every((day) => Array.isArray(backupProgram[day]))
+      ? WEEK_DAYS
+      : null;
+  if (!backupDays) {
     return null;
   }
 
   // Backups exported before the court-sport purge carry cardio entries. They
   // are stripped before validation so an old backup still imports cleanly
-  // instead of being rejected wholesale.
+  // instead of being rejected wholesale. Weekday-keyed backups are accepted
+  // so historical logs still import; normalizeProgram then fills the live
+  // CBL/SARMS cycle in place of the retired split.
   const scrubbedProgram = Object.fromEntries(
-    WEEK_DAYS.map((day) => [
+    backupDays.map((day) => [
       day,
       (backupProgram[day] as unknown[]).filter((exercise) => !isCourtBackupExercise(exercise)),
     ]),
@@ -1029,7 +1041,7 @@ export function parseGymBackup(payload: unknown): GymBackup | null {
     Object.entries(backupLogs).map(([date, log]) => [date, scrubBackupLog(log)]),
   );
 
-  const programIsValid = WEEK_DAYS.every((day) => {
+  const programIsValid = backupDays.every((day) => {
     const exercises = scrubbedProgram[day] as unknown[];
     const ids = new Set<string>();
     return exercises.every((exercise) => {
