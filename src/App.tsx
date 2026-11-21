@@ -2172,9 +2172,11 @@ export function WorkoutPanel({
                             <div className="exercise-title-row">
                               <div>
                                 <span className="exercise-name-line">
-                                  <span className="exercise-name-text">
+                                  <span className="exercise-name-heading">
                                     <strong>{exercise.name}</strong>
                                     {exercise.extra ? <ExtraChip /> : null}
+                                  </span>
+                                  <span className="exercise-name-controls">
                                     <button
                                       className="rename-exercise-button"
                                       type="button"
@@ -2201,8 +2203,8 @@ export function WorkoutPanel({
                                       <span>{collapsed ? 'Expand' : 'Minimize'}</span>
                                     </button>
                                     )}
+                                    <ExerciseVisualButton name={exercise.name} onOpen={onOpenExerciseGuide} />
                                   </span>
-                                  <ExerciseVisualButton name={exercise.name} onOpen={onOpenExerciseGuide} />
                                 </span>
                                 {!collapsed && !checklistMode && (
                                   <>

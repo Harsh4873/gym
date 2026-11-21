@@ -1240,7 +1240,6 @@ a:focus-visible {
 .exercise-copy strong {
   font-size: 17px;
   font-weight: 500;
-  overflow-wrap: anywhere;
 }
 
 .exercise-title-row {
@@ -1265,16 +1264,24 @@ a:focus-visible {
   width: 100%;
 }
 
-.exercise-name-text {
+.exercise-name-heading {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
 }
 
-.exercise-name-text > strong {
+.exercise-name-heading > strong {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.exercise-name-controls {
+  display: contents;
 }
 
 .exercise-visual-button {
@@ -1282,6 +1289,7 @@ a:focus-visible {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  margin-left: auto;
   gap: 4px;
   min-height: 36px;
   padding: 8px 10px;
@@ -4403,6 +4411,39 @@ a:focus-visible {
     font-size: 16px;
   }
 
+  .exercise-name-line {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .exercise-name-heading {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .exercise-name-controls {
+    display: flex;
+    align-items: center;
+    flex: 1 1 100%;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .exercise-collapse-button,
+  .exercise-visual-button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    gap: 0;
+  }
+
+  .exercise-collapse-button span,
+  .exercise-visual-button span {
+    display: none;
+  }
+
   .exercise-title-row {
     align-items: center;
     gap: 8px;
@@ -4865,10 +4906,6 @@ a:focus-visible {
 
   .header-tools {
     padding-inline: 8px;
-  }
-
-  .exercise-visual-button span {
-    display: none;
   }
 }
 
