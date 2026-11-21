@@ -12,7 +12,7 @@ import {
   trainingCreditForLog,
 } from './App';
 import { normalizeLog } from './storage';
-import { PROGRAM } from './program';
+import { getSessionForDate, PROGRAM } from './program';
 import { STORAGE_KEY } from './storage';
 import type { Exercise, WorkoutLog } from './types';
 
@@ -217,12 +217,12 @@ describe('weekly plan rollout', () => {
     expect(logs['2026-10-12']).toBeUndefined();
     const saved = JSON.parse(stored.get(STORAGE_KEY) ?? '{}') as { logs: Record<string, unknown> };
     expect(saved.logs['2026-10-12']).toBeUndefined();
-    expect(stored.get('harsh-gym-weekly-plan-v7-rollout')).toBe('2026-10-12');
+    expect(stored.get('harsh-gym-program-v18-rollout')).toBe('2026-10-12');
   });
 
-  it('keeps the stored updatedAt when today\'s snapshot changes', () => {
+  it('replaces an empty stale snapshot with the current session and keeps updatedAt', () => {
     const updatedAt = '2026-10-12T08:00:00.000Z';
-    const mondayId = PROGRAM.Monday[0].id;
+    const todaySession = getSessionForDate('2026-10-12');
     const stored = stubStorage({
       [STORAGE_KEY]: JSON.stringify({
         version: 1,
@@ -230,7 +230,6 @@ describe('weekly plan rollout', () => {
           '2026-10-12': log({
             date: '2026-10-12',
             updatedAt,
-            completed: ['foreign-move', mondayId],
             exerciseSnapshot: [{
               id: 'foreign-move',
               day: 'Monday',
@@ -245,9 +244,9 @@ describe('weekly plan rollout', () => {
 
     const logs = loadLogsWithCurrentPlan('2026-10-12', PROGRAM);
     expect(logs['2026-10-12']?.updatedAt).toBe(updatedAt);
-    expect(logs['2026-10-12']?.completed).toEqual([mondayId]);
+    expect(logs['2026-10-12']?.completed).toEqual([]);
     expect(logs['2026-10-12']?.exerciseSnapshot?.map((entry) => entry.id)).toEqual(
-      PROGRAM.Monday.map((entry) => entry.id),
+      PROGRAM[todaySession].map((entry) => entry.id),
     );
     const saved = JSON.parse(stored.get(STORAGE_KEY) ?? '{}') as {
       logs: Record<string, { updatedAt: string }>;
@@ -255,15 +254,49 @@ describe('weekly plan rollout', () => {
     expect(saved.logs['2026-10-12']?.updatedAt).toBe(updatedAt);
   });
 
-  it('leaves storage alone when today already matches the template', () => {
+  it('does not rewrite a day that already has logged work', () => {
     const updatedAt = '2026-10-12T08:00:00.000Z';
+    const snapshot = [{
+      id: 'friday-18',
+      day: 'Friday' as const,
+      name: 'Hack Squat',
+      kind: 'strength' as const,
+      target: { sets: 2, restSeconds: 90 },
+    }];
     const raw = JSON.stringify({
       version: 1,
       logs: {
         '2026-10-12': log({
           date: '2026-10-12',
           updatedAt,
-          exerciseSnapshot: PROGRAM.Monday,
+          completed: ['friday-18'],
+          details: {
+            'friday-18': {
+              exerciseName: 'Hack Squat',
+              sets: [{ id: 'set-1', weightMode: 'pounds', pounds: '180', reps: '10' }],
+            },
+          },
+          exerciseSnapshot: snapshot,
+        }),
+      },
+    });
+    const stored = stubStorage({ [STORAGE_KEY]: raw });
+    const logs = loadLogsWithCurrentPlan('2026-10-12', PROGRAM);
+    expect(logs['2026-10-12']?.completed).toEqual(['friday-18']);
+    expect(logs['2026-10-12']?.exerciseSnapshot?.[0]?.id).toBe('friday-18');
+    expect(stored.get(STORAGE_KEY)).toBe(raw);
+  });
+
+  it('leaves storage alone when today already matches the template', () => {
+    const updatedAt = '2026-10-12T08:00:00.000Z';
+    const todaySession = getSessionForDate('2026-10-12');
+    const raw = JSON.stringify({
+      version: 1,
+      logs: {
+        '2026-10-12': log({
+          date: '2026-10-12',
+          updatedAt,
+          exerciseSnapshot: PROGRAM[todaySession],
         }),
       },
     });
@@ -272,6 +305,6 @@ describe('weekly plan rollout', () => {
     const logs = loadLogsWithCurrentPlan('2026-10-12', PROGRAM);
     expect(logs['2026-10-12']?.updatedAt).toBe(updatedAt);
     expect(stored.get(STORAGE_KEY)).toBe(raw);
-    expect(stored.get('harsh-gym-weekly-plan-v7-rollout')).toBe('2026-10-12');
+    expect(stored.get('harsh-gym-program-v18-rollout')).toBe('2026-10-12');
   });
 });

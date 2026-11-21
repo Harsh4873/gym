@@ -1,18 +1,33 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getWorkoutSectionOrder, listWorkoutSectionLabels, moveStretchToMorning, PROGRAM, WEEK_DAYS } from './program';
+import { getWorkoutSectionOrder, listWorkoutSectionLabels, moveStretchToMorning, PROGRAM, SESSION_IDS, WEEK_DAYS } from './program';
 import { createGymBackup, DEFAULT_PREFERENCES, normalizeLog, normalizePreferences, normalizeProgram, loadProgram, parseGymBackup, PROGRAM_STORAGE_KEY, STORAGE_KEY } from './storage';
-import type { ProgramByDay } from './types';
+import type { Exercise, ProgramByDay, Weekday } from './types';
+
+const LEGACY_WEEKDAYS: Weekday[] = [...WEEK_DAYS];
+
+function weekdayProgramFromSessions(): Record<Weekday, Exercise[]> {
+  const sourceDays: Weekday[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const program = {} as Record<Weekday, Exercise[]>;
+  sourceDays.forEach((day, index) => {
+    const session = SESSION_IDS[index];
+    program[day] = PROGRAM[session].map((exercise) => ({
+      ...exercise,
+      id: `${day.toLowerCase()}-${exercise.id.split('-').pop()}`,
+      day,
+      workoutLabel: exercise.workoutLabel === 'Stretch' ? 'Morning Stretch' : exercise.workoutLabel,
+    }));
+  });
+  return program;
+}
 
 function eveningProgram(): ProgramByDay {
   const program = structuredClone(PROGRAM);
-  for (const day of WEEK_DAYS) {
-    const hasStretch = program[day].some((exercise) => exercise.workoutLabel === 'Morning Stretch');
-    const lastBlock = Math.max(...program[day].map(getWorkoutSectionOrder));
-    if (!hasStretch) continue;
-    program[day] = program[day].map((exercise) => ({
+  for (const session of SESSION_IDS) {
+    const lastBlock = Math.max(...program[session].map(getWorkoutSectionOrder));
+    program[session] = program[session].map((exercise) => ({
       ...exercise,
-      workoutLabel: exercise.workoutLabel === 'Morning Stretch' ? 'Stretch' : exercise.workoutLabel,
-      blockOrder: day === 'Sunday' ? getWorkoutSectionOrder(exercise) : exercise.workoutLabel === 'Morning Stretch' ? lastBlock : getWorkoutSectionOrder(exercise) - 1,
+      workoutLabel: exercise.workoutLabel === 'Stretch' ? 'Stretch' : exercise.workoutLabel,
+      blockOrder: exercise.workoutLabel === 'Stretch' ? lastBlock : getWorkoutSectionOrder(exercise) - 1,
     })).sort((a, b) => getWorkoutSectionOrder(a) - getWorkoutSectionOrder(b));
   }
   return program;
@@ -20,16 +35,16 @@ function eveningProgram(): ProgramByDay {
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe('morning stretch migration', () => {
-  it('updates saved v16 plans once while preserving exercise identities, personal edits, and logs', () => {
-    const program = eveningProgram();
-    const bench = program.Monday.find((exercise) => exercise.id === 'monday-1')!;
-    bench.name = 'Custom Bench';
-    bench.target = { sets: 5, repMin: 5, repMax: 5, restSeconds: 150 };
-    program.Monday.push({ ...bench, id: 'monday-custom-test', name: 'Custom exercise' });
-    const logs = JSON.stringify({ '2026-09-07': { completed: ['monday-1'], exerciseSnapshot: program.Monday } });
+describe('CBL/SARMS program migration', () => {
+  it('replaces a saved weekday split with the 8-day cycle while leaving logs untouched', () => {
+    const weekdayProgram = weekdayProgramFromSessions();
+    const mondayBench = weekdayProgram.Monday.find((exercise) => /bench/i.test(exercise.name))!;
+    mondayBench.name = 'Custom Bench';
+    weekdayProgram.Monday.push({ ...mondayBench, id: 'monday-custom-test', name: 'Custom exercise' });
+    const snapshot = weekdayProgram.Monday;
+    const logs = JSON.stringify({ '2026-09-07': { completed: ['monday-1'], exerciseSnapshot: snapshot } });
     const stored = new Map([
-      [PROGRAM_STORAGE_KEY, JSON.stringify({ version: 16, program })],
+      [PROGRAM_STORAGE_KEY, JSON.stringify({ version: 17, program: weekdayProgram })],
       [STORAGE_KEY, logs],
     ]);
     vi.stubGlobal('window', { localStorage: {
@@ -38,64 +53,72 @@ describe('morning stretch migration', () => {
     } });
 
     const migrated = loadProgram();
-    expect(listWorkoutSectionLabels(migrated.Tuesday)).toEqual(['Morning Stretch', 'Biceps + Triceps']);
-    expect(migrated.Monday.find((exercise) => exercise.id === bench.id)).toMatchObject({ name: bench.name, target: bench.target });
-    expect(migrated.Monday[migrated.Monday.length - 1]?.name).toBe('Custom exercise');
-    for (const day of WEEK_DAYS) {
-      expect(migrated[day].map((exercise) => exercise.id).sort()).toEqual(program[day].map((exercise) => exercise.id).sort());
-    }
+    expect(Object.keys(migrated)).toEqual([...SESSION_IDS]);
+    expect(listWorkoutSectionLabels(migrated['CBL R3'])).toEqual(['Stretch', 'CBL R3']);
+    expect(migrated['CBL R1'].map((exercise) => exercise.name)).toEqual(PROGRAM['CBL R1'].map((exercise) => exercise.name));
+    expect(Object.keys(migrated)).not.toContain('Monday');
     expect(stored.get(STORAGE_KEY)).toBe(logs);
-    expect(JSON.parse(stored.get(PROGRAM_STORAGE_KEY)!).version).toBe(17);
+    expect(JSON.parse(stored.get(PROGRAM_STORAGE_KEY)!).version).toBe(18);
     expect(loadProgram()).toEqual(migrated);
   });
 
   it('moves an existing workout to morning without mutating its snapshot or changing exercises', () => {
-    const snapshot = eveningProgram().Thursday;
+    const snapshot = eveningProgram()['CBL R3'];
     const original = structuredClone(snapshot);
     const scheduled = moveStretchToMorning(snapshot);
-    expect(listWorkoutSectionLabels(scheduled)).toEqual(['Morning Stretch', 'Back + Chest']);
-    expect(scheduled.map(getWorkoutSectionOrder)).toEqual([1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
+    expect(listWorkoutSectionLabels(scheduled)).toEqual(['Morning Stretch', 'CBL R3']);
     expect(snapshot).toEqual(original);
     expect(scheduled.map(({ id, name, target }) => ({ id, name, target })).sort((a, b) => a.id.localeCompare(b.id)))
       .toEqual(original.map(({ id, name, target }) => ({ id, name, target })).sort((a, b) => a.id.localeCompare(b.id)));
-    expect(moveStretchToMorning(scheduled)).toBe(scheduled);
-    expect(moveStretchToMorning(PROGRAM.Friday)).toBe(PROGRAM.Friday);
+    expect(moveStretchToMorning(scheduled)).toEqual(scheduled);
+    expect(moveStretchToMorning(PROGRAM['CBL R3'])).toBe(PROGRAM['CBL R3']);
   });
 });
 
 describe('legacy stretch data', () => {
   it('normalizes saved programs, log snapshots, and backups that still say mobility', () => {
     const program = structuredClone(PROGRAM);
-    const exercise = program.Tuesday[0];
+    const exercise = program['SARMS R1'][0];
     (exercise as { kind: string }).kind = 'mobility';
     const normalized = normalizeProgram(program);
-    expect(normalized.Tuesday[0]).toMatchObject({ id: exercise.id, kind: 'stretch', target: exercise.target });
+    expect(normalized['SARMS R1'][0]).toMatchObject({ id: exercise.id, kind: 'stretch', target: exercise.target });
 
     const date = '2026-09-28';
-    const log = normalizeLog(date, { exerciseSnapshot: [PROGRAM.Tuesday[0]] });
+    const log = normalizeLog(date, { exerciseSnapshot: [PROGRAM['SARMS R1'][0]] });
     (log.exerciseSnapshot![0] as { kind: string }).kind = 'mobility';
     expect(normalizeLog(date, log).exerciseSnapshot![0].kind).toBe('stretch');
 
     const backup = createGymBackup({ [date]: log }, PROGRAM, DEFAULT_PREFERENCES);
-    (backup.program.Tuesday[0] as { kind: string }).kind = 'mobility';
+    (backup.program['SARMS R1'][0] as { kind: string }).kind = 'mobility';
     (backup.logs[date].exerciseSnapshot![0] as { kind: string }).kind = 'mobility';
     const imported = parseGymBackup(backup);
     expect(imported).not.toBeNull();
-    expect(imported!.program.Tuesday[0].kind).toBe('stretch');
+    expect(imported!.program['SARMS R1'][0].kind).toBe('stretch');
     expect(imported!.logs[date].exerciseSnapshot![0].kind).toBe('stretch');
   });
 
-  it('updates the old default ankle title without changing its exercise id', () => {
-    const program = structuredClone(PROGRAM);
-    program.Sunday[0].name = 'Knee-to-Wall Ankle Mobility';
-    expect(normalizeProgram(program).Sunday[0]).toMatchObject({
-      id: program.Sunday[0].id,
-      name: 'Knee-to-Wall Ankle Stretch',
-    });
-    const log = normalizeLog('2026-09-28', {
+  it('imports a weekday-keyed backup without dropping its logs', () => {
+    const weekdayProgram = weekdayProgramFromSessions();
+    const date = '2026-09-28';
+    const log = normalizeLog(date, {
+      exerciseSnapshot: weekdayProgram.Friday,
+      completed: ['friday-18'],
       details: { 'sunday-14': { exerciseName: 'Knee-to-Wall Ankle Mobility', sets: [] } },
     });
-    expect(log.details['sunday-14'].exerciseName).toBe('Knee-to-Wall Ankle Stretch');
+    const backup = {
+      version: 1 as const,
+      exportedAt: '2026-09-28T12:00:00.000Z',
+      logs: { [date]: log },
+      program: weekdayProgram,
+      preferences: DEFAULT_PREFERENCES,
+    };
+    const imported = parseGymBackup(backup);
+    expect(imported).not.toBeNull();
+    expect(imported!.logs[date].completed).toEqual(['friday-18']);
+    expect(imported!.logs[date].details['sunday-14'].exerciseName).toBe('Knee-to-Wall Ankle Stretch');
+    expect(Object.keys(imported!.program)).toEqual([...SESSION_IDS]);
+    expect(imported!.program['CBL R3'].some((exercise) => exercise.name === 'Incline Bench')).toBe(true);
+    expect(Object.keys(imported!.program)).not.toEqual(expect.arrayContaining(LEGACY_WEEKDAYS));
   });
 });
 

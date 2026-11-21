@@ -56,7 +56,7 @@ import {
   formatMonth,
   formatShortDate,
   getExercisesForDate,
-  getWeekday,
+  getTodayDateKey,
   parseDateKey,
   startOfMonth,
   startOfWeek,
@@ -86,12 +86,17 @@ import {
 } from './exerciseLibrary';
 import {
   createDefaultExerciseTarget,
+  getSessionForDate,
   getWorkoutSectionKey,
   getWorkoutSectionOrder,
   inferExerciseKind,
+  isStretchSectionLabel,
   moveStretchToMorning,
   orderExercisesForSession,
+  PROGRAM_NOTES,
+  programDaySlug,
   sectionFieldsForAddedExercise,
+  SESSION_IDS,
   WEEK_DAYS,
 } from './program';
 import {
@@ -117,9 +122,9 @@ import type {
   Preferences,
   ProgramByDay,
   SupersetPair,
+  SessionId,
   TabId,
   ThemeMode,
-  Weekday,
   WeightMode,
   WorkoutLog,
 } from './types';
@@ -128,7 +133,7 @@ type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
 const THEME_STORAGE_KEY = 'harsh-gym-theme-v1';
 const REST_TIMER_STORAGE_KEY = 'harsh-gym-rest-timer-v1';
-const WEEKLY_PLAN_ROLLOUT_STORAGE_KEY = 'harsh-gym-weekly-plan-v7-rollout';
+const WEEKLY_PLAN_ROLLOUT_STORAGE_KEY = 'harsh-gym-program-v18-rollout';
 type GetExercisesForDate = (dateKey: string) => Exercise[];
 type RenameExerciseForDate = (
   dateKey: string,
@@ -312,12 +317,11 @@ function applyExerciseOrder(exercises: Exercise[], orderedIds: string[]): Exerci
 }
 
 function getProgramExercisesForDate(dateKey: string, program: ProgramByDay): Exercise[] {
-  const day = getWeekday(parseDateKey(dateKey));
-  return program[day];
+  return program[getSessionForDate(dateKey)];
 }
 
-function createWorkoutId(day: Weekday): string {
-  return `${day.toLowerCase()}-custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+function createWorkoutId(day: SessionId): string {
+  return `${programDaySlug(day)}-custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function countCompleted(exercises: Exercise[], log: WorkoutLog): number {
@@ -596,6 +600,11 @@ export function loadLogsWithCurrentPlan(todayKey: string, program: ProgramByDay)
     }
 
     const currentLog = normalizeLog(todayKey, storedToday);
+    if (hasTrainingActivity(currentLog) || currentLog.daySkipped) {
+      markRollout();
+      return loadedLogs;
+    }
+
     const todayExercises = cloneExercises(getProgramExercisesForDate(todayKey, program));
     const validExerciseIds = new Set(todayExercises.map((exercise) => exercise.id));
     const completed = currentLog.completed.filter((id) => validExerciseIds.has(id));
@@ -1110,13 +1119,13 @@ function WorkoutBlockHeading({
   exercise: { workoutLabel?: string; blockOrder?: number; workoutBlock?: 1 | 2 };
   className?: string;
 }) {
-  const morning = exercise.workoutLabel === 'Morning Stretch';
+  const stretch = isStretchSectionLabel(exercise.workoutLabel);
   const order = getWorkoutSectionOrder(exercise);
   return (
-    <div className={`${className}${morning ? ' morning-block' : ''}`}>
-      <span>{morning ? 'Morning · Start here' : order === 1 ? 'Start here' : `Then · Block ${order}`}</span>
-      <strong>{morning && <Sun aria-hidden="true" />}{exercise.workoutLabel}</strong>
-      {morning && <small>Your stretch routine comes first.</small>}
+    <div className={`${className}${stretch ? ' morning-block' : ''}`}>
+      <span>{stretch ? 'Start here' : order === 1 ? 'Start here' : `Then · Block ${order}`}</span>
+      <strong>{stretch && <Sun aria-hidden="true" />}{exercise.workoutLabel}</strong>
+      {stretch && <small>One round, then the lifts top to bottom.</small>}
     </div>
   );
 }
@@ -1698,8 +1707,9 @@ function WorkoutPanel({
     >
       <div className="workout-banner">
         <div>
-          <p className="eyebrow">{formatDateLabel(dateKey)}</p>
+          <p className="eyebrow">{formatDateLabel(dateKey)} · {getSessionForDate(dateKey)}</p>
           <h2>{progress.completed}/{progress.total} logged</h2>
+          <p className="program-notes">{PROGRAM_NOTES}</p>
           <div className="banner-chips">
             <StatusPill status={status} />
             {!checklistMode && (
@@ -2086,7 +2096,7 @@ function WorkoutPanel({
                                     onClick={() => saveExerciseName(exercise.id, 'template')}
                                   >
                                     <CalendarDays aria-hidden="true" />
-                                    <span>This + future {getWeekday(parseDateKey(dateKey))}s</span>
+                                    <span>This + future {getSessionForDate(dateKey)}s</span>
                                   </button>
                                 )}
                                 <button
@@ -2415,6 +2425,7 @@ function WeekView({
               <div>
                 <span>{day}</span>
                 <strong>{formatShortDate(dateKey)}</strong>
+                <small>{getSessionForDate(dateKey)}</small>
               </div>
               <StatusPill status={status} />
             </div>
@@ -2525,7 +2536,7 @@ function CalendarView({
             key={dateKey}
             type="button"
             className={`calendar-cell ${status} ${inMonth ? '' : 'muted'} ${dateKey === todayKey ? 'today' : ''}`}
-            aria-label={`${formatDateLabel(dateKey)}, ${STATUS_LABELS[status]}, ${progress.completed} of ${progress.total} complete`}
+            aria-label={`${formatDateLabel(dateKey)}, ${getSessionForDate(dateKey)}, ${STATUS_LABELS[status]}, ${progress.completed} of ${progress.total} complete`}
             onClick={() => openLogbook(dateKey)}
           >
             <span>{date.getDate()}</span>
@@ -2670,7 +2681,7 @@ function LogbookView({
       <div className="view-stack">
         <section className="topline">
           <div>
-            <p className="eyebrow">Logbook</p>
+            <p className="eyebrow">Logbook · {getSessionForDate(selectedDate)}</p>
             <h1>{formatDateLabel(selectedDate)}</h1>
           </div>
           <div className="logbook-controls">
@@ -2828,7 +2839,7 @@ function buildSavedExerciseLibraryEntries(
     });
   };
 
-  WEEK_DAYS.forEach((day) => {
+  SESSION_IDS.forEach((day) => {
     program[day].forEach((exercise, index) => {
       addEntry(
         exercise.name,
@@ -3204,7 +3215,7 @@ export function SearchView({
   const [equipment, setEquipment] = useState<GuideFilters['equipment']>('all');
   const [beginner, setBeginner] = useState(false);
   const [scope, setScope] = useState<'library' | 'saved'>('library');
-  const [selectedDay, setSelectedDay] = useState<'all' | Weekday>('all');
+  const [selectedDay, setSelectedDay] = useState<'all' | SessionId>('all');
   const [visibleCount, setVisibleCount] = useState(18);
   const [library, setLibrary] = useState<FreeExerciseRecord[]>([]);
   const [libraryStatus, setLibraryStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -3307,7 +3318,7 @@ export function SearchView({
     () => filterExerciseGuides(sourceGuides, { query, discipline, region, equipment, beginner }),
     [sourceGuides, query, discipline, region, equipment, beginner],
   );
-  const todayWeekday = getWeekday(parseDateKey(todayKey));
+  const todaySession = getSessionForDate(todayKey);
   const resetFilters = () => {
     setQuery('');
     setRegion('all');
@@ -3446,9 +3457,9 @@ export function SearchView({
           <div className="exercise-day-filter">
             <div className="exercise-filter-label">
               <CalendarDays aria-hidden="true" />
-              <span>Workout day</span>
+              <span>Session</span>
             </div>
-            <div className="exercise-day-options" role="group" aria-label="Workout day">
+            <div className="exercise-day-options" role="group" aria-label="Session">
               <button
                 type="button"
                 className={selectedDay === 'all' ? 'active' : ''}
@@ -3458,17 +3469,17 @@ export function SearchView({
                 <span>All</span>
                 <small>History too</small>
               </button>
-              {WEEK_DAYS.map((day) => (
+              {SESSION_IDS.map((day) => (
                 <button
                   key={day}
                   type="button"
-                  className={`${selectedDay === day ? 'active' : ''} ${todayWeekday === day ? 'today' : ''}`}
-                  aria-label={`${day}${todayWeekday === day ? ', today' : ''}`}
+                  className={`${selectedDay === day ? 'active' : ''} ${todaySession === day ? 'today' : ''}`}
+                  aria-label={`${day}${todaySession === day ? ', today' : ''}`}
                   aria-pressed={selectedDay === day}
                   onClick={() => setSelectedDay(day)}
                 >
-                  <span>{day.slice(0, 3)}</span>
-                  <small>{todayWeekday === day ? 'Today' : program[day].length}</small>
+                  <span>{day.startsWith('CBL') ? 'CBL' : 'SARMS'}</span>
+                  <small>{todaySession === day ? 'Today' : day.slice(-2)}</small>
                 </button>
               ))}
             </div>
@@ -3557,7 +3568,7 @@ export function SearchView({
                       extra={entry?.extra}
                       sourceLabel={
                         scope === 'saved' && selectedDay !== 'all'
-                          ? `${selectedDay.slice(0, 3)} · ${entry?.order}`
+                          ? `${selectedDay} · ${entry?.order}`
                           : undefined
                       }
                       onOpen={() => setSelectedGuide({ guide, saved })}
@@ -3655,14 +3666,14 @@ function SettingsView({
 }: {
   program: ProgramByDay;
   setProgram: Dispatch<SetStateAction<ProgramByDay>>;
-  onRenameTemplate: (day: Weekday, exerciseId: string, name: string) => void;
+  onRenameTemplate: (day: SessionId, exerciseId: string, name: string) => void;
   preferences: Preferences;
   setPreferences: Dispatch<SetStateAction<Preferences>>;
   sync: GymSyncController;
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
 }) {
-  const [selectedProgramDay, setSelectedProgramDay] = useState<Weekday>(() => getWeekday(new Date()));
+  const [selectedProgramDay, setSelectedProgramDay] = useState<SessionId>(() => getSessionForDate(getTodayDateKey()));
   const selectedProgramDayRef = useRef<HTMLButtonElement>(null);
   const [newWorkoutName, setNewWorkoutName] = useState('');
   const [newWorkoutKind, setNewWorkoutKind] = useState<ExerciseKind>('strength');
@@ -3865,7 +3876,7 @@ function SettingsView({
             <Target aria-hidden="true" />
             <h3>Weekly rhythm</h3>
           </div>
-          <p>Set a realistic number of finished sessions for each Monday–Sunday training week.</p>
+          <p>Set a realistic number of finished sessions for each Monday-Sunday calendar week. The training split itself is an 8-day CBL/SARMS cycle with no rest days.</p>
           <label className="settings-field">
             <span>Weekly session goal</span>
             <select
@@ -3921,7 +3932,7 @@ function SettingsView({
               )}
             </>
           ) : (
-            <p>Sign in with Google to keep workouts, weekly templates, supersets, and settings in sync across devices.</p>
+            <p>Sign in with Google to keep workouts, session templates, supersets, and settings in sync across devices.</p>
           )}
           {sync.error && <p className="sync-error" role="alert">{sync.error}</p>}
           <div className="data-actions">
@@ -3985,10 +3996,10 @@ function SettingsView({
         <aside className="program-side-panel">
           <div className="section-title">
             <CalendarDays aria-hidden="true" />
-            <h3>Days</h3>
+            <h3>Sessions</h3>
           </div>
           <div className="program-day-tabs">
-            {WEEK_DAYS.map((day) => (
+            {SESSION_IDS.map((day) => (
               <button
                 key={day}
                 ref={day === selectedProgramDay ? selectedProgramDayRef : undefined}
@@ -4018,7 +4029,7 @@ function SettingsView({
             <span>{dayWorkouts.length} saved</span>
           </div>
           <p className="program-editor-help">
-            Template changes apply to upcoming {selectedProgramDay}s. Use the pencil beside an exercise in Today or Logbook for a one-day rename.
+            {PROGRAM_NOTES} Template changes apply to upcoming {selectedProgramDay} sessions. Use the pencil beside an exercise in Today or Logbook for a one-day rename.
           </p>
 
           <form
@@ -4185,7 +4196,7 @@ function SettingsView({
 }
 
 export default function App() {
-  const [todayKey, setTodayKey] = useState(() => toDateKey(new Date()));
+  const [todayKey, setTodayKey] = useState(() => getTodayDateKey());
   const [activeTab, setActiveTab] = useState<TabId>(() => getTabFromHash());
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [program, setProgram] = useState<ProgramByDay>(() => loadProgram());
@@ -4196,7 +4207,7 @@ export default function App() {
   const previousActiveTab = useRef(activeTab);
 
   useEffect(() => {
-    const refreshToday = () => setTodayKey(toDateKey(new Date()));
+    const refreshToday = () => setTodayKey(getTodayDateKey());
     const timer = window.setInterval(refreshToday, 60_000);
     return () => window.clearInterval(timer);
   }, []);
@@ -4266,7 +4277,7 @@ export default function App() {
   };
 
   const renameTemplateExercise = (
-    weekday: Weekday,
+    session: SessionId,
     exerciseId: string,
     name: string,
     selectedWorkoutDate?: string,
@@ -4276,7 +4287,7 @@ export default function App() {
       return;
     }
 
-    const templateExercise = program[weekday].find((exercise) => exercise.id === exerciseId);
+    const templateExercise = program[session].find((exercise) => exercise.id === exerciseId);
     if (!templateExercise) {
       return;
     }
@@ -4288,7 +4299,7 @@ export default function App() {
 
     setProgram((current) => ({
       ...current,
-      [weekday]: current[weekday].map((exercise) =>
+      [session]: current[session].map((exercise) =>
         exercise.id === exerciseId ? { ...exercise, name: nextName } : exercise,
       ),
     }));
@@ -4300,7 +4311,7 @@ export default function App() {
         : todayKey;
       const datesToUpdate = new Set(
         Object.keys(current).filter((loggedDate) => {
-          return loggedDate >= propagationStart && getWeekday(parseDateKey(loggedDate)) === weekday;
+          return loggedDate >= propagationStart && getSessionForDate(loggedDate) === session;
         }),
       );
       if (selectedWorkoutDate) {
@@ -4346,8 +4357,8 @@ export default function App() {
   };
 
   const canRenameTemplateForDate: CanRenameTemplateForDate = (dateKey, exerciseId) => {
-    const weekday = getWeekday(parseDateKey(dateKey));
-    return program[weekday].some((exercise) => exercise.id === exerciseId);
+    const session = getSessionForDate(dateKey);
+    return program[session].some((exercise) => exercise.id === exerciseId);
   };
 
   const renameExerciseForDate: RenameExerciseForDate = (dateKey, exerciseId, name, scope) => {
@@ -4356,9 +4367,9 @@ export default function App() {
       return;
     }
 
-    const weekday = getWeekday(parseDateKey(dateKey));
+    const session = getSessionForDate(dateKey);
     if (scope === 'template') {
-      renameTemplateExercise(weekday, exerciseId, nextName, dateKey);
+      renameTemplateExercise(session, exerciseId, nextName, dateKey);
       return;
     }
 
