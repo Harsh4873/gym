@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
@@ -133,7 +135,10 @@ describe('exercise search deep links', () => {
 describe('logbook exercise visual button', () => {
   const exercises: Exercise[] = [
     { id: 'stretch-1', day: 'CBL R1', name: 'Cat-Cow', kind: 'stretch', target: { sets: 1, restSeconds: 0 } },
+    { id: 'stretch-2', day: 'CBL R1', name: "Child's Pose", kind: 'stretch', target: { sets: 1, restSeconds: 0 } },
+    { id: 'stretch-3', day: 'CBL R1', name: 'Figure-4 Glute Stretch', kind: 'stretch', target: { sets: 1, restSeconds: 0 } },
     { id: 'lift-1', day: 'CBL R1', name: 'Flat Bench', kind: 'strength', target: { sets: 3, restSeconds: 90 } },
+    { id: 'lift-2', day: 'CBL R1', name: 'Bulgarian Split Squat', kind: 'strength', target: { sets: 3, restSeconds: 90 } },
   ];
 
   it('puts a search/guide control on every exercise name row', () => {
@@ -156,10 +161,27 @@ describe('logbook exercise visual button', () => {
     );
     expect(html).toContain('aria-label="View guide for Cat-Cow"');
     expect(html).toContain('aria-label="View guide for Flat Bench"');
+    expect(html).toContain('aria-label="View guide for Figure-4 Glute Stretch"');
+    expect(html).toContain('aria-label="View guide for Bulgarian Split Squat"');
+    expect(html).toContain('aria-label="View guide for Child&#x27;s Pose"');
     expect(html).toContain('exercise-visual-button');
+    expect(html).toContain('exercise-name-heading');
+    expect(html).toContain('exercise-name-controls');
     expect(html).toContain('>Guide</span>');
+    expect(html).toContain('>Child&#x27;s Pose</strong>');
+    expect(html).toContain('>Figure-4 Glute Stretch</strong>');
     expect(html).not.toContain('youtube.com');
     expect(html).not.toContain('Watch demo');
+  });
+
+  it('keeps the name on one line and uses icon-only controls on a wrapped row', () => {
+    const css = readFileSync(resolve(import.meta.dirname, 'styles.css'), 'utf8');
+    expect(css).toContain('.exercise-name-heading > strong');
+    expect(css).toContain('white-space: nowrap');
+    expect(css).toContain('text-overflow: ellipsis');
+    expect(css).toMatch(/\.exercise-name-heading \{\s*flex: 1 1 100%;/);
+    expect(css).toMatch(/\.exercise-collapse-button span,\s*\.exercise-visual-button span \{\s*display: none;/);
+    expect(css).not.toMatch(/\.exercise-copy strong \{[^}]*overflow-wrap:\s*anywhere/);
   });
 
   it('opens the visual without toggling the parent row, including keyboard activation', () => {
